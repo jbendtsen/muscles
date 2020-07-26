@@ -13,9 +13,8 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
-# stuff :)
-[Ff]onts/
-[Ll]ib/
+Lib/
+Fonts/
 
 # Build results
 [Dd]ebug/
