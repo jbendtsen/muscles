@@ -1,5 +1,4 @@
-#ifndef IO_H
-#define IO_H
+#pragma once
 
 enum SourceType {
 	TypeNoSource = 0,
@@ -49,5 +48,3 @@ void refresh_process_regions(Source& source, Arena& arena);
 
 void refresh_file_spans(Source& source, Arena& arena);
 void refresh_process_spans(Source& source, Arena& arena);
-
-#endif

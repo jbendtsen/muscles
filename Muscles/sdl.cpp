@@ -483,20 +483,6 @@ void sdl_draw_rect(Rect& rect, RGBA& color) {
 	SDL_RenderFillRect(renderer, &rect_fixed);
 }
 
-void sdl_draw_corners(Texture corner, Rect_Fixed& rect, int tex_w, int tex_h) {
-	SDL_Rect vert = {rect.x - tex_w/2, rect.y - tex_h/2, tex_w, tex_h};
-	SDL_RenderCopy(renderer, (SDL_Texture*)corner, nullptr, &vert);
-
-	vert.x += rect.w;
-	SDL_RenderCopy(renderer, (SDL_Texture*)corner, nullptr, &vert);
-
-	vert.y += rect.h;
-	SDL_RenderCopy(renderer, (SDL_Texture*)corner, nullptr, &vert);
-
-	vert.x -= rect.w;
-	SDL_RenderCopy(renderer, (SDL_Texture*)corner, nullptr, &vert);
-}
-
 void sdl_clear() {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);

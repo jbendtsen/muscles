@@ -1,5 +1,4 @@
-#ifndef UI_H
-#define UI_H
+#pragma once
 
 enum ElementType {
 	TypeNone = 0,
@@ -36,7 +35,7 @@ struct UI_Element {
 	void (*action)(UI_Element*, bool) = nullptr;
 
 	virtual void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {}
-	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
+	virtual bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) { return false; }
 	virtual void key_handler(Camera& view, Input& input) {}
 
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
@@ -91,9 +90,12 @@ struct Button : UI_Element {
 	float x_offset = 0.25;
 	float y_offset = -0.2;
 
+	bool held = false;
 	std::string text;
 
 	void update_size();
+	
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -125,11 +127,15 @@ struct Data_View : UI_Element {
 	int sel_row = -1;
 
 	float item_height = 0;
+	float header_height = 25;
 	float column_spacing = 0.2;
 	float border = 10;
 
+	bool show_column_names = false;
+
 	//void find_column(Camera& view, float total_width, int& index, Point& span, bool get_index);
-	void draw_item_backing(RGBA& color, Rect_Fixed& rect, float scale, int idx);
+	float column_width(float total_width, float font_height, float scale, int idx);
+	void draw_item_backing(RGBA& color, Rect& back, float scale, int idx);
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	bool highlight(Camera& view, Point& inside) override;
@@ -163,7 +169,7 @@ struct Scroll : UI_Element {
 
 	void engage(Point& p);
 
-	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 
 	bool highlight(Camera& view, Point& inside) override;
@@ -219,7 +225,7 @@ struct Drop_Down : UI_Element {
 
 	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
 
-	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
@@ -260,12 +266,8 @@ struct Box {
 	Box(const Box& b) = default;
 	Box(Box&& b) = default;
 
-	float minimum_width() const {
-		return 300;
-	}
-	float minimum_height() const {
-		return 200;
-	}
+	float min_width = 300;
+	float min_height = 200;
 
 	void draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hovered, bool focussed);
 
@@ -281,8 +283,6 @@ struct Box {
 struct Workspace {
 	int dpi_w = 0, dpi_h = 0;
 
-	Texture corner = nullptr;
-	float corner_size = 8;
 	Texture cross = nullptr;
 	float cross_size = 16;
 
@@ -294,8 +294,8 @@ struct Workspace {
 	RGBA default_color = {};
 	RGBA hl_color = { 0.2, 0.4, 0.7, 1.0 };
 	RGBA sel_color = { 0.1, 0.25, 0.8, 1.0 };
-	RGBA inactive_color = { 0.4, 0.45, 0.5, 1.0 };
-	RGBA inactive_text_color = { 0.9, 0.9, 0.9, 1.0 };
+	RGBA inactive_color = { 0.2, 0.3, 0.5, 1.0 };
+	RGBA inactive_text_color = { 0.7, 0.7, 0.7, 1.0 };
 	RGBA inactive_outline_color = { 0.55, 0.6, 0.65, 1.0 };
 
 	Font_Face face = nullptr;
@@ -306,6 +306,7 @@ struct Workspace {
 	std::vector<Box*> boxes;
 	Box *focus = nullptr;
 	Box *new_box = nullptr;
+	UI_Element *held_element = nullptr;
 
 	std::vector<void*> sources;
 
@@ -318,6 +319,7 @@ struct Workspace {
 	void delete_box(Box *b);
 	void bring_to_front(Box *b);
 
+	Box *first_box_of_type(BoxType type);
 	Font *make_font(float size, RGBA& color);
 
 	void adjust_scale(float old_scale, float new_scale);
@@ -329,8 +331,3 @@ Rect make_ui_box(Rect_Fixed& box, Rect& elem, float scale);
 float center_align_title(Label *title, Box& b, float scale, float y_offset);
 
 void make_opening_menu(Workspace& ws, Box& b);
-
-void make_file_menu(Workspace& ws, Box& b);
-void make_process_menu(Workspace& ws, Box& b);
-
-#endif

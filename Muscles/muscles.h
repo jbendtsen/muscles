@@ -1,5 +1,4 @@
-#ifndef MUSCLES_H
-#define MUSCLES_H
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -84,8 +83,6 @@ void sdl_apply_texture(Texture tex, Rect *dst, Rect_Fixed *src = nullptr);
 
 void sdl_draw_rect(Rect_Fixed& rect, RGBA& color);
 void sdl_draw_rect(Rect& rect, RGBA& color);
-
-void sdl_draw_corners(Texture corner, Rect_Fixed& rect, int tex_w, int tex_h);
 
 void sdl_clear();
 void sdl_render();
@@ -313,5 +310,3 @@ struct Input {
 		return t == 1 || (t >= 20 /* && (t % 10 == 0)*/);
 	}
 };
-
-#endif

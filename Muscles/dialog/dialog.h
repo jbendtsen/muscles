@@ -32,3 +32,6 @@ struct Source_Menu {
 
 	Texture folder_icon = nullptr;
 };
+
+void make_file_menu(Workspace& ws, Box& b);
+void make_process_menu(Workspace& ws, Box& b);

@@ -5,9 +5,6 @@
 Workspace::Workspace(Font_Face face) {
 	this->face = face;
 
-	RGBA circle_color = { 0.5, 0.6, 0.7, 1.0 };
-	corner = sdl_make_circle(48, circle_color);
-
 	RGBA cross_color = { 1.0, 1.0, 1.0, 1.0 };
 	cross = sdl_make_cross(48, cross_color);
 
@@ -25,7 +22,6 @@ Workspace::Workspace(Font_Face face) {
 }
 
 Workspace::~Workspace() {
-	sdl_destroy_texture(&corner);
 	sdl_destroy_texture(&cross);
 
 	for (auto& b : boxes) {
@@ -130,6 +126,14 @@ Font *Workspace::make_font(float size, RGBA& color) {
 	return f;
 }
 
+Box *Workspace::first_box_of_type(BoxType type) {
+	for (auto& b : boxes) {
+		if (b->type == type)
+			return b;
+	}
+	return nullptr;
+}
+
 void Workspace::adjust_scale(float old_scale, float new_scale) {
 	for (auto& f : fonts)
 		f->adjust_scale(new_scale, dpi_w, dpi_h);
@@ -228,12 +232,6 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 
 	if (current_dd)
 		current_dd->draw_menu(view, rect, held);
-
-	if (focussed && ws.corner) {
-		int tex_w = ws.corner_size * view.scale;
-		int tex_h = tex_w;
-		sdl_draw_corners(ws.corner, rect, tex_w, tex_h);
-	}
 }
 
 void Box::select_edge(Camera& view, Point& p) {
@@ -260,8 +258,8 @@ void Box::move(float dx, float dy, Camera& view, Input& input) {
 	float w = box.w * view.scale;
 	float h = box.h * view.scale;
 
-	float min_w = minimum_width() * view.scale;
-	float min_h = minimum_height() * view.scale;
+	float min_w = min_width * view.scale;
+	float min_h = min_height * view.scale;
 
 	if (edge & 2) {
 		if (input.mouse_x - min_w >= (int)p.x)
@@ -313,11 +311,16 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 		if (!elem->visible)
 			continue;
 
-		elem->mouse_handler(view, input, inside, hovered);
+		bool clicked = elem->mouse_handler(view, input, inside, hovered);
+		if (clicked && !parent->held_element)
+			parent->held_element = elem;
 
 		if (focussed)
 			elem->key_handler(view, input);
 	}
+
+	if (!input.lmouse && !input.rmouse)
+		parent->held_element = nullptr;
 }
 
 void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {

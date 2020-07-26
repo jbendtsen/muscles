@@ -58,6 +58,10 @@ void Button::update_size() {
 	height = 1.2f * font_height;
 }
 
+bool Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	return pos.contains(cursor);
+}
+
 void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect r = make_ui_box(rect, pos, view.scale);
 
@@ -73,6 +77,8 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	RGBA *color = &theme->back;
 	if (elem_hovered)
 		color = &theme->hover;
+	if (parent && parent->parent->held_element == this)
+		color = &theme->held;
 
 	sdl_draw_rect(r, *color);
 
@@ -100,62 +106,36 @@ void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_h
 	sdl_draw_rect(r, default_color);
 }
 
-/*
-void Data_View::find_column(Camera& view, float total_width, int& index, Point& span, bool get_index) {
-	float font_height = (float)font->render.text_height();
-	float font_units = font_height / view.scale;
-
-	int n_rows = data.row_count();
-	int n_cols = data.column_count();
-
-	float x = pos.x;
-	for (int j = 0; j < n_cols; j++) {
-		float w = data.headers[j].width * total_width;
-		if (get_index) {
-			if (span.x < x + w) {
-				index = j;
-				return;
-			}
-		}
-		else {
-			if (j == index) {
-				span.x = x;
-				span.y = w;
-				return;
-			}
-		}
-
-		x += w + column_spacing * font_units;
-	}
-}
-*/
-
 bool Data_View::highlight(Camera& view, Point& inside) {
 	if (!font) {
 		hl_row = -1;
 		return false;
 	}
 
+	Rect table = pos;
+	if (show_column_names) {
+		table.y += header_height;
+		table.h -= header_height;
+	}
+
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
 	int n_rows = data.row_count();
 	int n_cols = data.column_count();
-	float total_width = pos.w - font_units * ((n_cols - 1) * column_spacing);
+	float total_width = table.w - font_units * ((n_cols - 1) * column_spacing);
 
 	float space = font->line_spacing * font_units;
 
 	float y = 0;
-	float item_w = pos.w - 4;
+	float item_w = table.w - 4;
 
 	hl_row = -1;
-	for (int i = top; i < n_rows && y < pos.h; i++) {
-		float h = y > pos.h - item_height ? pos.h - y : item_height;
-		if (inside.x >= pos.x && inside.x < pos.x + pos.w && inside.y >= pos.y + y && inside.y < pos.y + y + h) {
+	for (int i = top; i < n_rows && y < table.h; i++) {
+		float h = y > table.h - item_height ? table.h - y : item_height;
+		if (inside.x >= table.x && inside.x < table.x + table.w && inside.y >= table.y + y && inside.y < table.y + y + h) {
 			hl_row = i;
-
-			//Point p = {inside.x - pos.x, 0};
-			//find_column(view, total_width, hl_col, p, true);
+			return true;
 		}
 		y += item_height;
 	}
@@ -163,53 +143,82 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	return false;
 }
 
-void Data_View::draw_item_backing(RGBA& color, Rect_Fixed& rect, float scale, int idx) {
+float Data_View::column_width(float total_width, float font_height, float scale, int idx) {
+	float w = data.headers[idx].width * total_width * scale;
+	if (data.headers[idx].max_size > 0) {
+		float max = data.headers[idx].max_size * font_height;
+		w = w < max ? w : max;
+	}
+
+	return w;
+}
+
+void Data_View::draw_item_backing(RGBA& color, Rect& back, float scale, int idx) {
 	if (idx < 0 || idx < top)
 		return;
 
-	float y = (idx - top) * item_height;
-	float h = item_height;
-	if (y + h > pos.h)
-		h = pos.h - y;
+	float y = (idx - top) * item_height * scale;
+	float h = item_height * scale;
+	if (y + h > back.h)
+		h = back.h - y;
 
 	if (h > 0) {
 		Rect_Fixed r = {
-			rect.x + pos.x * scale,
-			rect.y + (pos.y + y) * scale,
-			pos.w * scale,
-			h * scale
+			back.x,
+			back.y + y,
+			back.w,
+			h
 		};
 		sdl_draw_rect(r, color);
 	}
 }
 
 void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect bar = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(bar, default_color);
+	int n_rows = data.row_count();
+	int n_cols = data.column_count();
 
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
 	item_height = (font_height + (font->line_spacing * font_height)) / view.scale;
 
-	n_visible = pos.h / item_height;
-
-	int n_rows = data.row_count();
-	int n_cols = data.column_count();
-
 	float total_width = pos.w - (border * 2) - font_units * ((n_cols - 1) * column_spacing);
+
+	Rect table = pos;
+	if (show_column_names) {
+		table.y += header_height;
+		table.h -= header_height;
+	}
+
+	Rect back = make_ui_box(rect, table, view.scale);
+
+	if (show_column_names) {
+		float x = back.x;
+		float y = back.y - (header_height * view.scale + font->line_offset * font_height);
+
+		for (int i = 0; i < n_cols; i++) {
+			font->render.draw_text(data.headers[i].name, x, y);
+
+			float w = column_width(total_width, font_height, view.scale, i);
+			x += w + column_spacing * font_height;
+		}
+	}
+
+	sdl_draw_rect(back, default_color);
+
+	n_visible = table.h / item_height;
 
 	n_items = data.visible;
 	if (n_items < 0)
 		n_items = n_rows;
 
-	draw_item_backing(sel_color, rect, view.scale, sel_row);
-	if (box_hovered || focussed)
-		draw_item_backing(hl_color, rect, view.scale, hl_row);
+	draw_item_backing(sel_color, back, view.scale, sel_row);
+	if (hl_row != sel_row && (box_hovered || focussed))
+		draw_item_backing(hl_color, back, view.scale, hl_row);
 
-	float x = pos.x * view.scale;
-	float y = pos.y * view.scale;
-	float y_max = y + pos.h * view.scale;
+	float x = back.x;
+	float y = back.y;
+	float y_max = y + table.h * view.scale;
 
 	float line_off = font->line_offset * font_height;
 	float line_h = font_height + (font->line_spacing * font_height);
@@ -218,11 +227,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float table_off_y = y;
 
 	for (int i = 0; i < n_cols; i++) {
-		float w = data.headers[i].width * total_width * view.scale;
-		if (data.headers[i].max_size > 0) {
-			float max = data.headers[i].max_size * font_height;
-			w = w < max ? w : max;
-		}
+		float w = column_width(total_width, font_height, view.scale, i);
 
 		if (data.headers[i].type == String) {
 			if (data.visible >= 0) {
@@ -234,20 +239,16 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 					if (n < top)
 						continue;
 
-					int line_x = rect.x + x;
-					int line_y = rect.y + y - line_off;
 					const char *str = (const char*)data.columns[i][idx];
-					if (str) font->render.draw_text(str, line_x, line_y, (int)w, rect.y + (int)y_max - 1);
+					if (str) font->render.draw_text(str, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
 
 					y += line_h;
 				}
 			}
 			else {
 				for (int j = top; j < n_rows && y < y_max; j++) {
-					int line_x = rect.x + x;
-					int line_y = rect.y + y - line_off;
 					const char *str = (const char*)data.columns[i][j];
-					if (str) font->render.draw_text(str, line_x, line_y, (int)w, rect.y + (int)y_max - 1);
+					if (str) font->render.draw_text(str, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
 
 					y += line_h;
 				}
@@ -263,19 +264,15 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 					if (n < top)
 						continue;
 
-					int line_x = rect.x + x;
-					int line_y = rect.y + y - line_off;
 					File_Entry *f = (File_Entry*)data.columns[i][idx];
-					if (f->name) font->render.draw_text(f->name, line_x, line_y, (int)w, rect.y + (int)y_max - 1);
+					if (f->name) font->render.draw_text(f->name, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
 					y += line_h;
 				}
 			}
 			else {
 				for (int j = top; j < n_rows && y < y_max; j++) {
-					int line_x = rect.x + x;
-					int line_y = rect.y + y - line_off;
 					File_Entry *f = (File_Entry*)data.columns[i][j];
-					if (f->name) font->render.draw_text(f->name, line_x, line_y, (int)w, rect.y + (int)y_max - 1);
+					if (f->name) font->render.draw_text(f->name, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
 					y += line_h;
 				}
 			}
@@ -301,8 +298,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 					sdl_get_texture_size(t, &src.w, &src.h);
 
 					float tex_y = y + sp_half;
-					dst.x = rect.x + x;
-					dst.y = rect.y + tex_y;
+					dst.x = x;
+					dst.y = tex_y;
 
 					if (tex_y + dst.h > y_max) {
 						int h = y_max - tex_y;
@@ -322,8 +319,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 						sdl_get_texture_size(t, &src.w, &src.h);
 
 						float tex_y = y + sp_half;
-						dst.x = rect.x + x;
-						dst.y = rect.y + tex_y;
+						dst.x = x;
+						dst.y = tex_y;
 
 						if (tex_y + dst.h > y_max) {
 							int h = y_max - tex_y;
@@ -358,7 +355,7 @@ void Scroll::engage(Point& p) {
 		hold_region = 0;
 }
 
-void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	max = n_items - n_visible;
 
 	if (hovered && !input.lctrl && !input.rctrl) {
@@ -386,6 +383,8 @@ void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 		top = max;
 	if (top < 0)
 		top = 0;
+
+	return false;
 }
 
 void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -533,11 +532,13 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	sdl_draw_rect(r, caret);
 }
 
-void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
+bool Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
 	if (pos.contains(inside)) {
 		if (input.lclick || parent->current_dd)
 			parent->set_dropdown(this);
 	}
+
+	return false;
 }
 
 bool Drop_Down::highlight(Camera& view, Point& inside) {

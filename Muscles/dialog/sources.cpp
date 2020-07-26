@@ -175,40 +175,12 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->name = name_ptr+1;
 
 	sources.push_back(s);
+
+	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(TypeMain)->markup;
+	main_ui->table->sel_row = sources.size() - 1;
 }
 
-void refresh_process_menu(Box& b) {
-	auto ui = (Source_Menu*)b.markup;
-
-	std::vector<int> pids;
-	get_process_id_list(pids);
-
-	ui->table->data.release();
-	ui->table->data.resize(pids.size());
-
-	int n_procs = get_process_names(pids, (std::vector<Texture>&)ui->table->data.columns[0], (std::vector<char*>&)ui->table->data.columns[1], 64);
-	ui->table->data.resize(n_procs);
-}
-
-void process_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	((Source_Menu*)b.markup)->cross->img = ws.cross;
-}
-
-void refresh_file_menu(Box& b) {
-	auto ui = (Source_Menu*)b.markup;
-
-	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
-	enumerate_files((char*)ui->path->text.c_str(), files, *get_arena());
-
-	if (files.size() > 0) {
-		ui->table->data.columns[0].resize(files.size(), nullptr);
-
-		for (int i = 0; i < files.size(); i++)
-			ui->table->data.columns[0][i] = (files[i]->flags & 8) ? ui->folder_icon : nullptr;
-	}
-	else
-		ui->table->data.clear_data();
-}
+void refresh_file_menu(Box& b);
 
 void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
@@ -254,6 +226,42 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->name = file->name;
 
 	sources.push_back(s);
+
+	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(TypeMain)->markup;
+	main_ui->table->sel_row = sources.size() - 1;
+}
+
+void refresh_process_menu(Box& b) {
+	auto ui = (Source_Menu*)b.markup;
+
+	std::vector<int> pids;
+	get_process_id_list(pids);
+
+	ui->table->data.release();
+	ui->table->data.resize(pids.size());
+
+	int n_procs = get_process_names(pids, (std::vector<Texture>&)ui->table->data.columns[0], (std::vector<char*>&)ui->table->data.columns[1], 64);
+	ui->table->data.resize(n_procs);
+}
+
+void process_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
+	((Source_Menu*)b.markup)->cross->img = ws.cross;
+}
+
+void refresh_file_menu(Box& b) {
+	auto ui = (Source_Menu*)b.markup;
+
+	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
+	enumerate_files((char*)ui->path->text.c_str(), files, *get_arena());
+
+	if (files.size() > 0) {
+		ui->table->data.columns[0].resize(files.size(), nullptr);
+
+		for (int i = 0; i < files.size(); i++)
+			ui->table->data.columns[0][i] = (files[i]->flags & 8) ? ui->folder_icon : nullptr;
+	}
+	else
+		ui->table->data.clear_data();
 }
 
 void file_up_handler(UI_Element *elem, bool dbl_click) {

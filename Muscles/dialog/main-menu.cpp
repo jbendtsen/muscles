@@ -4,9 +4,17 @@
 #include "dialog.h"
 
 void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	b.update_elements(view, input, inside, hovered, focussed);
-
 	Main_Menu *ui = (Main_Menu*)b.markup;
+	if (ui->table->sel_row >= 0) {
+		ui->button->active = true;
+		ui->view->lines[0] = (char*)ui->table->data.columns[2][ui->table->sel_row];
+	}
+	else {
+		ui->button->active = false;
+		ui->view->lines[0] = "<source>";
+	}
+
+	b.update_elements(view, input, inside, hovered, focussed);
 
 	float x = b.border;
 	float y = b.border;
@@ -26,6 +34,8 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 		view_w,
 		view_h
 	};
+
+	y += 10;
 
 	ui->table->pos = {
 		x,
@@ -114,6 +124,12 @@ void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
+void table_main_menu_handler(UI_Element *elem, bool dbl_click) {
+	auto table = dynamic_cast<Data_View*>(elem);
+
+	table->sel_row = table->hl_row;
+}
+
 void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto ui = (Main_Menu*)b.markup;
 
@@ -173,8 +189,12 @@ void make_main_menu(Workspace& ws, Box& b) {
 	};
 
 	ui->table = new Data_View();
+	ui->table->show_column_names = true;
+	ui->table->action = table_main_menu_handler;
 	ui->table->font = ws.default_font;
 	ui->table->default_color = ws.dark_color;
+	ui->table->hl_color = ws.hl_color;
+	ui->table->sel_color = ws.light_color;
 
 	Column sources_cols[] = {
 		{Tex, 0, 0.1, 1.2, ""},
@@ -185,9 +205,9 @@ void make_main_menu(Workspace& ws, Box& b) {
 
 	ui->button = new Button();
 	ui->button->active_theme = {
+		ws.light_color,
+		ws.light_color,
 		ws.hl_color,
-		ws.outline_color,
-		ws.outline_color,
 		ws.make_font(11, ws.text_color)
 	};
 	ui->button->inactive_theme = {
@@ -205,13 +225,14 @@ void make_main_menu(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->table);
 	b.ui.push_back(ui->button);
 
+	b.type = TypeMain;
 	b.visible = true;
 	b.markup = ui;
 	b.update_handler = update_main_menu;
 	b.scale_change_handler = main_scale_change_handler;
 	b.refresh_handler = refresh_main_menu;
 	b.refresh_every = 1;
-	b.box = { -200, -175, 400, 350 };
+	b.box = { -200, -100, 400, 200 };
 	b.back = ws.back_color;
 }
 
@@ -269,7 +290,6 @@ void make_opening_menu(Workspace& ws, Box& b) {
 	b.ui.push_back(dynamic_cast<UI_Element*>(title));
 	b.ui.push_back(dynamic_cast<UI_Element*>(table));
 
-	b.type = TypeMain;
 	b.update_handler = update_opening_menu;
 	b.back = ws.back_color;
 
