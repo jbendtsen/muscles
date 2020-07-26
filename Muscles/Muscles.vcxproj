@@ -151,6 +151,7 @@
     <ClCompile Include="data.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
     <ClCompile Include="dialog\sources.cpp" />
+    <ClCompile Include="dialog\view-source.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="io-win32.cpp" />
     <ClCompile Include="sdl.cpp" />

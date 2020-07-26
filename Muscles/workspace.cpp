@@ -123,6 +123,7 @@ Font *Workspace::make_font(float size, RGBA& color) {
 
 	Font *f = new Font(face, size, color, dpi_w, dpi_h);
 	fonts.push_back(f);
+	f->adjust_scale(temp_scale, dpi_w, dpi_h);
 	return f;
 }
 
@@ -168,6 +169,8 @@ void Workspace::refresh_sources() {
 }
 
 void Workspace::update(Camera& view, Input& input, Point& cursor) {
+	temp_scale = view.scale;
+
 	Point inside = {0};
 	Box *hover = box_under_cursor(view, cursor, inside);
 
@@ -191,15 +194,23 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		}
 	}
 
+	for (int i = boxes.size() - 1; i >= 0; i--)
+		boxes[i]->update(*this, view, input, hover == boxes[i], focus == boxes[i]);
+
 	if (new_box) {
+		new_box->parent = this;
+
+		if (new_box->refresh_handler)
+			new_box->refresh_handler(*new_box);
+
 		if (new_box->scale_change_handler)
 			new_box->scale_change_handler(*this, *new_box, view.scale);
 
+		if (new_box->update_handler)
+			new_box->update(*this, view, input, false, false);
+
 		new_box = nullptr;
 	}
-
-	for (int i = boxes.size() - 1; i >= 0; i--)
-		boxes[i]->update(*this, view, input, hover == boxes[i], focus == boxes[i]);
 
 	sdl_clear();
 
@@ -218,13 +229,18 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 		return;
 
 	Point p = view.to_screen(box.x, box.y);
-	Rect_Fixed rect = {
-		p.x,
-		p.y,
-		box.w * view.scale,
-		box.h * view.scale
-	};
+	float w = box.w * view.scale;
+	float h = box.h * view.scale;
 
+	float brd = edge_size * view.scale;
+	Rect edge_rect = {
+		p.x - brd, p.y - brd, w + 2*brd, h + 2*brd
+	};
+	sdl_draw_rect(edge_rect, edge_color);
+
+	Rect_Fixed rect = {
+		p.x, p.y, w, h
+	};
 	sdl_draw_rect(rect, back);
 
 	for (auto& e : ui)
@@ -340,7 +356,7 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool h
 		else
 			elem->deselect();
 
-		if (focussed && input.action && elem->action && elem->pos.contains(inside)) {
+		if (focussed && input.action && elem->active && elem->action && elem->pos.contains(inside)) {
 			elem->action(elem, input.double_click);
 			input.action = false;
 		}

@@ -141,7 +141,6 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	b.visible = true;
 	b.markup = ui;
 	b.update_handler = update_source_menu;
-	b.box = { -100, -100, 300, 200 };
 	b.back = ws.back_color;
 
 	return ui;
@@ -311,6 +310,8 @@ void make_process_menu(Workspace& ws, Box& b) {
 	b.refresh_handler = refresh_process_menu;
 	b.scale_change_handler = process_scale_change_handler;
 
+	b.box = { -100, -100, 300, 200 };
+
 	Column col[] = {
 		{Tex, 0, 0.1, 1.5, ""},
 		{String, 64, 0.9, 0, ""}
@@ -322,6 +323,8 @@ void make_file_menu(Workspace& ws, Box& b) {
 	auto ui = make_source_menu(ws, b, "Open File", file_menu_handler);
 	b.refresh_handler = refresh_file_menu;
 	b.scale_change_handler = file_scale_change_handler;
+
+	b.box = { -150, -150, 400, 300 };
 
 	Column col[] = {
 		{Tex, 0, 0.1, 1.5, ""},
@@ -349,7 +352,7 @@ void make_file_menu(Workspace& ws, Box& b) {
 		up_font
 	};
 	ui->up->inactive_theme = ui->up->active_theme;
-	ui->up->update_size();
+	ui->up->update_size(ws.temp_scale);
 
 	ui->div = new Divider();
 	ui->div->default_color = {0.5, 0.6, 0.8, 1.0};

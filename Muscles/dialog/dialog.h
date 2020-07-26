@@ -33,5 +33,10 @@ struct Source_Menu {
 	Texture folder_icon = nullptr;
 };
 
+struct View_Source {
+	Image *cross = nullptr;
+};
+
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
+void make_view_source_menu(Workspace& ws, Source& s, Box& b);

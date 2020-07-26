@@ -95,6 +95,16 @@ void refresh_main_menu(Box& b) {
 	}
 }
 
+void open_view_source(Workspace& ws, int idx) {
+	if (idx < 0)
+		return;
+
+	Box *b = new Box();
+	make_view_source_menu(ws, (Source&)ws.sources[idx], *b);
+	ws.add_box(b);
+	ws.focus = ws.boxes.back();
+}
+
 void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0)
@@ -121,13 +131,21 @@ void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dd->sel < 0)
 		return;
 
+	if (dd->sel == 0) {
+		auto ui = (Main_Menu*)dd->parent->markup;
+		open_view_source(*elem->parent->parent, ui->table->sel_row);
+	}
+
 	dd->parent->set_dropdown(nullptr);
 }
 
 void table_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 
-	table->sel_row = table->hl_row;
+	if (dbl_click)
+		open_view_source(*elem->parent->parent, table->sel_row);
+	else
+		table->sel_row = table->hl_row;
 }
 
 void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -204,6 +222,12 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->table->data.init(sources_cols, 3, 0);
 
 	ui->button = new Button();
+
+	ui->button->action = [](UI_Element* elem, bool dbl_click) {
+		auto ui = (Main_Menu*)elem->parent->markup;
+		open_view_source(*elem->parent->parent, ui->table->sel_row);
+	};
+
 	ui->button->active_theme = {
 		ws.light_color,
 		ws.light_color,
@@ -218,7 +242,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	};
 	ui->button->text = "View";
 	ui->button->active = false;
-	ui->button->update_size();
+	ui->button->update_size(ws.temp_scale);
 
 	b.ui.push_back(ui->sources);
 	b.ui.push_back(ui->view);

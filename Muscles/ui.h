@@ -93,7 +93,7 @@ struct Button : UI_Element {
 	bool held = false;
 	std::string text;
 
-	void update_size();
+	void update_size(float scale);
 	
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -256,11 +256,13 @@ struct Box {
 
 	Rect box = {};
 	RGBA back = {};
+	RGBA edge_color = {0, 0, 0, 1};
 
 	std::vector<UI_Element*> ui;
 
 	float cross_size = 16;
 	float border = 4;
+	float edge_size = 2;
 
 	Box() = default;
 	Box(const Box& b) = default;
@@ -282,6 +284,7 @@ struct Box {
 
 struct Workspace {
 	int dpi_w = 0, dpi_h = 0;
+	float temp_scale = 1.0;
 
 	Texture cross = nullptr;
 	float cross_size = 16;

@@ -44,18 +44,18 @@ void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hov
 	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, w);
 }
 
-void Button::update_size() {
+void Button::update_size(float scale) {
 	Theme *theme = active ? &active_theme : &inactive_theme;
 
-	float font_height = theme->font->render.text_height();
-	width = theme->font->render.text_width(text.c_str());
+	float font_unit = theme->font->render.text_height() / scale;
+	width = theme->font->render.text_width(text.c_str()) / scale;
 	if (icon)
-		width += font_height * 1.2f;
+		width += font_unit * 1.2f;
 
 	float hack = 0.15;
-	width += (hack + 2 * x_offset) * font_height;
+	width += (hack + 2 * x_offset) * font_unit;
 
-	height = 1.2f * font_height;
+	height = 1.2f * font_unit;
 }
 
 bool Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -240,7 +240,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 						continue;
 
 					const char *str = (const char*)data.columns[i][idx];
-					if (str) font->render.draw_text(str, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
+					if (str) font->render.draw_text(str, x, y - line_off, (int)w, (int)y_max - 1);
 
 					y += line_h;
 				}
@@ -248,7 +248,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 			else {
 				for (int j = top; j < n_rows && y < y_max; j++) {
 					const char *str = (const char*)data.columns[i][j];
-					if (str) font->render.draw_text(str, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
+					if (str) font->render.draw_text(str, x, y - line_off, (int)w, (int)y_max - 1);
 
 					y += line_h;
 				}
@@ -265,14 +265,18 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 						continue;
 
 					File_Entry *f = (File_Entry*)data.columns[i][idx];
-					if (f->name) font->render.draw_text(f->name, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
+					if (f && f->name)
+						font->render.draw_text(f->name, x, y - line_off, (int)w, (int)y_max - 1);
+
 					y += line_h;
 				}
 			}
 			else {
 				for (int j = top; j < n_rows && y < y_max; j++) {
 					File_Entry *f = (File_Entry*)data.columns[i][j];
-					if (f->name) font->render.draw_text(f->name, x, y - line_off, (int)w, rect.y + (int)y_max - 1);
+					if (f && f->name)
+						font->render.draw_text(f->name, x, y - line_off, (int)w, (int)y_max - 1);
+
 					y += line_h;
 				}
 			}
