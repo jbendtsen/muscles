@@ -24,6 +24,7 @@
     <ProjectGuid>{23fe2ab5-3169-4e2e-81b6-1467010ea795}</ProjectGuid>
     <RootNamespace>Muscles</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Muscles</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
