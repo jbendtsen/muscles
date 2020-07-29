@@ -209,6 +209,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	if (input.lctrl || input.rctrl) {
 		box_input.lmouse = box_input.lclick = false;
 		box_input.rmouse = box_input.rclick = false;
+		box_input.scroll_x = box_input.scroll_y = 0;
 		box_input.action = false;
 	}
 

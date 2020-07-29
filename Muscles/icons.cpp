@@ -239,10 +239,10 @@ Texture make_vertical_divider_icon(RGBA& color, int height, double squish, doubl
 	auto pixels = std::make_unique<u32[]>(w * height);
 
 	double mirror = (gap + thicc) / 2.0;
-    float t_half = thicc / 2.0;
-    float start = 0.5 - t_half;
-    float end = 0.5 + t_half;
-    float lum = 0.0;
+	double t_half = thicc / 2.0;
+	double start = 0.5 - t_half;
+	double end = 0.5 + t_half;
+	double lum = 0.0;
 
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < w; j++) {

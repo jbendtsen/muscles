@@ -4,7 +4,7 @@
 static inline float clamp(float f, float min, float max) {
 	if (f < min)
 		return min;
-	if (f > max)
+	if (f > max && max >= min)
 		return max;
 	return f;
 }
@@ -184,9 +184,19 @@ void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_h
 	}
 }
 
+void Scroll::set_maximum(float max, float span) {
+	maximum = max;
+
+	show_thumb = span < max;
+	if (!show_thumb)
+		span = max;
+
+	view_span = span;
+}
+
 void Scroll::engage(Point& p) {
 	held = true;
-	float thumb_pos = length * (1 - thumb_frac) * position / maximum;
+	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
 
 	if (vertical)
 		hold_region = p.y - (pos.y + thumb_pos);
@@ -200,28 +210,30 @@ void Scroll::engage(Point& p) {
 }
 
 void Scroll::scroll(float delta) {
-	position = clamp(position + delta, 0, maximum);
+	position = clamp(position + delta, 0, maximum - view_span);
 }
 
 bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (input.lclick && pos.contains(cursor))
 		engage(cursor);
 
-	//maximum = n_items - n_visible;
 	if (!input.lmouse)
 		held = false;
-	if (!held)
-		return false;
 
-	float dist = 0;
-	if (vertical)
-		dist = cursor.y - (pos.y + hold_region);
-	else
-		dist = cursor.x - (pos.x + hold_region);
+	float old_pos = position;
+	if (held) {
+		float dist = 0;
+		if (vertical)
+			dist = cursor.y - (pos.y + hold_region);
+		else
+			dist = cursor.x - (pos.x + hold_region);
 
-	float span = (1 - thumb_frac) * length;
+		float span = (1 - thumb_frac) * length;
+		position = dist * (maximum - view_span) / span;
+	}
 
-	position = clamp(dist / span, 0, 1) * maximum;
+	// apply bounds-checking
+	scroll(0);
 	return false;
 }
 
@@ -234,10 +246,13 @@ void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	Rect bar = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(bar, back);
 
+	if (!show_thumb)
+		return;
+
 	thumb_frac = view_span / maximum;
 	if (thumb_frac < thumb_min) thumb_frac = thumb_min;
 
-	float thumb_pos = length * (1 - thumb_frac) * position / maximum;
+	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
 	float thumb_len = thumb_frac * length * view.scale;
 
 	float gap = 2*padding * view.scale;
@@ -375,15 +390,14 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 	if (vscroll) {
 		top = vscroll->position;
-		vscroll->view_span = n_visible;
-		vscroll->maximum = n_items - n_visible;
+		vscroll->set_maximum(n_items, n_visible);
 	}
 
 	float scroll_x = 0;
 	float table_w = pos.w;
 	if (hscroll) {
 		scroll_x = hscroll->position;
-		hscroll->view_span = pos.w;
+		hscroll->set_maximum(hscroll->maximum, pos.w);
 		table_w = hscroll->maximum;
 	}
 	scroll_x *= view.scale;

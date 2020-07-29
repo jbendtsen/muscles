@@ -148,10 +148,12 @@ struct Scroll : UI_Element {
 	float position = 0;
 	float maximum = 0;
 
+	bool show_thumb = true;
 	bool hl = false;
 	bool held = false;
 	int hold_region = 0;
 
+	void set_maximum(float max, float span);
 	void engage(Point& p);
 	void scroll(float delta);
 
