@@ -174,6 +174,17 @@ struct Arena {
 
 Arena *get_arena();
 
+#define CLIP_TOP     1
+#define CLIP_BOTTOM  2
+#define CLIP_LEFT    4
+#define CLIP_RIGHT   8
+
+struct Render_Clip {
+	int flags = 0;
+	float x_lower = 0, y_lower = 0;
+	float x_upper = 0, y_upper = 0;
+};
+
 struct Font_Render {
 	Texture tex = nullptr;
 	Glyph glyphs[N_CHARS] = {};
@@ -208,7 +219,8 @@ struct Font_Render {
 		return glyph_for('j')->box_h;
 	}
 
-	void draw_text(const char *text, int x, int y, int w = -1, int h = -1, int offset = 0);
+	void draw_text_simple(const char *text, int x, int y);
+	void draw_text(const char *text, int x, int y, Render_Clip& clip);
 
 	Font_Render() = default;
 	~Font_Render() {
@@ -284,6 +296,7 @@ struct Input {
 	int prev_x = 0, prev_y = 0;
 	int click_x = 0, click_y = 0;
 	int action_x = 0, action_y = 0;
+	int held = 0;
 
 	bool action = false;
 	bool prevent_action = false;

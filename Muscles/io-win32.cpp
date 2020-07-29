@@ -137,7 +137,7 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 
 		File_Entry *&file = *it;
 		if (!file)
-			*it = (File_Entry*)arena.allocate(sizeof(File_Entry));
+			file = (File_Entry*)arena.allocate(sizeof(File_Entry));
 
 		bool dir = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 		bool pm_read = true;

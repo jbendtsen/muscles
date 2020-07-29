@@ -44,11 +44,6 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 		b.box.h - y - 2*b.border - view_h
 	};
 
-	if (hovered && input.lclick) {
-		b.moving = true;
-		b.select_edge(view, inside);
-	}
-
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
@@ -100,7 +95,7 @@ void open_view_source(Workspace& ws, int idx) {
 		return;
 
 	Box *b = new Box();
-	make_view_source_menu(ws, (Source&)ws.sources[idx], *b);
+	make_view_source_menu(ws, (Source*)ws.sources[idx], *b);
 	ws.add_box(b);
 	ws.focus = ws.boxes.back();
 }

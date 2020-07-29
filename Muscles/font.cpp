@@ -112,18 +112,11 @@ void ft_quit() {
 	FT_Done_FreeType(library);
 }
 
-void Font_Render::draw_text(const char *text, int x, int y, int w, int max_y, int offset) {
-	int max_x = -1;
-	if (w >= 0)
-		max_x = offset + x + w;
-
-	int start = x;
-	int len = strlen(text);
-
+void Font_Render::draw_text_simple(const char *text, int x, int y) {
 	Rect_Fixed src, dst;
+	y += text_height();
 
-	y += glyph_for('k')->box_h;
-
+	int len = strlen(text);
 	for (int i = 0; i < len; i++) {
 		Glyph *gl = glyph_for(text[i]);
 		if (!gl)
@@ -134,25 +127,88 @@ void Font_Render::draw_text(const char *text, int x, int y, int w, int max_y, in
 		src.w = gl->img_w;
 		src.h = gl->img_h;
 
-		if (max_x >= 0) {
-			w = max_x - x;
-			src.w = w < src.w ? w : src.w;
-		}
-		if (max_y >= 0) {
-			int h = max_y - (y - gl->top);
-			src.h = h < src.h ? h : src.h;
-		}
-
-		dst.x = x + gl->left - offset;
+		dst.x = x + gl->left;
 		dst.y = y - gl->top;
 		dst.w = src.w;
 		dst.h = src.h;
 
-		if (dst.x >= start + gl->left)
-			sdl_apply_texture(tex, &dst, &src);
+		sdl_apply_texture(tex, &dst, &src);
 
 		x += gl->box_w;
-		if (max_x >= 0 && x > max_x)
+	}
+}
+
+void Font_Render::draw_text(const char *text, int x, int y, Render_Clip& clip) {
+	bool clip_top = (clip.flags & CLIP_TOP) != 0;
+	bool clip_bottom = (clip.flags & CLIP_BOTTOM) != 0;
+	bool clip_left = (clip.flags & CLIP_LEFT) != 0;
+	bool clip_right = (clip.flags & CLIP_RIGHT) != 0;
+
+	if (clip_right && x > clip.x_upper)
+		return;
+
+	Rect_Fixed src, dst;
+
+	y += text_height();
+
+	int len = strlen(text);
+	for (int i = 0; i < len; i++) {
+		Glyph *gl = glyph_for(text[i]);
+		if (!gl)
+			continue;
+
+		float advance = gl->box_w;
+
+		src.x = gl->atlas_x;
+		src.y = gl->atlas_y;
+		src.w = gl->img_w;
+		src.h = gl->img_h;
+		
+		if (clip_left) {
+			if (x + gl->img_w < clip.x_lower) {
+				x += advance;
+				continue;
+			}
+			float delta = (float)x - clip.x_lower;
+			if (delta < 0) {
+				src.x = ((float)src.x - delta + 0.5);
+				src.w = ((float)src.w + delta + 0.5);
+				x -= delta;
+				advance += delta;
+			}
+		}
+		if (clip_bottom) {
+			if (y + gl->img_h < clip.y_lower) {
+				x += advance;
+				continue;
+			}
+			float delta = (float)y - clip.y_lower;
+			if (delta < 0) {
+				src.y = ((float)src.y - delta + 0.5);
+				src.h = ((float)src.h + delta + 0.5);
+				y -= delta;
+			}
+		}
+		dst.x = x + gl->left;
+		dst.y = y - gl->top;
+
+		if (clip_right) {
+			int w = clip.x_upper - dst.x;
+			src.w = w < src.w ? w : src.w;
+		}
+		if (clip_bottom) {
+			int h = clip.y_upper - dst.y;
+			src.h = h < src.h ? h : src.h;
+		}
+
+		dst.w = src.w;
+		dst.h = src.h;
+
+		//if (dst.x >= start + gl->left)
+		sdl_apply_texture(tex, &dst, &src);
+
+		x += advance;
+		if (clip_right && x > clip.x_upper)
 			break;
 	}
 }

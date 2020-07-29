@@ -40,8 +40,8 @@ void Label::update_position(Camera& view, Rect& pos) {
 }
 
 void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	int w = auto_width ? -1 : width;
-	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, w);
+	clip.x_upper = rect.x + x + width;
+	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, clip);
 }
 
 void Button::update_size(float scale) {
@@ -98,7 +98,7 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 		sdl_apply_texture(icon, &box);
 	}
 
-	theme->font->render.draw_text(text.c_str(), r.x + x, r.y + y_offset * font_height);
+	theme->font->render.draw_text_simple(text.c_str(), r.x + x, r.y + y_offset * font_height);
 }
 
 void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -111,6 +111,8 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 		hl_row = -1;
 		return false;
 	}
+
+	int top = vscroll ? vscroll->position : 0;
 
 	Rect table = pos;
 	if (show_column_names) {
@@ -154,6 +156,7 @@ float Data_View::column_width(float total_width, float font_height, float scale,
 }
 
 void Data_View::draw_item_backing(RGBA& color, Rect& back, float scale, int idx) {
+	int top = vscroll ? vscroll->position : 0;
 	if (idx < 0 || idx < top)
 		return;
 
@@ -182,13 +185,35 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 	item_height = (font_height + (font->line_spacing * font_height)) / view.scale;
 
-	float total_width = pos.w - (border * 2) - font_units * ((n_cols - 1) * column_spacing);
-
 	Rect table = pos;
 	if (show_column_names) {
 		table.y += header_height;
 		table.h -= header_height;
 	}
+
+	int top = 0;
+	int n_visible = table.h / item_height;
+
+	int n_items = data.visible;
+	if (n_items < 0)
+		n_items = n_rows;
+
+	if (vscroll) {
+		top = vscroll->position;
+		vscroll->view_span = n_visible;
+		vscroll->maximum = n_items - n_visible;
+	}
+
+	float scroll_x = 0;
+	float table_w = pos.w;
+	if (hscroll) {
+		scroll_x = hscroll->position;
+		hscroll->view_span = pos.w;
+		table_w = hscroll->maximum;
+	}
+	scroll_x *= view.scale;
+
+	float total_width = table_w - font_units * ((n_cols - 1) * column_spacing);
 
 	Rect back = make_ui_box(rect, table, view.scale);
 
@@ -197,7 +222,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		float y = back.y - (header_height * view.scale + font->line_offset * font_height);
 
 		for (int i = 0; i < n_cols; i++) {
-			font->render.draw_text(data.headers[i].name, x, y);
+			font->render.draw_text_simple(data.headers[i].name, x, y);
 
 			float w = column_width(total_width, font_height, view.scale, i);
 			x += w + column_spacing * font_height;
@@ -206,17 +231,27 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 	sdl_draw_rect(back, default_color);
 
-	n_visible = table.h / item_height;
-
-	n_items = data.visible;
-	if (n_items < 0)
-		n_items = n_rows;
-
 	draw_item_backing(sel_color, back, view.scale, sel_row);
 	if (hl_row != sel_row && (box_hovered || focussed))
 		draw_item_backing(hl_color, back, view.scale, hl_row);
 
-	float x = back.x;
+	auto draw_tex = [this](Texture t, Rect_Fixed& dst, Rect_Fixed& src, float x, float tex_y, float y_max) {
+		sdl_get_texture_size(t, &src.w, &src.h);
+
+		dst.x = x;
+		dst.y = tex_y;
+
+		if (tex_y + dst.h > y_max) {
+			int h = y_max - tex_y;
+			src.h = (float)(src.h * h) / (float)dst.h;
+			dst.h = h;
+		}
+
+		sdl_apply_texture(t, &dst, &src);
+	};
+
+	float pad = padding * view.scale;
+	float x = back.x + pad - scroll_x;
 	float y = back.y;
 	float y_max = y + table.h * view.scale;
 
@@ -224,124 +259,79 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float line_h = font_height + (font->line_spacing * font_height);
 	float sp_half = font->line_spacing * font_height / 2;
 
+	Rect_Fixed dst = {0, 0, font_height, font_height};
+	Rect_Fixed src = {0};
+
+	clip.x_lower = x + scroll_x;
+	clip.x_upper = back.x + back.w - pad;
+	clip.y_upper = y_max;
+
 	float table_off_y = y;
 
-	for (int i = 0; i < n_cols; i++) {
+	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
 		float w = column_width(total_width, font_height, view.scale, i);
 
-		if (data.headers[i].type == String) {
-			if (data.visible >= 0) {
-				int n = -1;
-				for (auto& idx : data.list) {
-					if (y >= y_max)
-						break;
-					n++;
-					if (n < top)
-						continue;
+		Type type = data.headers[i].type;
 
-					const char *str = (const char*)data.columns[i][idx];
-					if (str) font->render.draw_text(str, x, y - line_off, (int)w, (int)y_max - 1);
+		if (data.visible >= 0) {
+			int n = -1;
+			for (auto& idx : data.list) {
+				if (y >= y_max)
+					break;
+				n++;
+				if (n < top)
+					continue;
 
-					y += line_h;
+				auto thing = data.columns[i][idx];
+				if (thing) {
+					if (type == String)
+						font->render.draw_text((const char*)thing, x, y - line_off, clip);
+					else if (type == File) {
+						auto name = (const char*)((File_Entry*)thing)->name;
+						font->render.draw_text(name, x, y - line_off, clip);
+					}
+					else if (type == Tex)
+						draw_tex(thing, dst, src, x, y + sp_half, y_max);
 				}
-			}
-			else {
-				for (int j = top; j < n_rows && y < y_max; j++) {
-					const char *str = (const char*)data.columns[i][j];
-					if (str) font->render.draw_text(str, x, y - line_off, (int)w, (int)y_max - 1);
 
-					y += line_h;
-				}
+				y += line_h;
 			}
 		}
-		else if (data.headers[i].type == File) {
-			if (data.visible >= 0) {
-				int n = -1;
-				for (auto& idx : data.list) {
-					if (y >= y_max)
-						break;
-					n++;
-					if (n < top)
-						continue;
-
-					File_Entry *f = (File_Entry*)data.columns[i][idx];
-					if (f && f->name)
-						font->render.draw_text(f->name, x, y - line_off, (int)w, (int)y_max - 1);
-
-					y += line_h;
-				}
-			}
-			else {
-				for (int j = top; j < n_rows && y < y_max; j++) {
-					File_Entry *f = (File_Entry*)data.columns[i][j];
-					if (f && f->name)
-						font->render.draw_text(f->name, x, y - line_off, (int)w, (int)y_max - 1);
-
-					y += line_h;
-				}
-			}
-		}
-		else if (data.headers[i].type == Tex) {
-			Rect_Fixed dst = {0, 0, font_height, font_height};
-			if (data.visible >= 0) {
-				int n = -1;
-				for (auto& idx : data.list) {
-					if (y >= y_max)
-						break;
-					n++;
-					if (n < top)
-						continue;
-
-					Texture t = (Texture)data.columns[i][idx];
-					if (!t) {
-						y += line_h;
-						continue;
+		else {
+			for (int j = top; j < n_rows && y < y_max; j++) {
+				auto thing = data.columns[i][j];
+				if (thing) {
+					if (type == String)
+						font->render.draw_text((const char*)thing, x, y - line_off, clip);
+					else if (type == File) {
+						auto name = (const char*)((File_Entry*)thing)->name;
+						font->render.draw_text(name, x, y - line_off, clip);
 					}
-
-					Rect_Fixed src = {0};
-					sdl_get_texture_size(t, &src.w, &src.h);
-
-					float tex_y = y + sp_half;
-					dst.x = x;
-					dst.y = tex_y;
-
-					if (tex_y + dst.h > y_max) {
-						int h = y_max - tex_y;
-						src.h = (float)(src.h * h) / (float)dst.h;
-						dst.h = h;
-					}
-
-					sdl_apply_texture(t, &dst, &src);
-					y += line_h;
+					else if (type == Tex)
+						draw_tex(thing, dst, src, x, y + sp_half, y_max);
 				}
-			}
-			else {
-				for (int j = top; j < n_rows && y < y_max; j++) {
-					Texture t = (Texture)data.columns[i][j];
-					if (t) {
-						Rect_Fixed src = {0};
-						sdl_get_texture_size(t, &src.w, &src.h);
 
-						float tex_y = y + sp_half;
-						dst.x = x;
-						dst.y = tex_y;
-
-						if (tex_y + dst.h > y_max) {
-							int h = y_max - tex_y;
-							src.h = (float)(src.h * h) / (float)dst.h;
-							dst.h = h;
-						}
-
-						sdl_apply_texture(t, &dst, &src);
-					}
-					y += line_h;
-				}
+				y += line_h;
 			}
 		}
 
 		x += w + column_spacing * font_height;
 		y = table_off_y;
 	}
+}
+
+bool Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (hovered) {
+		if (consume_box_scroll || pos.contains(cursor)) {
+			Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
+			if (scroll && input.scroll_y > 0)
+				scroll->scroll(-1);
+			if (scroll && input.scroll_y < 0)
+				scroll->scroll(1);
+		}
+	}
+
+	return false;
 }
 
 void Data_View::deselect() {
@@ -354,71 +344,96 @@ void Data_View::release() {
 
 void Scroll::engage(Point& p) {
 	held = true;
-	hold_region = p.y - (pos.y + thumb_pos);
-	if (hold_region < 0 || hold_region > thumb_frac * pos.h)
+	float thumb_pos = length * (1 - thumb_frac) * position / maximum;
+
+	if (vertical)
+		hold_region = p.y - (pos.y + thumb_pos);
+	else
+		hold_region = p.x - (pos.x + thumb_pos);
+
+	if (hold_region < 0 || hold_region > thumb_frac * length)
 		hold_region = 0;
+
+	parent->ui_held = true;
+}
+
+void Scroll::scroll(float delta) {
+	position += delta;
+	if (position < 0) position = 0;
+	if (position > maximum) position = maximum;
 }
 
 bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	max = n_items - n_visible;
+	if (input.lclick && pos.contains(cursor))
+		engage(cursor);
 
-	if (hovered && !input.lctrl && !input.rctrl) {
-		if (input.scroll_y > 0)
-			top--;
-		if (input.scroll_y < 0)
-			top++;
-	}
-
+	//maximum = n_items - n_visible;
 	if (!input.lmouse)
 		held = false;
+	if (!held)
+		return false;
 
-	if (held) {
-		float height = pos.h - 2 * padding;
-		height -= thumb_frac * height;
+	float dist = 0;
+	if (vertical)
+		dist = cursor.y - (pos.y + hold_region);
+	else
+		dist = cursor.x - (pos.x + hold_region);
 
-		float distance = cursor.y - pos.y - hold_region;
-		if (distance < 0) distance = 0;
-		if (distance > height) distance = height;
+	float span = (1 - thumb_frac) * length;
+	position = dist / span;
 
-		top = (distance / height) * (float)max;
-	}
+	if (position < 0) position = 0;
+	if (position > 1) position = 1;
 
-	if (top > max)
-		top = max;
-	if (top < 0)
-		top = 0;
-
+	position *= maximum;
 	return false;
 }
 
 void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (vertical)
+		length = pos.h - 2*padding;
+	else
+		length = pos.w - 2*padding;
+
 	Rect bar = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(bar, back);
 
-	if (max > 0 && n_items > 0 && n_visible <= n_items) {
-		float sum = pos.h - 2 * padding;
+	thumb_frac = view_span / maximum;
+	if (thumb_frac < thumb_min) thumb_frac = thumb_min;
 
-		float thumb = (float)n_visible / (float)n_items;
-		thumb = thumb > min_height ? thumb : min_height;
-		thumb_frac = thumb;
+	float thumb_pos = length * (1 - thumb_frac) * position / maximum;
+	float thumb_len = thumb_frac * length * view.scale;
 
-		thumb_pos = sum * (1 - thumb) * (float)top / (float)max;
+	float gap = 2*padding * view.scale;
+	float x = padding;
+	float y = padding;
 
-		Rect_Fixed scroll_rect = {
-			bar.x + (float)(padding * view.scale + 0.5),
-			bar.y + (float)((padding + thumb_pos) * view.scale + 0.5),
-			bar.w - (float)((padding * 2) * view.scale),
-			thumb * sum * view.scale
-		};
-
-		RGBA *color = &default_color;
-		if (held)
-			color = &sel_color;
-		else if (hl)
-			color = &hl_color;
-
-		sdl_draw_rect(scroll_rect, *color);
+	float w = 0, h = 0;
+	if (vertical) {
+		y += thumb_pos;
+		w = bar.w - gap;
+		h = thumb_len;
 	}
+	else {
+		x += thumb_pos;
+		w = thumb_len;
+		h = bar.h - gap;
+	}
+
+	Rect_Fixed scroll_rect = {
+		bar.x + (float)(x * view.scale + 0.5),
+		bar.y + (float)(y * view.scale + 0.5),
+		w,
+		h
+	};
+
+	RGBA *color = &default_color;
+	if (held)
+		color = &sel_color;
+	else if (hl)
+		color = &hl_color;
+
+	sdl_draw_rect(scroll_rect, *color);
 }
 
 bool Scroll::highlight(Camera& view, Point& inside) {
@@ -521,7 +536,9 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	float text_y = pos.y * view.scale + gap_y;
 	window_w = (pos.w * view.scale) - gap_x * 2;
 
-	font->render.draw_text(str, rect.x + text_x, rect.y + text_y, window_w, -1, offset);
+	clip.x_lower = rect.x + text_x;
+	clip.x_upper = clip.x_lower + window_w;
+	font->render.draw_text(str, rect.x + text_x - offset, rect.y + text_y, clip);
 
 	float caret_y = (float)caret_off_y * height;
 	float caret_w = (float)caret_width * height;
@@ -589,12 +606,13 @@ void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect, bool held) {
 	float hack = 3;
 	float item_x = item_off_x * font_height;
 	float item_w = (width - hack) * view.scale - item_x;
+	item_clip.x_upper = box.x + item_x + item_w;
 
 	float y = font_height * ((line_height - 1) / 2 - font->line_offset);
 
 	for (auto& l : lines) {
 		if (l)
-			font->render.draw_text(l, box.x + item_x, box.y + y, item_w);
+			font->render.draw_text(l, box.x + item_x, box.y + y, item_clip);
 
 		y += font_height * line_height;
 	}
@@ -614,5 +632,10 @@ void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float text_x = pos.x * view.scale + (pos.w * view.scale - text_w) / 2;
 	float text_y = pos.y * view.scale + gap_y;
 
-	font->render.draw_text(title, rect.x + text_x, rect.y + text_y);
+	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
+}
+
+void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect box = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(box, default_color);
 }

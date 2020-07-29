@@ -35,8 +35,19 @@ struct Source_Menu {
 
 struct View_Source {
 	Image *cross = nullptr;
+	Label *title = nullptr;
+	Divider *div = nullptr;
+	Label *reg_title = nullptr;
+	Data_View *regions = nullptr;
+	Scroll *reg_scroll = nullptr;
+	Scroll *reg_lat_scroll = nullptr;
+	Label *hex_title = nullptr;
+	Hex_View *hex = nullptr;
+	Scroll *hex_scroll = nullptr;
+
+	Source *source;
 };
 
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
-void make_view_source_menu(Workspace& ws, Source& s, Box& b);
+void make_view_source_menu(Workspace& ws, Source *s, Box& b);

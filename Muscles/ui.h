@@ -9,7 +9,8 @@ enum ElementType {
 	TypeDataView,
 	TypeScroll,
 	TypeEditBox,
-	TypeDropDown
+	TypeDropDown,
+	TypeHexView
 };
 
 struct Box;
@@ -60,7 +61,11 @@ struct Label : UI_Element {
 	float x = 0;
 	float y = 0;
 	float width = 0;
-	bool auto_width = false;
+
+	Render_Clip clip = {
+		CLIP_RIGHT,
+		0, 0, 0, 0
+	};
 
 	float padding = 0.2;
 
@@ -108,66 +113,36 @@ struct Divider : UI_Element {
 	float min = 0;
 	float max = 0;
 
-	float distance = 0;
+	float padding = 8;
 
 	Texture hint = nullptr;
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
-struct Data_View : UI_Element {
-	Data_View() : UI_Element(TypeDataView) {}
-
-	Table data = {};
-
-	int n_items = 0;
-	int n_visible = 0;
-	int top = 0;
-	int hl_row = -1;
-	int sel_row = -1;
-
-	float item_height = 0;
-	float header_height = 25;
-	float column_spacing = 0.2;
-	float border = 10;
-
-	bool show_column_names = false;
-
-	//void find_column(Camera& view, float total_width, int& index, Point& span, bool get_index);
-	float column_width(float total_width, float font_height, float scale, int idx);
-	void draw_item_backing(RGBA& color, Rect& back, float scale, int idx);
-
-	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-	bool highlight(Camera& view, Point& inside) override;
-
-	void deselect() override;
-	void release() override;
-};
-
 struct Scroll : UI_Element {
 	Scroll() : UI_Element(TypeScroll) {}
 
-	Table *source = nullptr;
+	bool vertical = true;
 
 	RGBA back = {};
 
-	float min_height = 0.2;
-	float width = 16;
+	float breadth = 16;
+	float length = 0;
 	float padding = 2;
+	float thumb_min = 0.2;
 
 	float thumb_frac = 0;
-	float thumb_pos = 0;
-
-	int top = 0;
-	int n_items = 0;
-	int n_visible = 0;
-	int max = 0;
+	float view_span = 0;
+	float position = 0;
+	float maximum = 0;
 
 	bool hl = false;
 	bool held = false;
 	int hold_region = 0;
 
 	void engage(Point& p);
+	void scroll(float delta);
 
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -176,10 +151,45 @@ struct Scroll : UI_Element {
 	void deselect() override;
 };
 
+struct Data_View : UI_Element {
+	Data_View() : UI_Element(TypeDataView) {}
+
+	Table data = {};
+
+	Scroll *hscroll = nullptr;
+	Scroll *vscroll = nullptr;
+
+	int hl_row = -1;
+	int sel_row = -1;
+
+	float item_height = 0;
+	float header_height = 25;
+	float column_spacing = 0.2;
+	float padding = 2;
+
+	bool show_column_names = false;
+	bool consume_box_scroll = false;
+
+	Render_Clip clip = {
+		CLIP_LEFT | CLIP_RIGHT | CLIP_BOTTOM,
+		0, 0, 0, 0
+	};
+
+	//void find_column(Camera& view, float total_width, int& index, Point& span, bool get_index);
+	float column_width(float total_width, float font_height, float scale, int idx);
+	void draw_item_backing(RGBA& color, Rect& back, float scale, int idx);
+
+	bool highlight(Camera& view, Point& inside) override;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+
+	void deselect() override;
+	void release() override;
+};
+
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(TypeEditBox) {}
-
-	std::string line;
 
 	bool update = false;
 	Table *table = nullptr;
@@ -195,6 +205,13 @@ struct Edit_Box : UI_Element {
 
 	float caret_off_y = 0.2;
 	float caret_width = 0.08;
+
+	std::string line;
+
+	Render_Clip clip = {
+		CLIP_LEFT | CLIP_RIGHT,
+		0, 0, 0, 0
+	};
 
 	const char *get_str() const {
 		return line.c_str();
@@ -223,10 +240,28 @@ struct Drop_Down : UI_Element {
 	const char *title = nullptr;
 	std::vector<const char*> lines;
 
+	Render_Clip item_clip = {
+		CLIP_RIGHT,
+		0, 0, 0, 0
+	};
+
 	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
 
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
+struct Hex_View : UI_Element {
+	Hex_View() : UI_Element(TypeHexView) {}
+
+	int offset = 0;
+	int size = 0;
+	int rows = 8;
+	int columns = 16;
+
+	Scroll hscroll = {};
+
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -241,8 +276,11 @@ struct Box {
 	BoxType type = NoBoxType;
 	bool visible = false;
 	bool moving = false;
+	bool ui_held = false;
+
 	int ticks = 0;
 	int refresh_every = 60;
+	int move_start = 5;
 
 	Workspace *parent = nullptr;
 	Drop_Down *current_dd = nullptr;
@@ -256,7 +294,7 @@ struct Box {
 
 	Rect box = {};
 	RGBA back = {};
-	RGBA edge_color = {0, 0, 0, 1};
+	RGBA edge_color = {};
 
 	std::vector<UI_Element*> ui;
 
@@ -308,6 +346,7 @@ struct Workspace {
 
 	std::vector<Box*> boxes;
 	Box *focus = nullptr;
+	Box *selected = nullptr;
 	Box *new_box = nullptr;
 	UI_Element *held_element = nullptr;
 

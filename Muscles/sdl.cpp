@@ -63,6 +63,11 @@ bool sdl_poll_input(Input& input) {
 	input.prev_y = input.mouse_y;
 	SDL_GetMouseState(&input.mouse_x, &input.mouse_y);
 
+	if (input.lmouse || input.rmouse)
+		input.held++;
+	else
+		input.held = 0;
+
 	if (input.del) input.del++;
 	if (input.back) input.back++;
 	if (input.esc) input.esc++;
@@ -156,6 +161,7 @@ bool sdl_poll_input(Input& input) {
 				if (event.button.button == SDL_BUTTON_RIGHT) input.rclick = true;
 				if (input.lclick) input.lmouse = true;
 				if (input.rclick) input.rmouse = true;
+
 				input.click_x = input.mouse_x;
 				input.click_y = input.mouse_y;
 				break;

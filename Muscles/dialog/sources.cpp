@@ -8,15 +8,6 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 
 	Source_Menu *ui = (Source_Menu*)b.markup;
 
-	if (hovered && input.lclick) {
-		if (ui->scroll && ui->scroll->visible && ui->scroll->pos.contains(inside))
-			ui->scroll->engage(inside);
-		else {
-			b.moving = true;
-			b.select_edge(view, inside);
-		}
-	}
-
 	float y = b.border;
 
 	if (ui->title) {
@@ -25,7 +16,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 
 	if (ui->search && ui->scroll) {
 		if (focussed && ui->table && ui->search->update)
-			ui->scroll->top = 0;
+			ui->scroll->position = 0;
 
 		float x2 = b.box.w - ui->scroll->padding;
 		float x1 = x2 - ui->search->max_width;
@@ -43,12 +34,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 	float end_x = b.box.w - b.border;
 
 	if (ui->scroll) {
-		if (ui->table) {
-			ui->scroll->n_items = ui->table->n_items;
-			ui->scroll->n_visible = ui->table->n_visible;
-		}
-
-		ui->scroll->pos.w = ui->scroll->width;
+		ui->scroll->pos.w = ui->scroll->breadth;
 		ui->scroll->pos.x = b.box.w - ui->scroll->pos.w - ui->scroll->padding;
 		ui->scroll->pos.y = y;
 		ui->scroll->pos.h = b.box.h - b.border - y;
@@ -71,7 +57,6 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 	}
 
 	if (ui->table) {
-		ui->table->top = ui->scroll ? ui->scroll->top : 0;
 		ui->table->pos.x = b.border;
 		ui->table->pos.y = y;
 		ui->table->pos.w = end_x - ui->table->pos.x;
@@ -125,6 +110,8 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->table->default_color = ws.back_color;
 	ui->table->hl_color = ws.hl_color;
 	ui->table->font = ws.default_font;
+	ui->table->consume_box_scroll = true;
+	ui->table->vscroll = ui->scroll;
 
 	ui->search = new Edit_Box();
 	ui->search->caret = {0.9, 0.9, 0.9, 1.0};
@@ -199,7 +186,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		ui->path->text += get_folder_separator();
 		refresh_file_menu(*table->parent);
 
-		ui->scroll->top = 0;
+		ui->scroll->position = 0;
 		ui->search->clear();
 		table->data.clear_filter();
 
@@ -275,7 +262,7 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 	size_t pos = last > 0 ? ui->path->text.find_last_of(sep, last) : std::string::npos;
 	if (pos != std::string::npos) {
 		ui->path->text.erase(pos + 1);
-		ui->scroll->top = 0;
+		ui->scroll->position = 0;
 		ui->search->clear();
 		ui->table->data.clear_filter();
 	}

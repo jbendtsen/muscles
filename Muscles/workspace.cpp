@@ -58,6 +58,7 @@ Box *Workspace::box_under_cursor(Camera& view, Point& cur, Point& inside) {
 
 void Workspace::add_box(Box *b) {
 	boxes.push_back(b);
+	b->edge_color = dark_color;
 	new_box = b;
 }
 
@@ -184,6 +185,9 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 			}
 		}
 
+		if (hover && !input.rclick)
+			selected = hover;
+
 		if (!hover || !hover->current_dd || hover->current_dd->sel < 0) {
 			for (auto& b : boxes) {
 				if (b->current_dd)
@@ -194,8 +198,22 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		}
 	}
 
+	if (!input.lmouse) {
+		if (selected)
+			selected->ui_held = false;
+
+		selected = nullptr;
+	}
+
+	Input box_input = input;
+	if (input.lctrl || input.rctrl) {
+		box_input.lmouse = box_input.lclick = false;
+		box_input.rmouse = box_input.rclick = false;
+		box_input.action = false;
+	}
+
 	for (int i = boxes.size() - 1; i >= 0; i--)
-		boxes[i]->update(*this, view, input, hover == boxes[i], focus == boxes[i]);
+		boxes[i]->update(*this, view, box_input, hover == boxes[i], focus == boxes[i]);
 
 	if (new_box) {
 		new_box->parent = this;
@@ -207,7 +225,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 			new_box->scale_change_handler(*this, *new_box, view.scale);
 
 		if (new_box->update_handler)
-			new_box->update(*this, view, input, false, false);
+			new_box->update(*this, view, box_input, false, false);
 
 		new_box = nullptr;
 	}
@@ -217,7 +235,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	for (int i = 0; i < boxes.size(); i++) {
 		if (boxes[i]->visible) {
 			bool hovered = hover == boxes[i];
-			boxes[i]->draw(*this, view, input.lmouse, hovered ? &inside : nullptr, hovered, focus == boxes[i]);
+			boxes[i]->draw(*this, view, box_input.lmouse, hovered ? &inside : nullptr, hovered, focus == boxes[i]);
 		}
 	}
 
@@ -337,6 +355,11 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 
 	if (!input.lmouse && !input.rmouse)
 		parent->held_element = nullptr;
+
+	if (this == parent->selected && !ui_held && input.lmouse && input.held > move_start) {
+		moving = true;
+		select_edge(view, inside);
+	}
 }
 
 void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
