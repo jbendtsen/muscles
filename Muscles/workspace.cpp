@@ -1,6 +1,5 @@
 #include "muscles.h"
 #include "ui.h"
-#include "io.h"
 
 Workspace::Workspace(Font_Face face) {
 	this->face = face;
@@ -220,7 +219,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		new_box->parent = this;
 
 		if (new_box->refresh_handler)
-			new_box->refresh_handler(*new_box);
+			new_box->refresh_handler(*new_box, inside);
 
 		if (new_box->scale_change_handler)
 			new_box->scale_change_handler(*this, *new_box, view.scale);
@@ -408,7 +407,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, bool hovered, bool f
 		current_dd->highlight(view, p);
 
 	if (refresh_handler && !hovered && ticks % refresh_every == 0)
-		refresh_handler(*this);
+		refresh_handler(*this, p);
 	ticks++;
 
 	if (update_handler)

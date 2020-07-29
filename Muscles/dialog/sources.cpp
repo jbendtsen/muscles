@@ -1,6 +1,5 @@
 #include "../muscles.h"
 #include "../ui.h"
-#include "../io.h"
 #include "dialog.h"
 
 void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
@@ -96,10 +95,10 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->cross->img = ws.cross;
 
 	ui->scroll = new Scroll();
-	ui->scroll->back = {0, 0.1, 0.4, 1.0};
-	ui->scroll->default_color = {0.4, 0.45, 0.55, 1.0};
-	ui->scroll->hl_color = {0.6, 0.63, 0.7, 1.0};
-	ui->scroll->sel_color = {0.8, 0.8, 0.8, 1.0};
+	ui->scroll->back = ws.scroll_back;
+	ui->scroll->default_color = ws.scroll_color;
+	ui->scroll->hl_color = ws.scroll_hl_color;
+	ui->scroll->sel_color = ws.scroll_sel_color;
 
 	ui->title = new Label();
 	ui->title->text = title_str;
@@ -159,6 +158,7 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->type = TypeProcess;
 	s->pid = pid;
 	s->name = name_ptr+1;
+	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
 
@@ -166,7 +166,7 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	main_ui->table->sel_row = sources.size() - 1;
 }
 
-void refresh_file_menu(Box& b);
+void refresh_file_menu(Box& b, Point& cursor);
 
 void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
@@ -184,7 +184,9 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (file->flags & 8) {
 		ui->path->text += file->name;
 		ui->path->text += get_folder_separator();
-		refresh_file_menu(*table->parent);
+
+		Point p = {0, 0};
+		refresh_file_menu(*table->parent, p);
 
 		ui->scroll->position = 0;
 		ui->search->clear();
@@ -217,8 +219,10 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	main_ui->table->sel_row = sources.size() - 1;
 }
 
-void refresh_process_menu(Box& b) {
+void refresh_process_menu(Box& b, Point& cursor) {
 	auto ui = (Source_Menu*)b.markup;
+	if (ui->table->pos.contains(cursor))
+		return;
 
 	std::vector<int> pids;
 	get_process_id_list(pids);
@@ -234,8 +238,10 @@ void process_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	((Source_Menu*)b.markup)->cross->img = ws.cross;
 }
 
-void refresh_file_menu(Box& b) {
+void refresh_file_menu(Box& b, Point& cursor) {
 	auto ui = (Source_Menu*)b.markup;
+	if (ui->table->pos.contains(cursor))
+		return;
 
 	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
 	enumerate_files((char*)ui->path->text.c_str(), files, *get_arena());
@@ -267,7 +273,8 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 		ui->table->data.clear_filter();
 	}
 
-	refresh_file_menu(*elem->parent);
+	Point p = {0};
+	refresh_file_menu(*elem->parent, p);
 }
 
 void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {

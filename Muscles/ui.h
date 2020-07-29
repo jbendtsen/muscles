@@ -268,14 +268,25 @@ struct Drop_Down : UI_Element {
 struct Hex_View : UI_Element {
 	Hex_View() : UI_Element(TypeHexView) {}
 
+	bool alive = false;
 	int offset = 0;
 	int size = 0;
-	int rows = 8;
+	int rows = 0;
 	int columns = 16;
 
+	u64 region_address = 0;
+	int region_size = 0;
+
+	Source *source = nullptr;
+	int span_idx = -1;
+
+	Scroll *vscroll = nullptr;
 	Scroll hscroll = {};
 
+	void set_region(u64 address, int size);
+
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 };
 
 enum BoxType {
@@ -300,7 +311,7 @@ struct Box {
 	void *markup = nullptr;
 
 	void (*update_handler)(Box&, Camera&, Input&, Point&, bool, bool) = nullptr;
-	void (*refresh_handler)(Box&) = nullptr;
+	void (*refresh_handler)(Box&, Point&) = nullptr;
 	void (*scale_change_handler)(Workspace& ws, Box&, float) = nullptr;
 
 	int edge = 0;
@@ -351,6 +362,10 @@ struct Workspace {
 	RGBA inactive_color = { 0.2, 0.3, 0.5, 1.0 };
 	RGBA inactive_text_color = { 0.7, 0.7, 0.7, 1.0 };
 	RGBA inactive_outline_color = { 0.55, 0.6, 0.65, 1.0 };
+	RGBA scroll_back = {0, 0.1, 0.4, 1.0};
+	RGBA scroll_color = {0.4, 0.45, 0.55, 1.0};
+	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
+	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
 
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;

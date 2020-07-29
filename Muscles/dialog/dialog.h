@@ -44,8 +44,10 @@ struct View_Source {
 	Label *hex_title = nullptr;
 	Hex_View *hex = nullptr;
 	Scroll *hex_scroll = nullptr;
+	Label *hex_info = nullptr;
 
-	Source *source;
+	Source *source = nullptr;
+	bool multiple_regions = false;
 };
 
 void make_file_menu(Workspace& ws, Box& b);

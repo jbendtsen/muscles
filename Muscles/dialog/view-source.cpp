@@ -1,6 +1,5 @@
 #include "../muscles.h"
 #include "../ui.h"
-#include "../io.h"
 #include "dialog.h"
 
 void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
@@ -27,97 +26,137 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	};
 	ui->title->update_position(view);
 
-	float y = ui->title->pos.y + ui->title->pos.h + hack;
+	float scroll_w = 12;
+	float data_x = b.border;
+	float data_y = ui->title->pos.y + ui->title->pos.h + hack;
 
-	ui->div->pos = {
-		ui->div->position,
-		y,
-		ui->div->breadth,
-		b.box.h - y - b.border
-	};
-	ui->div->maximum = b.box.w - ui->div->minimum;
-	float pad = ui->div->padding;
+	if (ui->multiple_regions) {
+		float y = data_y;
 
-	y += hack;
+		ui->div->pos = {
+			ui->div->position,
+			y,
+			ui->div->breadth,
+			b.box.h - y - b.border
+		};
+		ui->div->maximum = b.box.w - ui->div->minimum;
 
-	ui->reg_title->pos = {
-		b.border,
-		y,
-		ui->div->pos.x - b.border - pad,
-		ui->reg_title->font->render.text_height() * 1.1f / view.scale
-	};
-	ui->reg_title->update_position(view);
+		float pad = ui->div->padding;
+		data_x = ui->div->pos.x + ui->div->pos.w + pad;
 
-	ui->hex_title->pos.x = ui->div->pos.x + ui->div->pos.w + ui->div->padding;
-	ui->hex_title->pos.y = y;
+		ui->reg_title->pos = {
+			b.border,
+			y,
+			ui->div->pos.x - b.border - pad,
+			ui->reg_title->font->render.text_height() * 1.1f / view.scale
+		};
+		ui->reg_title->update_position(view);
+
+		y += ui->reg_title->pos.h;
+
+		ui->reg_scroll->pos = {
+			ui->reg_title->pos.x + ui->reg_title->pos.w - scroll_w,
+			y,
+			scroll_w,
+			b.box.h - y - scroll_w - 3*b.border
+		};
+
+		ui->reg_lat_scroll->pos = {
+			b.border,
+			b.box.h - scroll_w - 2*b.border,
+			ui->reg_scroll->pos.x - 2*b.border,
+			scroll_w
+		};
+
+		ui->regions->pos = {
+			ui->reg_lat_scroll->pos.x,
+			ui->reg_scroll->pos.y,
+			ui->reg_lat_scroll->pos.w,
+			ui->reg_scroll->pos.h
+		};
+
+		float n_heights = 40;
+		ui->reg_lat_scroll->maximum = ui->regions->font->render.text_height() * n_heights / view.scale;
+	}
+
+	ui->hex_title->pos.x = data_x;
+	ui->hex_title->pos.y = data_y;
 	ui->hex_title->pos.w = b.box.w - ui->hex_title->pos.x - b.border;
-	ui->hex_title->pos.h = ui->reg_title->pos.h;
+	ui->hex_title->pos.h = ui->hex_title->font->render.text_height() * 1.1f / view.scale;
 	ui->hex_title->update_position(view);
 
-	y += ui->reg_title->pos.h;
+	float data_w = ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border;
 
-	float scroll_w = 12;
-	ui->reg_scroll->pos = {
-		ui->reg_title->pos.x + ui->reg_title->pos.w - scroll_w,
-		y,
-		scroll_w,
-		b.box.h - y - scroll_w - 3*b.border
+	ui->hex_info->pos = {
+		data_x,
+		b.box.h - b.border - ui->hex_title->pos.h,
+		data_w,
+		ui->hex_title->pos.h
 	};
+	ui->hex_info->update_position(view);
 
-	ui->reg_lat_scroll->pos = {
-		b.border,
-		b.box.h - scroll_w - 2*b.border,
-		ui->reg_scroll->pos.x - 2*b.border,
-		scroll_w
-	};
-
-	ui->regions->pos = {
-		ui->reg_lat_scroll->pos.x,
-		ui->reg_scroll->pos.y,
-		ui->reg_lat_scroll->pos.w,
-		ui->reg_scroll->pos.h
-	};
-
-	float n_heights = 40;
-	ui->reg_lat_scroll->maximum = ui->regions->font->render.text_height() * n_heights / view.scale;
+	data_y += ui->hex_title->pos.h;
+	float data_h = ui->hex_info->pos.y - data_y - b.border;
 
 	ui->hex_scroll->pos = {
 		b.box.w - b.border - scroll_w,
-		ui->regions->pos.y,
+		data_y,
 		scroll_w,
-		ui->regions->pos.h
+		data_h
 	};
 
 	ui->hex->pos = {
 		ui->hex_title->pos.x,
-		ui->regions->pos.y,
-		ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border,
-		ui->regions->pos.h
+		data_y,
+		data_w,
+		data_h
 	};
-	//Scroll *hex_scroll = nullptr;
+
+	char info[32];
+	sprintf(info, "0x%08x/0x%08x", ui->hex->offset, ui->hex->region_size);
+	ui->hex_info->text = info;
 
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
-static void refresh_handler(Box& b) {
+void regions_handler(UI_Element *elem, bool dbl_click) {
+	auto table = dynamic_cast<Data_View*>(elem);
+	table->sel_row = table->hl_row;
+
+	if (table->sel_row < 0)
+		return;
+
+	auto ui = (View_Source*)table->parent->markup;
+
+	u64 address = strtoull((char*)table->data.columns[0][table->sel_row], nullptr, 16);
+	int size = strtol((char*)table->data.columns[1][table->sel_row], nullptr, 16);
+	ui->hex->set_region(address, size);
+
+	ui->hex_scroll->position = 0;
+}
+
+static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Source*)b.markup;
+	if (ui->multiple_regions && !ui->regions->pos.contains(cursor)) {
+		int n_sources = ui->source->regions.size();
+		ui->regions->data.resize(n_sources);
 
-	int n_sources = ui->source->regions.size();
-	ui->regions->data.resize(n_sources);
-
-	int idx = 0;
-	for (auto& r : ui->source->regions) {
-		snprintf((char*)ui->regions->data.columns[0][idx], ui->regions->data.headers[0].count_per_cell, "%016llx", r.base);
-		snprintf((char*)ui->regions->data.columns[1][idx], ui->regions->data.headers[1].count_per_cell, "%08llx", r.size);
-		ui->regions->data.columns[2][idx] = r.name;
-		idx++;
+		int idx = 0;
+		for (auto& r : ui->source->regions) {
+			snprintf((char*)ui->regions->data.columns[0][idx], ui->regions->data.headers[0].count_per_cell, "%016llx", r.base);
+			snprintf((char*)ui->regions->data.columns[1][idx], ui->regions->data.headers[1].count_per_cell, "%08llx", r.size);
+			ui->regions->data.columns[2][idx] = r.name;
+			idx++;
+		}
 	}
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto ui = (View_Source*)b.markup;
 	ui->cross->img = ws.cross;
-	ui->div->make_icon(new_scale);
+
+	if (ui->div)
+		ui->div->make_icon(new_scale);
 }
 
 void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
@@ -135,77 +174,87 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->title->font = ws.default_font;
 	b.ui.push_back(ui->title);
 
-	ui->div = new Divider();
-	ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
-	ui->div->breadth = 1.5;
-	ui->div->vertical = true;
-	ui->div->moveable = true;
-	ui->div->minimum = 8 * ui->title->font->render.text_height();
-	ui->div->position = ui->div->minimum;
-	ui->div->make_icon(ws.temp_scale);
+	ui->multiple_regions = s->regions.size() > 1;
+	if (ui->multiple_regions) {
+		ui->div = new Divider();
+		ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
+		ui->div->breadth = 2;
+		ui->div->vertical = true;
+		ui->div->moveable = true;
+		ui->div->minimum = 8 * ui->title->font->render.text_height();
+		ui->div->position = ui->div->minimum;
+		ui->div->make_icon(ws.temp_scale);
+		b.ui.push_back(ui->div);
 
-	ui->reg_title = new Label();
-	ui->reg_title->text = "Regions";
-	ui->reg_title->font = ws.make_font(10, ws.text_color);
-	b.ui.push_back(ui->reg_title);
+		ui->reg_title = new Label();
+		ui->reg_title->text = "Regions";
+		ui->reg_title->font = ws.make_font(10, ws.text_color);
+		b.ui.push_back(ui->reg_title);
+
+		ui->reg_scroll = new Scroll();
+		ui->reg_scroll->back = ws.scroll_back;
+		ui->reg_scroll->default_color = ws.scroll_color;
+		ui->reg_scroll->hl_color = ws.scroll_hl_color;
+		ui->reg_scroll->sel_color = ws.scroll_sel_color;
+		ui->reg_scroll->breadth = 12;
+		b.ui.push_back(ui->reg_scroll);
+
+		ui->reg_lat_scroll = new Scroll();
+		ui->reg_lat_scroll->back = ui->reg_scroll->back;
+		ui->reg_lat_scroll->default_color = ui->reg_scroll->default_color;
+		ui->reg_lat_scroll->hl_color = ui->reg_scroll->hl_color;
+		ui->reg_lat_scroll->sel_color = ui->reg_scroll->sel_color;
+		ui->reg_lat_scroll->vertical = false;
+		ui->reg_lat_scroll->breadth = 12;
+		b.ui.push_back(ui->reg_lat_scroll);
+
+		ui->regions = new Data_View();
+		ui->regions->action = regions_handler;
+		ui->regions->font = ws.make_font(9, ws.text_color);
+		ui->regions->default_color = ws.dark_color;
+		ui->regions->hl_color = ws.hl_color;
+		ui->regions->sel_color = ws.light_color;
+		ui->regions->vscroll = ui->reg_scroll;
+		ui->regions->hscroll = ui->reg_lat_scroll;
+
+		Column cols[] = {
+			{String, 20, 0.2, 10, "Address"},
+			{String, 20, 0.1, 5, "Size"},
+			{String, 0, 0.7, 0, "Name"}
+		};
+
+		ui->regions->data.init(cols, 3, 0);
+		b.ui.push_back(ui->regions);
+	}
 
 	ui->hex_title = new Label();
 	ui->hex_title->text = "Data";
-	ui->hex_title->font = ui->reg_title->font;
+	ui->hex_title->font = ws.make_font(10, ws.text_color);
 	b.ui.push_back(ui->hex_title);
 
-	ui->reg_scroll = new Scroll();
-	ui->reg_scroll->back = {0, 0.1, 0.4, 1.0};
-	ui->reg_scroll->default_color = {0.4, 0.45, 0.55, 1.0};
-	ui->reg_scroll->hl_color = {0.6, 0.63, 0.7, 1.0};
-	ui->reg_scroll->sel_color = {0.8, 0.8, 0.8, 1.0};
-	ui->reg_scroll->breadth = 12;
-	b.ui.push_back(ui->reg_scroll);
-
-	ui->reg_lat_scroll = new Scroll();
-	ui->reg_lat_scroll->back = ui->reg_scroll->back;
-	ui->reg_lat_scroll->default_color = ui->reg_scroll->default_color;
-	ui->reg_lat_scroll->hl_color = ui->reg_scroll->hl_color;
-	ui->reg_lat_scroll->sel_color = ui->reg_scroll->sel_color;
-	ui->reg_lat_scroll->vertical = false;
-	ui->reg_lat_scroll->breadth = 12;
-	b.ui.push_back(ui->reg_lat_scroll);
-
-	ui->regions = new Data_View();
-	ui->regions->font = ws.make_font(9, ws.text_color);
-	ui->regions->default_color = ws.dark_color;
-	ui->regions->hl_color = ws.hl_color;
-	ui->regions->vscroll = ui->reg_scroll;
-	ui->regions->hscroll = ui->reg_lat_scroll;
-
-	Column cols[] = {
-		{String, 20, 0.2, 10, "Address"},
-		{String, 20, 0.1, 5, "Size"},
-		{String, 0, 0.7, 0, "Name"}
-	};
-
-	ui->regions->data.init(cols, 3, 0);
-	b.ui.push_back(ui->regions);
+	ui->hex_scroll = new Scroll();
+	ui->hex_scroll->back = ws.scroll_back;
+	ui->hex_scroll->default_color = ws.scroll_color;
+	ui->hex_scroll->hl_color = ws.scroll_hl_color;
+	ui->hex_scroll->sel_color = ws.scroll_sel_color;
+	b.ui.push_back(ui->hex_scroll);
 
 	ui->hex = new Hex_View();
 	ui->hex->font = ws.make_font(8, ws.text_color);
 	ui->hex->default_color = ws.dark_color;
+	ui->hex->source = ui->source;
+	ui->hex->vscroll = ui->hex_scroll;
 	b.ui.push_back(ui->hex);
-	b.ui.push_back(&ui->hex->hscroll);
 
-	ui->hex_scroll = new Scroll();
-	ui->hex_scroll->back = ui->reg_scroll->back;
-	ui->hex_scroll->default_color = ui->reg_scroll->default_color;
-	ui->hex_scroll->hl_color = ui->reg_scroll->hl_color;
-	ui->hex_scroll->sel_color = ui->reg_scroll->sel_color;
-	b.ui.push_back(ui->hex_scroll);
-
-	b.ui.push_back(ui->div);
+	ui->hex_info = new Label();
+	ui->hex_info->font = ui->hex_title->font;
+	b.ui.push_back(ui->hex_info);
 
 	b.markup = ui;
 	b.update_handler = update_view_source;
-	b.refresh_handler = refresh_handler;
 	b.scale_change_handler = scale_change_handler;
+	b.refresh_handler = refresh_handler;
+	b.refresh_every = 1;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-250, -200, 500, 400};

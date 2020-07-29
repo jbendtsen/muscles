@@ -1,6 +1,5 @@
 #include "../muscles.h"
 #include "../ui.h"
-#include "../io.h"
 #include "dialog.h"
 
 void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
@@ -47,7 +46,7 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
-void refresh_main_menu(Box& b) {
+void refresh_main_menu(Box& b, Point& cursor) {
 	auto ui = (Main_Menu*)b.markup;
 	auto& sources = (std::vector<Source*>&)b.parent->sources;
 

@@ -53,14 +53,14 @@
     <ClInclude Include="dialog\dialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="io.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="muscles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ui.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="io.cpp">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

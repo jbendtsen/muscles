@@ -721,7 +721,88 @@ void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
 }
 
+void Hex_View::set_region(u64 address, int size) {
+	region_address = address;
+	region_size = size;
+	alive = true;
+}
+
 void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(box, default_color);
+
+	if (!alive)
+		return;
+
+	int row_digits = columns * 2;
+	float row_height = font->render.text_height();
+	rows = pos.h * view.scale / row_height;
+
+	if (vscroll) {
+		offset = (int)vscroll->position;
+		offset -= offset % columns;
+		vscroll->set_maximum(region_size, rows * columns);
+	}
+
+	span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
+	auto& span = source->spans[span_idx];
+
+	Rect_Fixed src, dst;
+
+	float x_start = 4 * view.scale;
+	float x = x_start;
+	float y = row_height;
+
+	for (int i = 0; i < span.size * 2; i++) {
+		Glyph *gl = nullptr;
+		int digit = 0;
+		if (i < span.retrieved * 2) {
+			digit = span.cache[i / 2];
+			if (i % 2 == 0)
+				digit >>= 4;
+			digit &= 0xf;
+
+			char c = digit <= 9 ? '0' + digit : 'a' - 10 + digit;
+			gl = font->render.glyph_for(c);
+		}
+		else
+			gl = font->render.glyph_for('?');
+
+		src.x = gl->atlas_x;
+		src.y = gl->atlas_y;
+		src.w = gl->img_w;
+		src.h = gl->img_h;
+
+		dst.x = box.x + x + gl->left;
+		dst.y = box.y + y - gl->top;
+		dst.w = src.w;
+		dst.h = src.h;
+
+		sdl_apply_texture(font->render.tex, &dst, &src);
+
+		if (i % row_digits == row_digits-1) {
+			x = x_start;
+			y += row_height;
+		}
+		else {
+			x += gl->box_w;
+			if (i % 2 == 1)
+				x += row_height / 4;
+		}
+	}
+}
+
+bool Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (vscroll && hovered && pos.contains(cursor)) {
+		int delta = columns;
+		if (input.lshift || input.rshift)
+			delta *= rows;
+
+		if (input.scroll_y > 0)
+			vscroll->scroll(-delta);
+		if (input.scroll_y < 0)
+			vscroll->scroll(delta);
+	}
+
+	return false;
 }
