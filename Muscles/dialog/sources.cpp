@@ -53,7 +53,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 		ui->path->pos.x = b.border * 2;
 		ui->path->pos.y = ui->div->pos.y + hack;
 		ui->path->pos.w = ui->div->pos.w;
-		ui->path->update_position(view, ui->path->pos);
+		ui->path->update_position(view);
 	}
 
 	if (ui->table) {
@@ -277,10 +277,10 @@ void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	sdl_destroy_texture(&ui->folder_icon);
 
 	float h = ui->up->active_theme.font->render.text_height();
-	ui->up->icon = sdl_make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
+	ui->up->icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
 	h = ui->table->font->render.text_height();
-	ui->folder_icon = sdl_make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
+	ui->folder_icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
 	int n_rows = ui->table->data.row_count();
 	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];
@@ -320,7 +320,7 @@ void make_file_menu(Workspace& ws, Box& b) {
 	ui->table->data.init(col, 2, 1);
 
 	float h = ui->table->font->render.text_height();
-	ui->folder_icon = sdl_make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
+	ui->folder_icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
 	ui->up = new Button();
 	ui->up->text = "Up";
@@ -330,7 +330,7 @@ void make_file_menu(Workspace& ws, Box& b) {
 	Font *up_font = ws.make_font(10, ws.text_color);
 
 	h = up_font->render.text_height();
-	ui->up->icon = sdl_make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
+	ui->up->icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
 	ui->up->active_theme = {
 		ws.light_color,

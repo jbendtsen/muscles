@@ -25,16 +25,17 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		w * 1.1f,
 		render.text_height() * 1.2f / view.scale
 	};
-	ui->title->update_position(view, ui->title->pos);
+	ui->title->update_position(view);
 
 	float y = ui->title->pos.y + ui->title->pos.h + hack;
 
 	ui->div->pos = {
-		b.box.w * 0.4f,
+		ui->div->position,
 		y,
-		ui->div->pos.w,
+		ui->div->breadth,
 		b.box.h - y - b.border
 	};
+	ui->div->maximum = b.box.w - ui->div->minimum;
 	float pad = ui->div->padding;
 
 	y += hack;
@@ -45,12 +46,13 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		ui->div->pos.x - b.border - pad,
 		ui->reg_title->font->render.text_height() * 1.1f / view.scale
 	};
-	ui->reg_title->update_position(view, ui->reg_title->pos);
+	ui->reg_title->update_position(view);
 
-	ui->hex_title->pos.x = ui->div->pos.x + ui->div->pos.w + b.border;
+	ui->hex_title->pos.x = ui->div->pos.x + ui->div->pos.w + ui->div->padding;
 	ui->hex_title->pos.y = y;
 	ui->hex_title->pos.w = b.box.w - ui->hex_title->pos.x - b.border;
 	ui->hex_title->pos.h = ui->reg_title->pos.h;
+	ui->hex_title->update_position(view);
 
 	y += ui->reg_title->pos.h;
 
@@ -79,8 +81,19 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	float n_heights = 40;
 	ui->reg_lat_scroll->maximum = ui->regions->font->render.text_height() * n_heights / view.scale;
 
-	//Label *hex_title = nullptr;
-	//Hex_View *hex = nullptr;
+	ui->hex_scroll->pos = {
+		b.box.w - b.border - scroll_w,
+		ui->regions->pos.y,
+		scroll_w,
+		ui->regions->pos.h
+	};
+
+	ui->hex->pos = {
+		ui->hex_title->pos.x,
+		ui->regions->pos.y,
+		ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border,
+		ui->regions->pos.h
+	};
 	//Scroll *hex_scroll = nullptr;
 
 	b.post_update_elements(view, input, inside, hovered, focussed);
@@ -102,7 +115,9 @@ static void refresh_handler(Box& b) {
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	((View_Source*)b.markup)->cross->img = ws.cross;
+	auto ui = (View_Source*)b.markup;
+	ui->cross->img = ws.cross;
+	ui->div->make_icon(new_scale);
 }
 
 void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
@@ -122,10 +137,12 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 
 	ui->div = new Divider();
 	ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
-	ui->div->pos.w = 1.5;
+	ui->div->breadth = 1.5;
 	ui->div->vertical = true;
 	ui->div->moveable = true;
-	b.ui.push_back(ui->div);
+	ui->div->minimum = 8 * ui->title->font->render.text_height();
+	ui->div->position = ui->div->minimum;
+	ui->div->make_icon(ws.temp_scale);
 
 	ui->reg_title = new Label();
 	ui->reg_title->text = "Regions";
@@ -183,6 +200,8 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->hex_scroll->sel_color = ui->reg_scroll->sel_color;
 	b.ui.push_back(ui->hex_scroll);
 
+	b.ui.push_back(ui->div);
+
 	b.markup = ui;
 	b.update_handler = update_view_source;
 	b.refresh_handler = refresh_handler;
@@ -190,5 +209,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-250, -200, 500, 400};
+	b.min_width = 400;
+	b.min_height = 300;
 	b.visible = true;
 }

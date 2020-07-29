@@ -69,7 +69,7 @@ struct Label : UI_Element {
 
 	float padding = 0.2;
 
-	void update_position(Camera& view, Rect& pos);
+	void update_position(Camera& view);
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -110,13 +110,24 @@ struct Divider : UI_Element {
 	bool vertical = false;
 	bool moveable = false;
 
-	float min = 0;
-	float max = 0;
+	bool held = false;
+	float minimum = 0;
+	float maximum = 0;
+	float position = 0;
+	float hold_pos = 0;
 
+	float breadth = 0;
 	float padding = 8;
 
-	Texture hint = nullptr;
+	Texture icon_default = nullptr;
+	Texture icon_hl = nullptr;
+	Texture icon = nullptr;
+	int icon_w = 0;
+	int icon_h = 0;
 
+	void make_icon(float scale);
+
+	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 

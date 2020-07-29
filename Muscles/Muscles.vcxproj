@@ -153,6 +153,7 @@
     <ClCompile Include="dialog\sources.cpp" />
     <ClCompile Include="dialog\view-source.cpp" />
     <ClCompile Include="font.cpp" />
+    <ClCompile Include="icons.cpp" />
     <ClCompile Include="io-win32.cpp" />
     <ClCompile Include="sdl.cpp" />
     <ClCompile Include="muscles.cpp" />

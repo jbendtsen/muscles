@@ -150,8 +150,8 @@ void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	sdl_destroy_texture(&ui->process_icon);
 
 	float h = ui->table->font->render.text_height();
-	ui->file_icon = sdl_make_file_icon(ui->file_back, ui->file_fold, ui->file_line, h, h);
-	ui->process_icon = sdl_make_process_icon(ui->process_back, ui->process_outline, h);
+	ui->file_icon = make_file_icon(ui->file_back, ui->file_fold, ui->file_line, h, h);
+	ui->process_icon = make_process_icon(ui->process_back, ui->process_outline, h);
 
 	int n_rows = ui->table->data.row_count();
 	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];

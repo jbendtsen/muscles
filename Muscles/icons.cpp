@@ -1,0 +1,275 @@
+#include "muscles.h"
+
+static inline u32 rgba_to_u32(RGBA color) {
+	return ((u32)((u8)(color.r * 255.0)) << 24) |
+		((u32)((u8)(color.g * 255.0)) << 16) |
+		((u32)((u8)(color.b * 255.0)) <<  8) |
+		(u8)(color.a * 255.0);
+}
+
+static inline int abs(int x) {
+	return x < 0 ? -x : x;
+}
+
+static inline float clamp(float f, float min, float max) {
+	if (f < min)
+		return min;
+	if (f > max)
+		return max;
+	return f;
+}
+
+Texture make_circle(int diameter, RGBA& color) {
+	auto pixels = std::make_unique<u32[]>(diameter * diameter);
+	float radius = (diameter / 2) - 2;
+
+	RGBA shade = color;
+
+	// circle outline maybe?
+	float y = -diameter / 2;
+	for (int i = 0; i < diameter; i++) {
+		float x = -diameter / 2;
+		for (int j = 0; j < diameter; j++) {
+			float dist = sqrt((double)(x * x + y * y));
+			float lum = 0.5 + clamp(radius - dist, -1, 1) / 2;
+
+			shade.a = color.a * lum;
+			pixels[i * diameter + j] = rgba_to_u32(shade);
+
+			x += 1;
+		}
+		y += 1;
+	}
+
+	return sdl_create_texture(pixels.get(), diameter, diameter);
+}
+
+Texture make_cross_icon(int length, RGBA& color) {
+	auto pixels = std::make_unique<u32[]>(length * length);
+
+	float l = (float)length + 0.5;
+	int strong = l / 24;
+	int weak = l / 16;
+
+	RGBA shade = color;
+	
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			int d1 = abs(i - j);
+			int d2 = abs(i - ((length - 1) - j));
+
+			float lum = 0.0;
+			if (d1 == weak || d2 == weak)
+				lum = 0.5;
+			if (d1 <= strong || d2 <= strong)
+				lum = 1.0;
+
+			shade.a = color.a * lum;
+			pixels[i * length + j] = rgba_to_u32(shade);
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), length, length);
+}
+
+Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h) {
+	auto pixels = std::make_unique<u32[]>(w * h);
+
+	float width = (float)w + 0.5;
+	float height = (float)h + 0.5;
+
+	int pad_x = width * 0.07;
+	int pad_y = height * 0.14;
+	int tab_w = width * 0.4;
+	int tab_h = height * 0.2;
+	int lid_y = height * 0.4;
+
+	for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			RGBA *color = i < lid_y ? &light : &dark;
+			u32 pixel = 0;
+			if (i >= pad_y && i < h - pad_y && j >= pad_x && j < w - pad_x && (i > tab_h || j <= tab_w))
+				pixel = rgba_to_u32(*color);
+
+			pixels[i * w + j] = pixel;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), w, h);
+}
+
+Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h) {
+	auto pixels = std::make_unique<u32[]>(w * h);
+
+	const float fold_length = 0.17;
+
+	const float line_x = 0.27;
+	const float line_start = 0.28;
+	const float line_height_frac = 0.4;
+	const float line_gap = 0.16;
+	const float lines_end = 0.8;
+
+	const float pad_x = 0.2;
+	const float pad_y = 0.1;
+
+	for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			float x = ((float)j + 0.5) / (float)w;
+			float y = ((float)i + 0.5) / (float)h;
+
+			int col = 0;
+			if (x >= pad_x && x < 1.0 - pad_x && y >= pad_y && y < 1.0 - pad_y)
+				col = 1;
+
+			float fold_x = (1.0 - pad_x) - x;
+			float fold_y = y - pad_y;
+
+			if (fold_x + fold_y < fold_length)
+				col = 0;
+			if (col > 0 && fold_x < fold_length && fold_y < fold_length)
+				col = 2;
+
+			float start = 0.1 + line_start;
+			if (x >= line_x && x < 1.0 - line_x &&
+				y >= start && y < lines_end
+			) {
+				double whole = 0.0;
+				float frac = modf((y - start) / line_gap, &whole);
+				if (frac <= line_height_frac)
+					col = 3;
+			}
+
+			RGBA *color = nullptr;
+			if (col == 1)
+				color = &back;
+			else if (col == 2)
+				color = &fold_color;
+			else if (col == 3)
+				color = &line_color;
+
+			pixels[i*w+j] = color ? rgba_to_u32(*color) : 0;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), w, h);
+}
+
+Texture make_process_icon(RGBA& back, RGBA& outline, int length) {
+	auto pixels = std::make_unique<u32[]>(length * length);
+
+	const double outer_rim = 0.175;
+
+	const double circle_outer = 0.12;
+	const double circle_outer_rim = 0.1;
+
+	const double circle_inner = 0.042;
+	const double circle_inner_rim = 0.03;
+
+	const double bar_inner = 0.06;
+	const double bar_outer = 0.09;
+
+	double root_2 = sqrt(2);
+	const double diag_inner = bar_inner * root_2;
+	const double diag_outer = bar_outer * root_2;
+
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			int col = 0;
+			double x = ((double)j + 0.5) / (double)length;
+			double y = ((double)i + 0.5) / (double)length;
+
+			double cx = x - 0.5;
+			double cy = y - 0.5;
+			double dist = cx * cx + cy * cy;
+
+			if (dist < 0.2) {
+				double d1 = x - y;
+				double d2 = (1.0 - x) - y;
+
+				if (
+					(d1 >= -diag_inner && d1 < diag_inner) ||
+					(d2 >= -diag_inner && d2 < diag_inner) ||
+					(cx >= -bar_inner && cx < bar_inner) ||
+					(cy >= -bar_inner && cy < bar_inner)
+				) {
+					col = 1;
+				}
+				else if (
+					(d1 >= -diag_outer && d1 < diag_outer) ||
+					(d2 >= -diag_outer && d2 < diag_outer) ||
+					(cx >= -bar_outer && cx < bar_outer) ||
+					(cy >= -bar_outer && cy < bar_outer)
+				) {
+					col = 2;
+				}
+
+				if (col > 0 && dist >= outer_rim)
+					col = 2;
+			}
+
+			if (dist < circle_outer_rim)
+				col = 1;
+			else if (col != 1 && dist < circle_outer)
+				col = 2;
+
+			if (dist < circle_inner_rim)
+				col = 0;
+			else if (dist < circle_inner)
+				col = 2;
+
+			RGBA *color = nullptr;
+			if (col == 1)
+				color = &back;
+   			else if (col == 2)
+				color = &outline;
+
+			pixels[i*length+j] = color ? rgba_to_u32(*color) : 0;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), length, length);
+}
+
+Texture make_vertical_divider_icon(RGBA& color, int height, double squish, double gap, double thicc, double sharpness, int *width) {
+	RGBA clr = color;
+	int g = (int)((double)height * gap + 0.5);
+	gap = (double)g / (double)height;
+
+	int w = (double)height * (1.0 + gap + thicc) + 0.5;
+	auto pixels = std::make_unique<u32[]>(w * height);
+
+	double mirror = (gap + thicc) / 2.0;
+    float t_half = thicc / 2.0;
+    float start = 0.5 - t_half;
+    float end = 0.5 + t_half;
+    float lum = 0.0;
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < w; j++) {
+			double x = ((double)j + 0.5) / (double)height - 0.5;
+			double y = ((double)i + 0.5) / (double)height - 0.5;
+
+			x -= t_half;
+			x = x < 0.0 ? x : gap - x;
+			y *= squish;
+
+			double d1 = x - y;
+			double d2 = -x - y;
+			double lum = 0.0;
+
+			if (d1 >= -end && d2 < end && (d1 < -start || d2 > start) && d1 < start && d2 >= -start) {
+				double bar = y > 0.0 ? d1 + 0.5 : d2 - 0.5;
+				lum = 1.0 - abs(bar / (thicc / 2.0));
+       			lum = clamp(lum * sharpness, 0.0, 1.0);
+			}
+
+			clr.a = color.a * lum;
+			pixels[i*w+j] = rgba_to_u32(clr);
+		}
+	}
+
+	if (width)
+		*width = w;
+
+	return sdl_create_texture(pixels.get(), w, height);
+}

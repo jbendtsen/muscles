@@ -87,18 +87,19 @@ void sdl_draw_rect(Rect& rect, RGBA& color);
 void sdl_clear();
 void sdl_render();
 
-Texture sdl_make_circle(int diameter, RGBA& color);
-Texture sdl_make_cross(int length, RGBA& color);
-Texture sdl_make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
-Texture sdl_make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
-Texture sdl_make_process_icon(RGBA& back, RGBA& outline, int length);
-
 Texture sdl_create_texture(u32 *data, int w, int h);
 void sdl_get_texture_size(Texture tex, int *w, int *h);
 
 void *sdl_lock_texture(Texture tex);
 void sdl_unlock_texture(Texture tex);
 void sdl_destroy_texture(Texture *tex);
+
+Texture make_circle(int diameter, RGBA& color);
+Texture make_cross_icon(int length, RGBA& color);
+Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
+Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
+Texture make_process_icon(RGBA& back, RGBA& outline, int length);
+Texture make_vertical_divider_icon(RGBA& color, int height, double squish, double gap, double thicc, double sharpness, int *width = nullptr);
 
 #define MAX_FNAME 112
 

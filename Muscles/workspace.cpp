@@ -6,7 +6,7 @@ Workspace::Workspace(Font_Face face) {
 	this->face = face;
 
 	RGBA cross_color = { 1.0, 1.0, 1.0, 1.0 };
-	cross = sdl_make_cross(48, cross_color);
+	cross = make_cross_icon(48, cross_color);
 
 	sdl_get_dpi(dpi_w, dpi_h);
 
@@ -141,7 +141,7 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 		f->adjust_scale(new_scale, dpi_w, dpi_h);
 
 	sdl_destroy_texture(&cross);
-	cross = sdl_make_cross(cross_size * new_scale, text_color);
+	cross = make_cross_icon(cross_size * new_scale, text_color);
 
 	for (auto& b : boxes) {
 		if (b->scale_change_handler)
@@ -356,9 +356,11 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 	if (!input.lmouse && !input.rmouse)
 		parent->held_element = nullptr;
 
-	if (this == parent->selected && !ui_held && input.lmouse && input.held > move_start) {
-		moving = true;
-		select_edge(view, inside);
+	if (this == parent->selected && !ui_held) {
+		if (input.lclick)
+			select_edge(view, inside);
+		if (input.lmouse && input.held == move_start)
+			moving = true;
 	}
 }
 
