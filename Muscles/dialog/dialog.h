@@ -38,7 +38,7 @@ struct View_Source {
 	Label *title = nullptr;
 	Divider *div = nullptr;
 	Label *reg_title = nullptr;
-	Data_View *regions = nullptr;
+	Data_View *reg_table = nullptr;
 	Scroll *reg_scroll = nullptr;
 	Scroll *reg_lat_scroll = nullptr;
 	Label *hex_title = nullptr;
@@ -47,6 +47,7 @@ struct View_Source {
 	Label *hex_info = nullptr;
 
 	Source *source = nullptr;
+	std::vector<u64> region_list;
 	bool multiple_regions = false;
 };
 

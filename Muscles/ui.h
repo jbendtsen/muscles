@@ -143,19 +143,19 @@ struct Scroll : UI_Element {
 	float padding = 2;
 	float thumb_min = 0.2;
 
-	float thumb_frac = 0;
-	float view_span = 0;
-	float position = 0;
-	float maximum = 0;
+	double thumb_frac = 0;
+	double view_span = 0;
+	double position = 0;
+	double maximum = 0;
 
 	bool show_thumb = true;
 	bool hl = false;
 	bool held = false;
 	int hold_region = 0;
 
-	void set_maximum(float max, float span);
+	void set_maximum(double max, double span);
 	void engage(Point& p);
-	void scroll(float delta);
+	void scroll(double delta);
 
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -275,7 +275,7 @@ struct Hex_View : UI_Element {
 	int columns = 16;
 
 	u64 region_address = 0;
-	int region_size = 0;
+	u64 region_size = 0;
 
 	Source *source = nullptr;
 	int span_idx = -1;
@@ -283,7 +283,7 @@ struct Hex_View : UI_Element {
 	Scroll *vscroll = nullptr;
 	Scroll hscroll = {};
 
-	void set_region(u64 address, int size);
+	void set_region(u64 address, u64 size);
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
@@ -378,7 +378,7 @@ struct Workspace {
 	Box *new_box = nullptr;
 	UI_Element *held_element = nullptr;
 
-	std::vector<void*> sources;
+	std::vector<Source*> sources;
 
 	Workspace(Font_Face face);
 	~Workspace();

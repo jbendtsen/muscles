@@ -35,6 +35,11 @@ Workspace::~Workspace() {
 
 	for (auto& f : fonts)
 		delete f;
+
+	for (auto& s : sources) {
+		close_source(*s);
+		delete s;
+	}
 }
 
 Box *Workspace::box_under_cursor(Camera& view, Point& cur, Point& inside) {
@@ -152,11 +157,14 @@ void Workspace::refresh_sources() {
 	Arena* arena = get_arena();
 	auto& sources = (std::vector<Source*>&)this->sources;
 	for (auto& s : sources) {
-		if (s->timer % s->refresh_region_rate == 0) {
+		s->region_refreshed = false;
+		if (!s->block_region_refresh && s->timer % s->refresh_region_rate == 0) {
 			if (s->type == TypeFile)
 				refresh_file_region(*s, *arena);
 			else if (s->type == TypeProcess)
 				refresh_process_regions(*s, *arena);
+
+			s->region_refreshed = true;
 		}
 		if (s->timer % s->refresh_span_rate == 0) {
 			if (s->type == TypeFile)
@@ -406,7 +414,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, bool hovered, bool f
 	if (current_dd)
 		current_dd->highlight(view, p);
 
-	if (refresh_handler && !hovered && ticks % refresh_every == 0)
+	if (refresh_handler && ticks % refresh_every == 0)
 		refresh_handler(*this, p);
 	ticks++;
 

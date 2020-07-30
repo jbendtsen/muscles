@@ -2,11 +2,17 @@
 #include "io.h"
 
 #include <algorithm>
-#include <map>
 
 #include <windows.h>
 #include <Psapi.h>
 #include <DbgHelp.h>
+
+void close_source(Source& source) {
+	if (source.handle) {
+		CloseHandle(source.handle);
+		source.handle = nullptr;
+	}
+}
 
 const char *get_folder_separator() {
 	return "\\";
@@ -173,43 +179,46 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 	}
 }
 
+HANDLE open_file(LPCSTR name) {
+	return CreateFileA(
+		name,
+		GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr
+	);
+}
+
 void refresh_file_region(Source& source, Arena& arena) {
 	if (source.regions.size() <= 0)
 		source.regions.push_back({});
 
 	Region& reg = source.regions[0];
 
-	DWORD attrs = 0;
-	if (!source.handle) {
-		WIN32_FIND_DATAA info = {0};
-		source.handle = FindFirstFileA((LPCSTR)source.identifier, &info);
-		attrs = info.dwFileAttributes;
-		reg.size = ((u64)info.nFileSizeHigh << 32) | info.nFileSizeLow;
-	}
-	else {
-		BY_HANDLE_FILE_INFORMATION info = {0};
-		GetFileInformationByHandle(source.handle, &info);
-		attrs = info.dwFileAttributes;
-		reg.size = ((u64)info.nFileSizeHigh << 32) | info.nFileSizeLow;
-	}
+	if (!source.handle)
+		source.handle = open_file((LPCSTR)source.identifier);
 
-	if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+	BY_HANDLE_FILE_INFORMATION info = {0};
+	GetFileInformationByHandle(source.handle, &info);
+	reg.size = ((u64)info.nFileSizeHigh << 32) | info.nFileSizeLow;
+
+	if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		reg.size = 0;
 
 	bool pm_read = true;
-	bool pm_write = (attrs & FILE_ATTRIBUTE_READONLY) == 0;
+	bool pm_write = (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) == 0;
 	bool pm_exec = true;
-	reg.flags = (pm_read << 2) | (pm_write << 1) | pm_exec;
+	reg.flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
 
 	reg.base = 0;
 	reg.name = (char*)source.name.c_str();
 }
 
 void refresh_file_spans(Source& source, Arena& arena) {
-	if (!source.handle) {
-		WIN32_FIND_DATAA info;
-		source.handle = FindFirstFileA((LPCSTR)source.identifier, &info);
-	}
+	if (!source.handle)
+		source.handle = open_file((LPCSTR)source.identifier);
 
 	LARGE_INTEGER offset;
 	for (auto& s : source.spans) {
@@ -224,11 +233,9 @@ void refresh_file_spans(Source& source, Arena& arena) {
 
 		DWORD retrieved = 0;
 		ReadFile(source.handle, s.cache, s.size, &retrieved, nullptr);
+		auto error = GetLastError();
 		s.retrieved = retrieved;
 	}
-
-	FindClose(source.handle);
-	source.handle = nullptr;
 }
 
 u8 *header = nullptr;
@@ -236,23 +243,30 @@ u8 *header = nullptr;
 #define PROCESS_BASE_NAME_SIZE 1000
 #define PROCESS_NAME_LEN 100
 
-void get_section_names(HANDLE proc, u64 base, u8 *buf, std::map<u64, char*>& sections, Arena& arena) {
+bool find_section_names(HANDLE proc, u64 base, u8 *buf, std::map<u64, char*>& sections, Arena& arena) {
 	SIZE_T len = 0;
 	ReadProcessMemory(proc, (LPCVOID)base, (LPVOID)buf, IMAGE_HEADER_PAGE_SIZE, &len);
 	if (len != IMAGE_HEADER_PAGE_SIZE)
-		return;
+		return false;
 
 	IMAGE_NT_HEADERS *headers = ImageNtHeader((LPVOID)buf);
 	if (!headers)
-		return;
+		return false;
 
 	int n_sections = headers->FileHeader.NumberOfSections;
 	IMAGE_SECTION_HEADER *section = IMAGE_FIRST_SECTION(headers);
 
 	for (int i = 0; i < n_sections; i++) {
-		sections[base + section->VirtualAddress] = arena.alloc_string((char*)section->Name);
+		auto& s = sections[base + section->VirtualAddress];
+		if (!s)
+			s = arena.alloc_string((char*)section->Name);
+		else
+			strcpy(s, (char*)section->Name); // will likely cause errors if the new name exceeds the length of the old name
+
 		section++;
 	}
+
+	return n_sections > 0;
 }
 
 void refresh_process_regions(Source& source, Arena& arena) {
@@ -264,12 +278,7 @@ void refresh_process_regions(Source& source, Arena& arena) {
 	VirtualQueryEx(proc, (LPCVOID)0, &info, sizeof(MEMORY_BASIC_INFORMATION));
 	u64 base = info.RegionSize;
 
-	char name[PROCESS_BASE_NAME_SIZE];
-	if (!header)
-		header = new u8[IMAGE_HEADER_PAGE_SIZE];
-
-	std::map<u64, char*> sections;
-	int idx = 0;
+	std::map<u64, Region> new_regions;
 
 	while (1) {
 		if (!VirtualQueryEx(proc, (LPCVOID)base, &info, sizeof(MEMORY_BASIC_INFORMATION)))
@@ -286,14 +295,7 @@ void refresh_process_regions(Source& source, Arena& arena) {
 			continue;
 		}
 
-		if (idx >= source.regions.size()) {
-			source.regions.push_back({});
-			idx = source.regions.size() - 1;
-		}
-
-		Region& reg = source.regions[idx];
-		reg.base = base;
-		reg.size = info.RegionSize;
+		u64 size = info.RegionSize;
 
 		bool pm_read = true;
 		bool pm_write = 
@@ -304,22 +306,49 @@ void refresh_process_regions(Source& source, Arena& arena) {
 			protect == PAGE_EXECUTE_READWRITE ||
 			protect == PAGE_EXECUTE_WRITECOPY;
 
-		reg.flags = (pm_read << 2) | (pm_write << 1) | pm_exec;
+		int flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
 
-		if (info.RegionSize == IMAGE_HEADER_PAGE_SIZE)
-			get_section_names(proc, base, header, sections, arena);
+		bool exists = false;
+		auto it = source.region_index.find(base);
 
-		int len = GetMappedFileNameA(proc, (LPVOID)base, name, PROCESS_BASE_NAME_SIZE);
+		if (it != source.region_index.end()) {
+			int mask = (1 << REG_PM_READ) | (1 << REG_PM_WRITE) | (1 << REG_PM_EXEC);
+			auto& reg = source.regions[it->second];
+			if (reg.base == base && reg.size == size && (reg.flags & mask) == (flags & mask))
+				exists = true;
+		}
+
+		if (!exists) {
+			Region& reg = new_regions[base];
+			reg.base = base;
+			reg.size = size;
+			reg.flags = flags;
+		}
+
+		base += info.RegionSize;
+	}
+
+	char name[PROCESS_BASE_NAME_SIZE];
+	if (!header)
+		header = new u8[IMAGE_HEADER_PAGE_SIZE];
+
+	int idx = 0;
+	for (auto& r : new_regions) {
+		auto& reg = r.second;
+		if (reg.size == IMAGE_HEADER_PAGE_SIZE)
+			find_section_names(proc, reg.base, header, source.sections, arena);
+
 		char *exe = nullptr;
+		int len = GetMappedFileNameA(proc, (LPVOID)reg.base, name, PROCESS_BASE_NAME_SIZE);
 		if (len > 0) {
 			char *str = strrchr(name, '\\');
 			exe = str ? str+1 : name;
 		}
 
-		auto it = sections.find(base);
-		char *s_name = (it != sections.end()) ? it->second : nullptr;
+		auto it = source.sections.find(reg.base);
+		char *s_name = (it != source.sections.end()) ? it->second : nullptr;
 
-		if (exe && s_name) {
+		if (exe || s_name) {
 			if (!reg.name)
 				reg.name = (char*)arena.allocate(PROCESS_NAME_LEN);
 
@@ -333,8 +362,24 @@ void refresh_process_regions(Source& source, Arena& arena) {
 		else
 			reg.name = nullptr;
 
-		base += info.RegionSize;
-		idx++;
+		bool modified = false;
+		for (int i = idx; i < source.regions.size(); i++) {
+			auto& r = source.regions[i];
+			if (r.base >= reg.base) {
+				if (r.base == reg.base)
+					r = reg;
+				else
+					source.regions.insert(source.regions.begin()+i, reg);
+
+				idx = i;
+				source.region_index[reg.base] = idx;
+				modified = true;
+				break;
+			}
+		}
+
+		if (!modified)
+			source.regions.push_back(reg);
 	}
 }
 

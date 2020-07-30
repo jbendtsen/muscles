@@ -1,3 +1,4 @@
+#include <numeric>
 #include "../muscles.h"
 #include "../ui.h"
 #include "dialog.h"
@@ -68,7 +69,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 			scroll_w
 		};
 
-		ui->regions->pos = {
+		ui->reg_table->pos = {
 			ui->reg_lat_scroll->pos.x,
 			ui->reg_scroll->pos.y,
 			ui->reg_lat_scroll->pos.w,
@@ -76,7 +77,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		};
 
 		float n_heights = 40;
-		ui->reg_lat_scroll->maximum = ui->regions->font->render.text_height() * n_heights / view.scale;
+		ui->reg_lat_scroll->maximum = ui->reg_table->font->render.text_height() * n_heights / view.scale;
 	}
 
 	ui->hex_title->pos.x = data_x;
@@ -135,19 +136,75 @@ void regions_handler(UI_Element *elem, bool dbl_click) {
 	ui->hex_scroll->position = 0;
 }
 
+void print_hex(char *hex, char *out, u64 n, int n_digits) {
+	int shift = (n_digits-1) * 4;
+	char *p = out;
+	for (int i = 0; i < n_digits; i++) {
+		*p++ = hex[(n >> shift) & 0xf];
+		shift -= 4;
+	}
+	*p = 0;
+}
+
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Source*)b.markup;
-	if (ui->multiple_regions && !ui->regions->pos.contains(cursor)) {
-		int n_sources = ui->source->regions.size();
-		ui->regions->data.resize(n_sources);
+	if (ui->multiple_regions) {
+		int n_rows = ui->reg_table->data.row_count();
+		bool hovered = ui->reg_table->pos.contains(cursor);
+
+		if (!n_rows || (ui->source->region_refreshed && !hovered)) {
+			int n_sources = ui->source->regions.size();
+			if (n_sources != ui->region_list.size()) {
+				u64 sel_addr = 0;
+				int sel = ui->reg_table->sel_row;
+				if (sel >= 0)
+					sel_addr = ui->source->regions[ui->region_list[sel]].base;
+
+				ui->reg_table->data.resize(n_sources);
+				ui->region_list.resize(n_sources);
+				std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
+
+				if (sel >= 0) {
+					sel = -1;
+					for (int i = 0; i < n_sources; i++) {
+						if (ui->source->regions[i].base == sel_addr) {
+							sel = i;
+							break;
+						}
+					}
+					ui->reg_table->sel_row = sel;
+				}
+			}
+		}
+
+		ui->source->block_region_refresh = hovered;
+
+		// place a hex digit LUT on the stack
+		char hex[16];
+		memcpy(hex, "0123456789abcdef", 16);
+
+		auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[0];
+		auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[1];
+		auto& names = (std::vector<char*>&)ui->reg_table->data.columns[2];
 
 		int idx = 0;
-		for (auto& r : ui->source->regions) {
-			snprintf((char*)ui->regions->data.columns[0][idx], ui->regions->data.headers[0].count_per_cell, "%016llx", r.base);
-			snprintf((char*)ui->regions->data.columns[1][idx], ui->regions->data.headers[1].count_per_cell, "%08llx", r.size);
-			ui->regions->data.columns[2][idx] = r.name;
+		for (auto& r : ui->region_list) {
+			/*
+			if (it == ui->source->regions.end()) {
+				strcpy(addrs[idx], "???");
+				strcpy(sizes[idx], "???");
+				strcpy(names[idx], "???");
+			}
+			*/
+			auto& reg = ui->source->regions[r];
+			print_hex(hex, addrs[idx], reg.base, 16);
+			print_hex(hex, sizes[idx], reg.size, 8);
+			names[idx] = reg.name;
 			idx++;
 		}
+	}
+	else {
+		ui->hex->set_region(0, ui->hex->source->regions[0].size);
 	}
 }
 
@@ -208,14 +265,14 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_lat_scroll->breadth = 12;
 		b.ui.push_back(ui->reg_lat_scroll);
 
-		ui->regions = new Data_View();
-		ui->regions->action = regions_handler;
-		ui->regions->font = ws.make_font(9, ws.text_color);
-		ui->regions->default_color = ws.dark_color;
-		ui->regions->hl_color = ws.hl_color;
-		ui->regions->sel_color = ws.light_color;
-		ui->regions->vscroll = ui->reg_scroll;
-		ui->regions->hscroll = ui->reg_lat_scroll;
+		ui->reg_table = new Data_View();
+		ui->reg_table->action = regions_handler;
+		ui->reg_table->font = ws.make_font(9, ws.text_color);
+		ui->reg_table->default_color = ws.dark_color;
+		ui->reg_table->hl_color = ws.hl_color;
+		ui->reg_table->sel_color = ws.light_color;
+		ui->reg_table->vscroll = ui->reg_scroll;
+		ui->reg_table->hscroll = ui->reg_lat_scroll;
 
 		Column cols[] = {
 			{String, 20, 0.2, 10, "Address"},
@@ -223,8 +280,8 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 			{String, 0, 0.7, 0, "Name"}
 		};
 
-		ui->regions->data.init(cols, 3, 0);
-		b.ui.push_back(ui->regions);
+		ui->reg_table->data.init(cols, 3, 0);
+		b.ui.push_back(ui->reg_table);
 	}
 
 	ui->hex_title = new Label();

@@ -212,6 +212,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->type = TypeFile;
 	s->identifier = (void*)get_arena()->alloc_string((char*)path.c_str());
 	s->name = file->name;
+	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
 

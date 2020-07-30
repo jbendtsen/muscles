@@ -1,9 +1,10 @@
 #pragma once
 
+#include <string>
 #include <memory>
 #include <vector>
 #include <set>
-#include <string>
+#include <map>
 
 #define MIN_CHAR ' '
 #define MAX_CHAR '~'
@@ -325,6 +326,10 @@ struct Input {
 	}
 };
 
+#define REG_PM_EXEC   0
+#define REG_PM_WRITE  1
+#define REG_PM_READ   2
+
 struct Span {
 	u64 offset = 0;
 	int size = 0;
@@ -357,6 +362,12 @@ struct Source {
 	std::vector<Region> regions;
 	std::vector<Span> spans;
 
+	std::map<u64, int> region_index;
+	std::map<u64, char*> sections;
+
+	bool region_refreshed = false;
+	bool block_region_refresh = false;
+
 	int refresh_region_rate = 60;
 	int refresh_span_rate = 60;
 	int timer = 0;
@@ -378,3 +389,5 @@ void refresh_process_regions(Source& source, Arena& arena);
 
 void refresh_file_spans(Source& source, Arena& arena);
 void refresh_process_spans(Source& source, Arena& arena);
+
+void close_source(Source& source);

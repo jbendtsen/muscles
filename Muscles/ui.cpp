@@ -184,7 +184,7 @@ void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_h
 	}
 }
 
-void Scroll::set_maximum(float max, float span) {
+void Scroll::set_maximum(double max, double span) {
 	maximum = max;
 
 	show_thumb = span < max;
@@ -209,7 +209,7 @@ void Scroll::engage(Point& p) {
 	parent->ui_held = true;
 }
 
-void Scroll::scroll(float delta) {
+void Scroll::scroll(double delta) {
 	position = clamp(position + delta, 0, maximum - view_span);
 }
 
@@ -220,15 +220,15 @@ bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 	if (!input.lmouse)
 		held = false;
 
-	float old_pos = position;
+	double old_pos = position;
 	if (held) {
-		float dist = 0;
+		double dist = 0;
 		if (vertical)
 			dist = cursor.y - (pos.y + hold_region);
 		else
 			dist = cursor.x - (pos.x + hold_region);
 
-		float span = (1 - thumb_frac) * length;
+		double span = (1 - thumb_frac) * length;
 		position = dist * (maximum - view_span) / span;
 	}
 
@@ -721,7 +721,7 @@ void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
 }
 
-void Hex_View::set_region(u64 address, int size) {
+void Hex_View::set_region(u64 address, u64 size) {
 	region_address = address;
 	region_size = size;
 	alive = true;
