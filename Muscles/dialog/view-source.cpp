@@ -166,24 +166,27 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
-void regions_handler(UI_Element *elem, bool dbl_click) {
-	auto table = dynamic_cast<Data_View*>(elem);
-	table->sel_row = table->hl_row;
-
-	auto ui = (View_Source*)table->parent->markup;
-	if (table->sel_row < 0) {
+void update_regions_table(View_Source *ui) {
+	int sel = ui->reg_table->sel_row;
+	if (sel < 0) {
 		ui->reg_name->text = "";
 		return;
 	}
 
-	char *name = (char*)table->data.columns[2][table->sel_row];
+	char *name = (char*)ui->reg_table->data.columns[2][sel];
 	ui->reg_name->text = name ? name : "";
 
-	u64 address = strtoull((char*)table->data.columns[0][table->sel_row], nullptr, 16);
-	u64 size = strtoull((char*)table->data.columns[1][table->sel_row], nullptr, 16);
+	u64 address = strtoull((char*)ui->reg_table->data.columns[0][sel], nullptr, 16);
+	u64 size = strtoull((char*)ui->reg_table->data.columns[1][sel], nullptr, 16);
 	ui->hex->set_region(address, size);
 
 	ui->hex_scroll->position = 0;
+}
+
+void regions_handler(UI_Element *elem, bool dbl_click) {
+	auto table = dynamic_cast<Data_View*>(elem);
+	table->sel_row = table->hl_row;
+	update_regions_table((View_Source*)table->parent->markup);
 }
 
 inline void print_hex(char *hex, char *out, u64 n, int n_digits) {
@@ -250,6 +253,40 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 		names[idx] = reg.name;
 		idx++;
 	}
+}
+
+void goto_handler(Edit_Box *edit, Input& input) {
+	if (input.enter != 1 || !edit->line.size())
+		return;
+
+	u64 base = 0;
+	u64 address = strtoull(edit->line.c_str(), nullptr, 16);
+
+	auto ui = (View_Source*)edit->parent->markup;
+	if (ui->multiple_regions) {
+		int sel_row = -1;
+		for (auto& idx : ui->region_list) {
+			auto& reg = ui->source->regions[idx];
+			if (address >= reg.base && address < reg.base + reg.size) {
+				sel_row = idx;
+				base = reg.base;
+				break;
+			}
+		}
+
+		ui->reg_table->sel_row = sel_row;
+		update_regions_table(ui);
+
+		if (sel_row < 0)
+			return;
+	}
+
+	u64 offset = address - base;
+	offset -= offset % ui->hex->columns;
+	ui->hex_scroll->position = (double)offset;
+
+	edit->line = "";
+	edit->cursor = edit->offset = 0;
 }
 
 static void refresh_handler(Box& b, Point& cursor) {
@@ -387,6 +424,8 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->caret = ws.caret_color;
 	ui->goto_box->default_color = ws.dark_color;
 	ui->goto_box->font = ui->hex_title->font;
+	ui->goto_box->key_action = goto_handler;
+	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
 	b.ui.push_back(ui->goto_box);
 
 	b.markup = ui;
