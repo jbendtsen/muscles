@@ -21,6 +21,17 @@ const char *get_root_folder() {
 	return "C:\\";
 }
 
+bool is_folder(const char *name) {
+	WIN32_FIND_DATAA info = {0};
+	HANDLE h = FindFirstFileA(name, &info);
+	if (h == INVALID_HANDLE_VALUE)
+		return false;
+
+	bool folder = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	FindClose(h);
+	return folder;
+}
+
 Texture load_icon(const char *path);
 
 void get_process_id_list(std::vector<int>& list) {

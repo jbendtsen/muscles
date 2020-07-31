@@ -25,7 +25,7 @@ struct Source_Menu {
 
 	Button *up = nullptr;
 	Divider *div = nullptr;
-	Label *path = nullptr;
+	Edit_Box *path = nullptr;
 
 	RGBA folder_dark = {0.65, 0.64, 0.15, 1.0};
 	RGBA folder_light = {0.88, 0.84, 0.26, 1.0};

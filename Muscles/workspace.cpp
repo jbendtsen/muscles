@@ -375,6 +375,8 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 }
 
 void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
+	if (input.action)
+		active_edit = nullptr;
 
 	if (hovered && input.action && current_dd && current_dd->action) {
 		current_dd->action(current_dd, input.double_click);

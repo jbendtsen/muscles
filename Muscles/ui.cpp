@@ -167,6 +167,8 @@ bool Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 		float cur = vertical ? cursor.x : cursor.y;
 		position = clamp(cur - hold_pos, minimum, maximum);
 	}
+
+	return false;
 }
 
 void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -561,6 +563,8 @@ void Edit_Box::clear() {
 
 void Edit_Box::key_handler(Camera& view, Input& input) {
 	update = false;
+	if (this != parent->active_edit)
+		return;
 
 	int delta = 0;
 	if (input.strike(input.back)) {
@@ -569,6 +573,8 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 	}
 	else if (input.strike(input.del))
 		update = remove(false);
+	else if (input.enter)
+		update = true;
 	else if (input.strike(input.left)) {
 		move_cursor(-1);
 		delta = -1;
@@ -584,8 +590,8 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		update = true;
 	}
 
-	if (update && table)
-		table->update_filter(line);
+	if (update && key_action)
+		key_action(this, input);
 
 	if (delta) {
 		int x = 0;
@@ -610,11 +616,20 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	Rect bar = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(bar, default_color);
 
-	const char *str = get_str();
-	int cur_x;
-	font->render.text_width(str, cursor, &cur_x);
+	const char *str = nullptr;
+	Font *fnt = font;
 
-	float height = font->render.text_height();
+	if (ph_font && line.size() == 0) {
+		fnt = ph_font;
+		str = placeholder.c_str();
+	}
+	else
+		str = get_str();
+
+	int cur_x;
+	fnt->render.text_width(str, cursor, &cur_x);
+
+	float height = fnt->render.text_height();
 	float gap_x = text_off_x * height;
 	float gap_y = text_off_y * height;
 
@@ -624,7 +639,10 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 	clip.x_lower = rect.x + text_x;
 	clip.x_upper = clip.x_lower + window_w;
-	font->render.draw_text(str, rect.x + text_x - offset, rect.y + text_y, clip);
+	fnt->render.draw_text(str, rect.x + text_x - offset, rect.y + text_y, clip);
+
+	if (this != parent->active_edit)
+		return;
 
 	float caret_y = (float)caret_off_y * height;
 	float caret_w = (float)caret_width * height;

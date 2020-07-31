@@ -42,17 +42,16 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 	}
 
 	if (ui->path && ui->div) {
-		float h = ui->path->font->render.text_height();
+		float path_h = ui->path->font->render.text_height() * 1.4f / view.scale;
 
-		float hack = 4;
-		ui->div->pos.y = b.box.h - b.border - h / view.scale - hack;
+		ui->div->pos.y = b.box.h - 3*b.border - path_h;
 		ui->div->pos.x = 5;
 		ui->div->pos.w = b.box.w - 2 * ui->div->pos.x;
 
-		ui->path->pos.x = b.border * 2;
-		ui->path->pos.y = ui->div->pos.y + hack;
-		ui->path->pos.w = ui->div->pos.w;
-		ui->path->update_position(view);
+		ui->path->pos.x = 2*b.border;
+		ui->path->pos.y = ui->div->pos.y + 2*b.border;
+		ui->path->pos.w = b.box.w - 4*b.border;
+		ui->path->pos.h = path_h;
 	}
 
 	if (ui->table) {
@@ -116,7 +115,8 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->search->caret = ws.caret_color;
 	ui->search->default_color = ws.dark_color;
 	ui->search->font = ws.make_font(9, ws.text_color);
-	ui->search->table = &ui->table->data;
+	ui->search->key_action = [](Edit_Box* edit, Input& input) {((Source_Menu*)edit->parent->markup)->table->data.update_filter(edit->line);};
+	ui->search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
 
 	b.ui.push_back(ui->scroll);
 	b.ui.push_back(ui->table);
@@ -182,8 +182,8 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto file = (File_Entry*)table->data.columns[1][idx];
 
 	if (file->flags & 8) {
-		ui->path->text += file->name;
-		ui->path->text += get_folder_separator();
+		ui->path->placeholder += file->name;
+		ui->path->placeholder += get_folder_separator();
 
 		Point p = {0, 0};
 		refresh_file_menu(*table->parent, p);
@@ -197,7 +197,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 
 	elem->parent->parent->delete_box(elem->parent);
 
-	std::string path = ui->path->text;
+	std::string path = ui->path->placeholder;
 	path += get_folder_separator();
 	path += file->name;
 
@@ -245,7 +245,7 @@ void refresh_file_menu(Box& b, Point& cursor) {
 		return;
 
 	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
-	enumerate_files((char*)ui->path->text.c_str(), files, *get_arena());
+	enumerate_files((char*)ui->path->placeholder.c_str(), files, *get_arena());
 
 	if (files.size() > 0) {
 		ui->table->data.columns[0].resize(files.size(), nullptr);
@@ -261,14 +261,14 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 	auto ui = (Source_Menu*)elem->parent->markup;
 
 	char sep = get_folder_separator()[0];
-	int last = ui->path->text.size() - 1;
+	int last = ui->path->placeholder.size() - 1;
 
-	while (last >= 0 && ui->path->text[last] == sep)
+	while (last >= 0 && ui->path->placeholder[last] == sep)
 		last--;
 
-	size_t pos = last > 0 ? ui->path->text.find_last_of(sep, last) : std::string::npos;
+	size_t pos = last > 0 ? ui->path->placeholder.find_last_of(sep, last) : std::string::npos;
 	if (pos != std::string::npos) {
-		ui->path->text.erase(pos + 1);
+		ui->path->placeholder.erase(pos + 1);
 		ui->scroll->position = 0;
 		ui->search->clear();
 		ui->table->data.clear_filter();
@@ -276,6 +276,33 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 
 	Point p = {0};
 	refresh_file_menu(*elem->parent, p);
+}
+
+void file_path_handler(Edit_Box *edit, Input& input) {
+	if (input.enter != 1 || !edit->line.size())
+		return;
+
+	std::string str = edit->line;
+	char sep = get_folder_separator()[0];
+	if (str.back() == sep)
+		str.pop_back();
+
+	if (!is_folder(str.c_str()))
+		return;
+
+	str += sep;
+	edit->placeholder = str;
+	edit->line = "";
+	edit->offset = edit->cursor = 0;
+	edit->parent->active_edit = nullptr;
+
+	auto ui = (Source_Menu*)edit->parent->markup;
+	ui->scroll->position = 0;
+	ui->search->clear();
+	ui->table->data.clear_filter();
+
+	Point p = {0};
+	refresh_file_menu(*edit->parent, p);
 }
 
 void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -335,7 +362,8 @@ void make_file_menu(Workspace& ws, Box& b) {
 	ui->up->action = file_up_handler;
 	ui->up->icon_right = true;
 
-	Font *up_font = ws.make_font(10, ws.text_color);
+	float up_font_size = 10;
+	Font *up_font = ws.make_font(up_font_size, ws.text_color);
 
 	h = up_font->render.text_height();
 	ui->up->icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
@@ -353,9 +381,17 @@ void make_file_menu(Workspace& ws, Box& b) {
 	ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
 	ui->div->pos.h = 1.5;
 
-	ui->path = new Label();
+	ui->path = new Edit_Box();
 	ui->path->font = up_font;
-	ui->path->text = get_root_folder();
+	ui->path->default_color = ws.dark_color;
+	ui->path->caret = ws.caret_color;
+	ui->path->placeholder = get_root_folder();
+	ui->path->key_action = file_path_handler;
+	ui->path->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
+
+	RGBA ph_color = ws.text_color;
+	ph_color.a = 0.75;
+	ui->path->ph_font = ws.make_font(up_font_size, ph_color);
 
 	b.ui.push_back(ui->up);
 	b.ui.push_back(ui->div);

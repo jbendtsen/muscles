@@ -205,7 +205,7 @@ struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(TypeEditBox) {}
 
 	bool update = false;
-	Table *table = nullptr;
+	void (*key_action)(Edit_Box*, Input&) = nullptr;
 
 	int cursor = 0;
 	float offset = 0;
@@ -219,7 +219,10 @@ struct Edit_Box : UI_Element {
 	float caret_off_y = 0.2;
 	float caret_width = 0.08;
 
+	Font *ph_font = nullptr;
+
 	std::string line;
+	std::string placeholder;
 
 	Render_Clip clip = {
 		CLIP_LEFT | CLIP_RIGHT,
@@ -309,6 +312,7 @@ struct Box {
 
 	Workspace *parent = nullptr;
 	Drop_Down *current_dd = nullptr;
+	Edit_Box *active_edit = nullptr;
 	void *markup = nullptr;
 
 	void (*update_handler)(Box&, Camera&, Input&, Point&, bool, bool) = nullptr;

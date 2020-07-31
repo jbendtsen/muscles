@@ -313,6 +313,7 @@ struct Input {
 	int del = 0;
 	int back = 0;
 	int esc = 0;
+	int enter = 0;
 
 	int left = 0;
 	int down = 0;
@@ -382,6 +383,8 @@ int get_process_names(std::vector<int>& list, std::vector<Texture>& icons, std::
 
 const char *get_folder_separator();
 const char *get_root_folder();
+bool is_folder(const char *name);
+
 void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena);
 
 void refresh_file_region(Source& source, Arena& arena);
