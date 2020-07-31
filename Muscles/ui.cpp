@@ -313,7 +313,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
-	int n_rows = data.row_count();
+	int n_rows = data.visible >= 0 ? data.visible : data.row_count();
 	int n_cols = data.column_count();
 	float total_width = table.w - font_units * ((n_cols - 1) * column_spacing);
 

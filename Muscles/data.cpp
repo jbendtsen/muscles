@@ -99,6 +99,11 @@ void Table::clear_data() {
 		columns[i].clear();
 }
 
+void lowify(char *str) {
+	for (int i = 0; i < str[i]; i++)
+		str[i] = str[i] >= 'a' && str[i] <= 'z' ? str[i] - 0x20 : str[i];
+}
+
 void Table::update_filter(std::string& filter) {
 	list.clear();
 	if (!filter.size()) {
@@ -106,7 +111,12 @@ void Table::update_filter(std::string& filter) {
 		return;
 	}
 
-	auto str = filter.c_str();
+	char sub[100] = {0};
+	strncpy(sub, filter.c_str(), 99);
+	lowify(sub);
+
+	char cell[200];
+
 	int n_rows = row_count();
 	int n_cols = column_count();
 
@@ -116,7 +126,13 @@ void Table::update_filter(std::string& filter) {
 		if (headers[i].type == String || headers[i].type == File) {
 			for (int j = 0; j < n_rows; j++) {
 				char *name = type == File ? ((File_Entry*)columns[i][j])->name : (char*)columns[i][j];
-				if (strstr(name, str)) {
+				if (!name)
+					continue;
+
+				strncpy(cell, name, 199);
+				lowify(cell);
+
+				if (strstr(cell, sub)) {
 					auto res = list.insert(j);
 					visible += res.second ? 1 : 0;
 				}
