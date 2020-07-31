@@ -44,7 +44,9 @@ struct View_Source {
 	Label *hex_title = nullptr;
 	Hex_View *hex = nullptr;
 	Scroll *hex_scroll = nullptr;
-	Label *hex_info = nullptr;
+	Label *reg_name = nullptr;
+	Label *size_label = nullptr;
+	Edit_Box *goto_box = nullptr;
 
 	Source *source = nullptr;
 	std::vector<u64> region_list;

@@ -284,6 +284,7 @@ struct Hex_View : UI_Element {
 	Scroll hscroll = {};
 
 	void set_region(u64 address, u64 size);
+	void update(float scale);
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
@@ -366,6 +367,7 @@ struct Workspace {
 	RGBA scroll_color = {0.4, 0.45, 0.55, 1.0};
 	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
+	RGBA caret_color = {0.9, 0.9, 0.9, 1.0};
 
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;

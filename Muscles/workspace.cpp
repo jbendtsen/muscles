@@ -238,6 +238,8 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		new_box = nullptr;
 	}
 
+	refresh_sources();
+
 	sdl_clear();
 
 	for (int i = 0; i < boxes.size(); i++) {

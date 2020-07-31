@@ -727,16 +727,9 @@ void Hex_View::set_region(u64 address, u64 size) {
 	alive = true;
 }
 
-void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect box = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(box, default_color);
-
-	if (!alive)
-		return;
-
-	int row_digits = columns * 2;
-	float row_height = font->render.text_height();
-	rows = pos.h * view.scale / row_height;
+void Hex_View::update(float scale) {
+	float font_height = font->render.text_height();
+	rows = pos.h * scale / font_height;
 
 	if (vscroll) {
 		offset = (int)vscroll->position;
@@ -744,15 +737,31 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		vscroll->set_maximum(region_size, rows * columns);
 	}
 
-	span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
-	auto& span = source->spans[span_idx];
+	if (alive)
+		span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
+}
+
+void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect box = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(box, default_color);
+
+	if (!alive || span_idx < 0)
+		return;
 
 	Rect_Fixed src, dst;
 
+	float font_height = font->render.text_height();
 	float x_start = 4 * view.scale;
 	float x = x_start;
-	float y = row_height;
+	float y = font_height;
+	float padding = font_height / 4;
 
+	float row_height = rows > 0 ? (box.h - padding) / rows : font_height;
+
+	int row_digits = columns * 2;
+	auto& span = source->spans[span_idx];
+
+	bool clip = false;
 	for (int i = 0; i < span.size * 2; i++) {
 		Glyph *gl = nullptr;
 		int digit = 0;
@@ -768,27 +777,37 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		else
 			gl = font->render.glyph_for('?');
 
-		src.x = gl->atlas_x;
-		src.y = gl->atlas_y;
-		src.w = gl->img_w;
-		src.h = gl->img_h;
+		if (!clip) {
+			src.x = gl->atlas_x;
+			src.y = gl->atlas_y;
+			src.w = gl->img_w;
+			src.h = gl->img_h;
 
-		dst.x = box.x + x + gl->left;
-		dst.y = box.y + y - gl->top;
-		dst.w = src.w;
-		dst.h = src.h;
+			float clip_x = x + padding + gl->left;
+			if (clip_x + src.w > box.w)
+				src.w = box.w - clip_x;
 
-		sdl_apply_texture(font->render.tex, &dst, &src);
+			dst.x = box.x + x + gl->left;
+			dst.y = box.y + y - gl->top;
+			dst.w = src.w;
+			dst.h = src.h;
+
+			sdl_apply_texture(font->render.tex, &dst, &src);
+		}
 
 		if (i % row_digits == row_digits-1) {
 			x = x_start;
 			y += row_height;
+			clip = false;
 		}
 		else {
 			x += gl->box_w;
 			if (i % 2 == 1)
-				x += row_height / 4;
+				x += padding;
 		}
+
+		if (x >= box.w)
+			clip = true;
 	}
 }
 

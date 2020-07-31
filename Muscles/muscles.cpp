@@ -71,7 +71,6 @@ int run() {
 			camera.y -= (float)(input.mouse_y - input.prev_y) / camera.scale;
 		}
 
-		ctx.refresh_sources();
 		ctx.update(camera, input, cursor);
 	}
 

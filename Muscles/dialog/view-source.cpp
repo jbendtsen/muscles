@@ -15,30 +15,52 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		ui->cross->pos.h = b.cross_size;
 	}
 
-	float hack = 6;
+	float w = ui->title->font->render.text_width(ui->title->text.c_str()) / view.scale;
+	float max_title_w = b.box.w - 5 * b.cross_size;
+	w = w < max_title_w ? w : max_title_w;
 
-	auto& render = ui->title->font->render;
-	float w = render.text_width(ui->title->text.c_str()) / view.scale;
 	ui->title->pos = {
 		(b.box.w - w) / 2,
-		hack,
-		w * 1.1f,
-		render.text_height() * 1.2f / view.scale
+		2,
+		w,
+		ui->title->font->render.text_height() * 1.1f / view.scale
 	};
 	ui->title->update_position(view);
 
-	float scroll_w = 12;
-	float data_x = b.border;
-	float data_y = ui->title->pos.y + ui->title->pos.h + hack;
+	float scroll_w = 14;
 
-	if (ui->multiple_regions) {
+	float data_x = b.border;
+	float data_y = ui->title->pos.y + ui->title->pos.h + 8;
+
+	float goto_w = 100;
+	float goto_x = data_x;
+	float goto_h = ui->goto_box->font->render.text_height() * 1.4f / view.scale;
+	float goto_y = b.box.h - b.border - goto_h;
+
+	if (!ui->multiple_regions) {
+		ui->goto_box->pos = {
+			goto_x,
+			goto_y,
+			goto_w,
+			goto_h
+		};
+	}
+	else {
+		goto_x = ui->div->position - goto_w / 2;
+		ui->goto_box->pos = {
+			goto_x,
+			goto_y,
+			goto_w,
+			goto_h
+		};
+
 		float y = data_y;
 
 		ui->div->pos = {
 			ui->div->position,
 			y,
 			ui->div->breadth,
-			b.box.h - y - b.border
+			goto_y - y - b.border
 		};
 		ui->div->maximum = b.box.w - ui->div->minimum;
 
@@ -59,12 +81,12 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 			ui->reg_title->pos.x + ui->reg_title->pos.w - scroll_w,
 			y,
 			scroll_w,
-			b.box.h - y - scroll_w - 3*b.border
+			goto_y - y - scroll_w - 3*b.border
 		};
 
 		ui->reg_lat_scroll->pos = {
 			b.border,
-			b.box.h - scroll_w - 2*b.border,
+			goto_y - scroll_w - 2*b.border,
 			ui->reg_scroll->pos.x - 2*b.border,
 			scroll_w
 		};
@@ -80,24 +102,51 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		ui->reg_lat_scroll->maximum = ui->reg_table->font->render.text_height() * n_heights / view.scale;
 	}
 
-	ui->hex_title->pos.x = data_x;
-	ui->hex_title->pos.y = data_y;
-	ui->hex_title->pos.w = b.box.w - ui->hex_title->pos.x - b.border;
-	ui->hex_title->pos.h = ui->hex_title->font->render.text_height() * 1.1f / view.scale;
+	ui->hex_title->pos = {
+		data_x,
+		data_y,
+		b.box.w - data_x - b.border,
+		ui->hex_title->font->render.text_height() * 1.1f / view.scale
+	};
 	ui->hex_title->update_position(view);
 
 	float data_w = ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border;
 
-	ui->hex_info->pos = {
-		data_x,
-		b.box.h - b.border - ui->hex_title->pos.h,
-		data_w,
-		ui->hex_title->pos.h
+	float size_w = ui->size_label->font->render.text_width(ui->size_label->text.c_str()) * 1.1f / view.scale;
+	float size_h = ui->size_label->font->render.text_height() * 1.1f / view.scale;
+
+	float size_x, size_y;
+	if (ui->multiple_regions) {
+		size_x = data_x + data_w - size_w;
+		size_y = goto_y - size_h - b.border;
+	}
+	else {
+		size_x = goto_x + goto_w + b.border;
+		size_y = b.box.h - goto_h + (goto_h - size_h) - b.border;
+	}
+
+	ui->size_label->pos = {
+		size_x,
+		size_y,
+		size_w,
+		size_h
 	};
-	ui->hex_info->update_position(view);
+	ui->size_label->update_position(view);
+
+	if (ui->multiple_regions) {
+		ui->reg_name->pos = {
+			data_x,
+			goto_y - b.border - ui->hex_title->pos.h,
+			data_w - size_w,
+			ui->hex_title->pos.h
+		};
+		ui->reg_name->update_position(view);
+	}
 
 	data_y += ui->hex_title->pos.h;
-	float data_h = ui->hex_info->pos.y - data_y - b.border;
+
+	float data_h = ui->multiple_regions ? size_y : goto_y;
+	data_h -= data_y + b.border;
 
 	ui->hex_scroll->pos = {
 		b.box.w - b.border - scroll_w,
@@ -112,10 +161,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		data_w,
 		data_h
 	};
-
-	char info[32];
-	sprintf(info, "0x%08x/0x%08x", ui->hex->offset, ui->hex->region_size);
-	ui->hex_info->text = info;
+	ui->hex->update(view.scale);
 
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
@@ -124,19 +170,23 @@ void regions_handler(UI_Element *elem, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 	table->sel_row = table->hl_row;
 
-	if (table->sel_row < 0)
-		return;
-
 	auto ui = (View_Source*)table->parent->markup;
+	if (table->sel_row < 0) {
+		ui->reg_name->text = "";
+		return;
+	}
+
+	char *name = (char*)table->data.columns[2][table->sel_row];
+	ui->reg_name->text = name ? name : "";
 
 	u64 address = strtoull((char*)table->data.columns[0][table->sel_row], nullptr, 16);
-	int size = strtol((char*)table->data.columns[1][table->sel_row], nullptr, 16);
+	u64 size = strtoull((char*)table->data.columns[1][table->sel_row], nullptr, 16);
 	ui->hex->set_region(address, size);
 
 	ui->hex_scroll->position = 0;
 }
 
-void print_hex(char *hex, char *out, u64 n, int n_digits) {
+inline void print_hex(char *hex, char *out, u64 n, int n_digits) {
 	int shift = (n_digits-1) * 4;
 	char *p = out;
 	for (int i = 0; i < n_digits; i++) {
@@ -146,65 +196,86 @@ void print_hex(char *hex, char *out, u64 n, int n_digits) {
 	*p = 0;
 }
 
+void refresh_region_list(View_Source *ui, Point& cursor) {
+	int n_rows = ui->reg_table->data.row_count();
+	bool hovered = ui->reg_table->pos.contains(cursor);
+
+	if (!n_rows || (ui->source->region_refreshed && !hovered)) {
+		int n_sources = ui->source->regions.size();
+		if (n_sources != ui->region_list.size()) {
+			u64 sel_addr = 0;
+			int sel = ui->reg_table->sel_row;
+			if (sel >= 0)
+				sel_addr = ui->source->regions[ui->region_list[sel]].base;
+
+			ui->reg_table->data.resize(n_sources);
+			ui->region_list.resize(n_sources);
+			std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
+
+			if (sel >= 0) {
+				sel = -1;
+				for (int i = 0; i < n_sources; i++) {
+					if (ui->source->regions[i].base == sel_addr) {
+						sel = i;
+						break;
+					}
+				}
+				ui->reg_table->sel_row = sel;
+			}
+		}
+	}
+
+	ui->source->block_region_refresh = hovered;
+
+	// place a hex digit LUT on the stack
+	char hex[16];
+	memcpy(hex, "0123456789abcdef", 16);
+
+	auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[0];
+	auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[1];
+	auto& names = (std::vector<char*>&)ui->reg_table->data.columns[2];
+
+	int idx = 0;
+	for (auto& r : ui->region_list) {
+		/*
+		if (it == ui->source->regions.end()) {
+			strcpy(addrs[idx], "???");
+			strcpy(sizes[idx], "???");
+			strcpy(names[idx], "???");
+		}
+		*/
+		auto& reg = ui->source->regions[r];
+		print_hex(hex, addrs[idx], reg.base, 16);
+		print_hex(hex, sizes[idx], reg.size, 8);
+		names[idx] = reg.name;
+		idx++;
+	}
+}
+
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Source*)b.markup;
 	if (ui->multiple_regions) {
-		int n_rows = ui->reg_table->data.row_count();
-		bool hovered = ui->reg_table->pos.contains(cursor);
-
-		if (!n_rows || (ui->source->region_refreshed && !hovered)) {
-			int n_sources = ui->source->regions.size();
-			if (n_sources != ui->region_list.size()) {
-				u64 sel_addr = 0;
-				int sel = ui->reg_table->sel_row;
-				if (sel >= 0)
-					sel_addr = ui->source->regions[ui->region_list[sel]].base;
-
-				ui->reg_table->data.resize(n_sources);
-				ui->region_list.resize(n_sources);
-				std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
-
-				if (sel >= 0) {
-					sel = -1;
-					for (int i = 0; i < n_sources; i++) {
-						if (ui->source->regions[i].base == sel_addr) {
-							sel = i;
-							break;
-						}
-					}
-					ui->reg_table->sel_row = sel;
-				}
-			}
-		}
-
-		ui->source->block_region_refresh = hovered;
-
-		// place a hex digit LUT on the stack
-		char hex[16];
-		memcpy(hex, "0123456789abcdef", 16);
-
-		auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[0];
-		auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[1];
-		auto& names = (std::vector<char*>&)ui->reg_table->data.columns[2];
-
-		int idx = 0;
-		for (auto& r : ui->region_list) {
-			/*
-			if (it == ui->source->regions.end()) {
-				strcpy(addrs[idx], "???");
-				strcpy(sizes[idx], "???");
-				strcpy(names[idx], "???");
-			}
-			*/
-			auto& reg = ui->source->regions[r];
-			print_hex(hex, addrs[idx], reg.base, 16);
-			print_hex(hex, sizes[idx], reg.size, 8);
-			names[idx] = reg.name;
-			idx++;
-		}
+		refresh_region_list(ui, cursor);
 	}
 	else {
 		ui->hex->set_region(0, ui->hex->source->regions[0].size);
+	}
+
+	u64 n = ui->hex->region_size;
+	if (n > 0) {
+		int n_digits = 0;
+		while (n) {
+			n >>= 4;
+			n_digits++;
+		}
+
+		char buf[40];
+		if (ui->multiple_regions)
+			snprintf(buf, 40, "0x%0*llx/0x%0*llx", n_digits, (u64)ui->hex->offset, n_digits, ui->hex->region_size);
+		else
+			snprintf(buf, 40, "/ 0x%0*llx", n_digits, ui->hex->region_size);
+
+		ui->size_label->text = buf;
 	}
 }
 
@@ -229,6 +300,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->title->text = "View Source - ";
 	ui->title->text += s->name;
 	ui->title->font = ws.default_font;
+	ui->title->padding = 0;
 	b.ui.push_back(ui->title);
 
 	ui->multiple_regions = s->regions.size() > 1;
@@ -282,12 +354,20 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 
 		ui->reg_table->data.init(cols, 3, 0);
 		b.ui.push_back(ui->reg_table);
+
+		ui->reg_name = new Label();
+		ui->reg_name->font = ui->reg_title->font;
+		b.ui.push_back(ui->reg_name);
 	}
 
 	ui->hex_title = new Label();
 	ui->hex_title->text = "Data";
 	ui->hex_title->font = ws.make_font(10, ws.text_color);
 	b.ui.push_back(ui->hex_title);
+
+	ui->size_label = new Label();
+	ui->size_label->font = ui->hex_title->font;
+	b.ui.push_back(ui->size_label);
 
 	ui->hex_scroll = new Scroll();
 	ui->hex_scroll->back = ws.scroll_back;
@@ -303,9 +383,11 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->hex->vscroll = ui->hex_scroll;
 	b.ui.push_back(ui->hex);
 
-	ui->hex_info = new Label();
-	ui->hex_info->font = ui->hex_title->font;
-	b.ui.push_back(ui->hex_info);
+	ui->goto_box = new Edit_Box();
+	ui->goto_box->caret = ws.caret_color;
+	ui->goto_box->default_color = ws.dark_color;
+	ui->goto_box->font = ui->hex_title->font;
+	b.ui.push_back(ui->goto_box);
 
 	b.markup = ui;
 	b.update_handler = update_view_source;

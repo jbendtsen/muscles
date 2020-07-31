@@ -113,7 +113,7 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->table->vscroll = ui->scroll;
 
 	ui->search = new Edit_Box();
-	ui->search->caret = {0.9, 0.9, 0.9, 1.0};
+	ui->search->caret = ws.caret_color;
 	ui->search->default_color = ws.dark_color;
 	ui->search->font = ws.make_font(9, ws.text_color);
 	ui->search->table = &ui->table->data;
