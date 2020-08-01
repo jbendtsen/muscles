@@ -209,9 +209,9 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->table->sel_color = ws.light_color;
 
 	Column sources_cols[] = {
-		{Tex, 0, 0.1, 1.2, ""},
-		{String, 0, 0.2, 3, "PID"},
-		{String, 0, 0.7, 0, "Name"},
+		{Tex, 0, 0.1, 0, 1.2, ""},
+		{String, 0, 0.2, 0, 3, "PID"},
+		{String, 0, 0.7, 0, 0, "Name"},
 	};
 	ui->table->data.init(sources_cols, 3, 0);
 
@@ -299,7 +299,7 @@ void make_opening_menu(Workspace& ws, Box& b) {
 	table->hl_color = ws.hl_color;
 	table->default_color = ws.back_color;
 
-	Column menu_column = { String, 0, 1, 0, "" };
+	Column menu_column = { String, 0, 1, 0, 0, "" };
 	table->data.init(&menu_column, 1, 2);
 	table->data.columns[0][0] = (void*)"New";
 	table->data.columns[0][1] = (void*)"Open Workspace";

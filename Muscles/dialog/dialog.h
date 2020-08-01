@@ -50,6 +50,8 @@ struct View_Source {
 
 	Source *source = nullptr;
 	std::vector<u64> region_list;
+	u64 selected_region = 0;
+	int goto_digits = 2;
 	bool multiple_regions = false;
 };
 

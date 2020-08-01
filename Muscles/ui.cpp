@@ -66,8 +66,8 @@ void Button::update_size(float scale) {
 	height = 1.2f * font_unit;
 }
 
-bool Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	return pos.contains(cursor);
+void Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	held = input.lmouse && pos.contains(cursor);
 }
 
 void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -83,10 +83,10 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	float font_height = theme->font->render.text_height();
 
 	RGBA *color = &theme->back;
-	if (elem_hovered)
-		color = &theme->hover;
-	if (parent && parent->parent->held_element == this)
+	if (held)
 		color = &theme->held;
+	else if (elem_hovered)
+		color = &theme->hover;
 
 	sdl_draw_rect(r, *color);
 
@@ -132,9 +132,9 @@ void Divider::make_icon(float scale) {
 	icon = was_hl ? icon_hl : icon_default;
 }
 
-bool Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (!moveable)
-		return false;
+		return;
 
 	Rect box = pos;
 	if (vertical) {
@@ -148,13 +148,13 @@ bool Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 
 	if (!held && !box.contains(cursor)) {
 		icon = icon_default;
-		return false;
+		return;
 	}
 	icon = icon_hl;
 
 	if (!input.lmouse) {
 		held = false;
-		return false;
+		return;
 	}
 
 	if (input.lclick) {
@@ -167,8 +167,6 @@ bool Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 		float cur = vertical ? cursor.x : cursor.y;
 		position = clamp(cur - hold_pos, minimum, maximum);
 	}
-
-	return false;
 }
 
 void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -215,7 +213,7 @@ void Scroll::scroll(double delta) {
 	position = clamp(position + delta, 0, maximum - view_span);
 }
 
-bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (input.lclick && pos.contains(cursor))
 		engage(cursor);
 
@@ -236,7 +234,6 @@ bool Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 
 	// apply bounds-checking
 	scroll(0);
-	return false;
 }
 
 void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -337,11 +334,21 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	return false;
 }
 
-float Data_View::column_width(float total_width, float font_height, float scale, int idx) {
-	float w = data.headers[idx].width * total_width * scale;
+float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
+	float w = data.headers[idx].width;
+	if (w == 0)
+		return total_width * scale - min_width;
+
+	w *= total_width * scale;
+
 	if (data.headers[idx].max_size > 0) {
 		float max = data.headers[idx].max_size * font_height;
 		w = w < max ? w : max;
+	}
+
+	if (data.headers[idx].min_size > 0) {
+		float min = data.headers[idx].min_size * font_height;
+		w = w > min ? w : min;
 	}
 
 	return w;
@@ -396,15 +403,21 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	}
 
 	float scroll_x = 0;
+	float scroll_total = 0;
 	float table_w = pos.w;
+
 	if (hscroll) {
-		scroll_x = hscroll->position;
-		hscroll->set_maximum(hscroll->maximum, pos.w);
+		for (int i = 0; i < n_cols; i++)
+			scroll_total += data.headers[i].min_size;
+		scroll_total *= font_height;
+
+		hscroll->set_maximum(scroll_total, pos.w);
 		table_w = hscroll->maximum;
+		scroll_x = hscroll->position;
 	}
 	scroll_x *= view.scale;
 
-	float total_width = table_w - font_units * ((n_cols - 1) * column_spacing);
+	float total_width = pos.w - font_units * ((n_cols - 1) * column_spacing);
 
 	Rect back = make_ui_box(rect, table, view.scale);
 
@@ -415,7 +428,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		for (int i = 0; i < n_cols; i++) {
 			font->render.draw_text_simple(data.headers[i].name, x, y);
 
-			float w = column_width(total_width, font_height, view.scale, i);
+			float w = column_width(total_width, scroll_total, font_height, view.scale, i);
 			x += w + column_spacing * font_height;
 		}
 	}
@@ -444,6 +457,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float pad = padding * view.scale;
 	float x = back.x + pad - scroll_x;
 	float y = back.y;
+	float x_max = back.x + back.w - pad;
 	float y_max = y + table.h * view.scale;
 
 	float line_off = font->line_offset * font_height;
@@ -454,13 +468,13 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	Rect_Fixed src = {0};
 
 	clip.x_lower = x + scroll_x;
-	clip.x_upper = back.x + back.w - pad;
 	clip.y_upper = y_max;
 
 	float table_off_y = y;
 
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
-		float w = column_width(total_width, font_height, view.scale, i);
+		float w = column_width(total_width, scroll_total, font_height, view.scale, i);
+		clip.x_upper = x+w < x_max ? x+w : x_max;
 
 		Type type = data.headers[i].type;
 
@@ -511,7 +525,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	}
 }
 
-bool Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (hovered) {
 		if (consume_box_scroll || pos.contains(cursor)) {
 			Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
@@ -521,8 +535,6 @@ bool Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 				scroll->scroll(1);
 		}
 	}
-
-	return false;
 }
 
 void Data_View::deselect() {
@@ -573,7 +585,11 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 	}
 	else if (input.strike(input.del))
 		update = remove(false);
-	else if (input.enter)
+	else if (input.strike(input.esc)) {
+		clear();
+		update = true;
+	}
+	else if (input.strike(input.enter))
 		update = true;
 	else if (input.strike(input.left)) {
 		move_cursor(-1);
@@ -657,13 +673,11 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	sdl_draw_rect(r, caret);
 }
 
-bool Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
-	if (pos.contains(inside)) {
+void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
+	if (hovered && pos.contains(inside)) {
 		if (input.lclick || parent->current_dd)
 			parent->set_dropdown(this);
 	}
-
-	return false;
 }
 
 bool Drop_Down::highlight(Camera& view, Point& inside) {
@@ -829,7 +843,7 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	}
 }
 
-bool Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (vscroll && hovered && pos.contains(cursor)) {
 		int delta = columns;
 		if (input.lshift || input.rshift)
@@ -840,6 +854,4 @@ bool Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		if (input.scroll_y < 0)
 			vscroll->scroll(delta);
 	}
-
-	return false;
 }

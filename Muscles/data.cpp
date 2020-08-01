@@ -99,7 +99,7 @@ void Table::clear_data() {
 		columns[i].clear();
 }
 
-void lowify(char *str) {
+inline void lowify(char *str) {
 	for (int i = 0; i < str[i]; i++)
 		str[i] = str[i] >= 'a' && str[i] <= 'z' ? str[i] - 0x20 : str[i];
 }

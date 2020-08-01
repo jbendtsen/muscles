@@ -193,7 +193,7 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 HANDLE open_file(LPCSTR name) {
 	return CreateFileA(
 		name,
-		GENERIC_READ | GENERIC_WRITE,
+		GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
 		OPEN_EXISTING,

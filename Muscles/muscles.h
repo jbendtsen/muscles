@@ -121,6 +121,7 @@ struct Column {
 	Type type;
 	int count_per_cell;
 	float width;
+	float min_size;
 	float max_size;
 	const char *name;
 };

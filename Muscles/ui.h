@@ -36,7 +36,7 @@ struct UI_Element {
 	void (*action)(UI_Element*, bool) = nullptr;
 
 	virtual void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {}
-	virtual bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) { return false; }
+	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
 	virtual void key_handler(Camera& view, Input& input) {}
 
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
@@ -100,7 +100,7 @@ struct Button : UI_Element {
 
 	void update_size(float scale);
 	
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -127,7 +127,7 @@ struct Divider : UI_Element {
 
 	void make_icon(float scale);
 
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -157,7 +157,7 @@ struct Scroll : UI_Element {
 	void engage(Point& p);
 	void scroll(double delta);
 
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 
 	bool highlight(Camera& view, Point& inside) override;
@@ -188,14 +188,13 @@ struct Data_View : UI_Element {
 		0, 0, 0, 0
 	};
 
-	//void find_column(Camera& view, float total_width, int& index, Point& span, bool get_index);
-	float column_width(float total_width, float font_height, float scale, int idx);
+	float column_width(float total_width, float min_width, float font_height, float scale, int idx);
 	void draw_item_backing(RGBA& color, Rect& back, float scale, int idx);
 
 	bool highlight(Camera& view, Point& inside) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 
 	void deselect() override;
 	void release() override;
@@ -263,7 +262,7 @@ struct Drop_Down : UI_Element {
 
 	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
 
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
@@ -290,7 +289,7 @@ struct Hex_View : UI_Element {
 	void update(float scale);
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-	bool mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 };
 
 enum BoxType {
@@ -382,7 +381,6 @@ struct Workspace {
 	Box *focus = nullptr;
 	Box *selected = nullptr;
 	Box *new_box = nullptr;
-	UI_Element *held_element = nullptr;
 
 	std::vector<Source*> sources;
 

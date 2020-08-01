@@ -292,9 +292,8 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 
 	str += sep;
 	edit->placeholder = str;
-	edit->line = "";
-	edit->offset = edit->cursor = 0;
 	edit->parent->active_edit = nullptr;
+	edit->clear();
 
 	auto ui = (Source_Menu*)edit->parent->markup;
 	ui->scroll->position = 0;
@@ -335,8 +334,8 @@ void make_process_menu(Workspace& ws, Box& b) {
 	b.box = { -100, -100, 300, 200 };
 
 	Column col[] = {
-		{Tex, 0, 0.1, 1.5, ""},
-		{String, 64, 0.9, 0, ""}
+		{Tex, 0, 0.1, 0, 1.5, ""},
+		{String, 64, 0.9, 0, 0, ""}
 	};
 	ui->table->data.init(col, 2, 0);
 }
@@ -349,8 +348,8 @@ void make_file_menu(Workspace& ws, Box& b) {
 	b.box = { -150, -150, 400, 300 };
 
 	Column col[] = {
-		{Tex, 0, 0.1, 1.5, ""},
-		{File, 0, 0.9, 0, ""}
+		{Tex, 0, 0.1, 0, 1.5, ""},
+		{File, 0, 0.9, 0, 0, ""}
 	};
 	ui->table->data.init(col, 2, 1);
 

@@ -3,6 +3,30 @@
 #include "../ui.h"
 #include "dialog.h"
 
+inline int count_digits(u64 num) {
+	if (num == 0)
+		return 1;
+
+	u64 n = num;
+	int n_digits = 0;
+	while (n) {
+		n >>= 4;
+		n_digits++;
+	}
+
+	return n_digits;
+}
+
+inline void print_hex(char *hex, char *out, u64 n, int n_digits) {
+	int shift = (n_digits-1) * 4;
+	char *p = out;
+	for (int i = 0; i < n_digits; i++) {
+		*p++ = hex[(n >> shift) & 0xf];
+		shift -= 4;
+	}
+	*p = 0;
+}
+
 void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
 	b.update_elements(view, input, inside, hovered, focussed);
 
@@ -32,7 +56,8 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	float data_x = b.border;
 	float data_y = ui->title->pos.y + ui->title->pos.h + 8;
 
-	float goto_w = 100;
+	float goto_w = (float)ui->goto_digits + 1.5f;
+	goto_w *= ui->goto_box->font->render.glyph_for('0')->box_w / view.scale;
 	float goto_x = data_x;
 	float goto_h = ui->goto_box->font->render.text_height() * 1.4f / view.scale;
 	float goto_y = b.box.h - b.border - goto_h;
@@ -97,9 +122,6 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 			ui->reg_lat_scroll->pos.w,
 			ui->reg_scroll->pos.h
 		};
-
-		float n_heights = 40;
-		ui->reg_lat_scroll->maximum = ui->reg_table->font->render.text_height() * n_heights / view.scale;
 	}
 
 	ui->hex_title->pos = {
@@ -113,7 +135,8 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	float data_w = ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border;
 
 	float size_w = ui->size_label->font->render.text_width(ui->size_label->text.c_str()) * 1.1f / view.scale;
-	float size_h = ui->size_label->font->render.text_height() * 1.1f / view.scale;
+	float size_font_h = ui->size_label->font->render.text_height();
+	float size_h = size_font_h * 1.1f / view.scale;
 
 	float size_x, size_y;
 	if (ui->multiple_regions) {
@@ -122,7 +145,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	}
 	else {
 		size_x = goto_x + goto_w + b.border;
-		size_y = b.box.h - goto_h + (goto_h - size_h) - b.border;
+		size_y = goto_y + ui->goto_box->text_off_y * size_font_h; //b.box.h - goto_h + (goto_h - size_h) - b.border;
 	}
 
 	ui->size_label->pos = {
@@ -163,6 +186,13 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	};
 	ui->hex->update(view.scale);
 
+	if (ui->div)
+		b.min_width = ui->div->position + b.box.w - ui->div->maximum;
+
+	char buf[20];
+	snprintf(buf, 19, "%#llx", ui->hex->region_address + ui->hex->offset);
+	ui->goto_box->placeholder = buf;
+
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
@@ -173,13 +203,14 @@ void update_regions_table(View_Source *ui) {
 		return;
 	}
 
-	char *name = (char*)ui->reg_table->data.columns[2][sel];
+	char *name = (char*)ui->reg_table->data.columns[0][sel];
 	ui->reg_name->text = name ? name : "";
 
-	u64 address = strtoull((char*)ui->reg_table->data.columns[0][sel], nullptr, 16);
-	u64 size = strtoull((char*)ui->reg_table->data.columns[1][sel], nullptr, 16);
-	ui->hex->set_region(address, size);
+	u64 address = strtoull((char*)ui->reg_table->data.columns[1][sel], nullptr, 16);
+	u64 size = strtoull((char*)ui->reg_table->data.columns[2][sel], nullptr, 16);
 
+	ui->selected_region = address;
+	ui->hex->set_region(address, size);
 	ui->hex_scroll->position = 0;
 }
 
@@ -187,16 +218,6 @@ void regions_handler(UI_Element *elem, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 	table->sel_row = table->hl_row;
 	update_regions_table((View_Source*)table->parent->markup);
-}
-
-inline void print_hex(char *hex, char *out, u64 n, int n_digits) {
-	int shift = (n_digits-1) * 4;
-	char *p = out;
-	for (int i = 0; i < n_digits; i++) {
-		*p++ = hex[(n >> shift) & 0xf];
-		shift -= 4;
-	}
-	*p = 0;
 }
 
 void refresh_region_list(View_Source *ui, Point& cursor) {
@@ -207,24 +228,10 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 		int n_sources = ui->source->regions.size();
 		if (n_sources != ui->region_list.size()) {
 			u64 sel_addr = 0;
-			int sel = ui->reg_table->sel_row;
-			if (sel >= 0)
-				sel_addr = ui->source->regions[ui->region_list[sel]].base;
 
 			ui->reg_table->data.resize(n_sources);
 			ui->region_list.resize(n_sources);
 			std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
-
-			if (sel >= 0) {
-				sel = -1;
-				for (int i = 0; i < n_sources; i++) {
-					if (ui->source->regions[i].base == sel_addr) {
-						sel = i;
-						break;
-					}
-				}
-				ui->reg_table->sel_row = sel;
-			}
 		}
 	}
 
@@ -234,11 +241,11 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 	char hex[16];
 	memcpy(hex, "0123456789abcdef", 16);
 
-	auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[0];
-	auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[1];
-	auto& names = (std::vector<char*>&)ui->reg_table->data.columns[2];
+	auto& names = (std::vector<char*>&)ui->reg_table->data.columns[0];
+	auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[1];
+	auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[2];
 
-	int idx = 0;
+	int idx = 0, sel = -1;
 	for (auto& r : ui->region_list) {
 		/*
 		if (it == ui->source->regions.end()) {
@@ -248,11 +255,18 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 		}
 		*/
 		auto& reg = ui->source->regions[r];
+		if (ui->selected_region == reg.base)
+			sel = idx;
+
 		print_hex(hex, addrs[idx], reg.base, 16);
 		print_hex(hex, sizes[idx], reg.size, 8);
 		names[idx] = reg.name;
 		idx++;
 	}
+
+	ui->goto_digits = count_digits(ui->source->regions[idx-1].base) + 2;
+
+	ui->reg_table->sel_row = sel;
 }
 
 void goto_handler(Edit_Box *edit, Input& input) {
@@ -285,8 +299,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 	offset -= offset % ui->hex->columns;
 	ui->hex_scroll->position = (double)offset;
 
-	edit->line = "";
-	edit->cursor = edit->offset = 0;
+	edit->clear();
 }
 
 static void refresh_handler(Box& b, Point& cursor) {
@@ -296,15 +309,12 @@ static void refresh_handler(Box& b, Point& cursor) {
 	}
 	else {
 		ui->hex->set_region(0, ui->hex->source->regions[0].size);
+		ui->goto_digits = count_digits(ui->hex->region_size) + 2;
 	}
 
 	u64 n = ui->hex->region_size;
 	if (n > 0) {
-		int n_digits = 0;
-		while (n) {
-			n >>= 4;
-			n_digits++;
-		}
+		int n_digits = count_digits(n);
 
 		char buf[40];
 		if (ui->multiple_regions)
@@ -341,6 +351,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	b.ui.push_back(ui->title);
 
 	ui->multiple_regions = s->regions.size() > 1;
+
 	if (ui->multiple_regions) {
 		ui->div = new Divider();
 		ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
@@ -348,7 +359,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->div->vertical = true;
 		ui->div->moveable = true;
 		ui->div->minimum = 8 * ui->title->font->render.text_height();
-		ui->div->position = ui->div->minimum;
+		ui->div->position = ui->div->minimum + 50;
 		ui->div->make_icon(ws.temp_scale);
 		b.ui.push_back(ui->div);
 
@@ -384,9 +395,9 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_table->hscroll = ui->reg_lat_scroll;
 
 		Column cols[] = {
-			{String, 20, 0.2, 10, "Address"},
-			{String, 20, 0.1, 5, "Size"},
-			{String, 0, 0.7, 0, "Name"}
+			{String, 0, 0, 0, 0, "Name"},
+			{String, 20, 0.2, 8, 0, "Address"},
+			{String, 20, 0.1, 5, 0, "Size"}
 		};
 
 		ui->reg_table->data.init(cols, 3, 0);
@@ -397,13 +408,18 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		b.ui.push_back(ui->reg_name);
 	}
 
+	float goto_font_size = 10;
 	ui->hex_title = new Label();
 	ui->hex_title->text = "Data";
-	ui->hex_title->font = ws.make_font(10, ws.text_color);
+	ui->hex_title->font = ws.make_font(goto_font_size, ws.text_color);
 	b.ui.push_back(ui->hex_title);
 
 	ui->size_label = new Label();
 	ui->size_label->font = ui->hex_title->font;
+
+	if (!ui->multiple_regions)
+		ui->size_label->padding = 0;
+
 	b.ui.push_back(ui->size_label);
 
 	ui->hex_scroll = new Scroll();
@@ -426,6 +442,11 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->font = ui->hex_title->font;
 	ui->goto_box->key_action = goto_handler;
 	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
+
+	RGBA faded = ws.text_color;
+	faded.a = 0.6;
+	ui->goto_box->ph_font = ws.make_font(goto_font_size, faded);
+
 	b.ui.push_back(ui->goto_box);
 
 	b.markup = ui;
