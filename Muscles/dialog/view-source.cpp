@@ -362,7 +362,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->div->vertical = true;
 		ui->div->moveable = true;
 		ui->div->minimum = 8 * ui->title->font->render.text_height();
-		ui->div->position = ui->div->minimum + 50;
+		ui->div->position = ui->div->minimum + 100;
 		ui->div->make_icon(ws.temp_scale);
 		b.ui.push_back(ui->div);
 
@@ -394,13 +394,18 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_table->default_color = ws.dark_color;
 		ui->reg_table->hl_color = ws.hl_color;
 		ui->reg_table->sel_color = ws.light_color;
+		ui->reg_table->column_spacing = 0.5;
 		ui->reg_table->vscroll = ui->reg_scroll;
 		ui->reg_table->hscroll = ui->reg_lat_scroll;
 
+		float digit_units = (float)ui->reg_table->font->render.digit_width() / (float)ui->reg_table->font->render.text_height();
+		float addr_w = 16 * digit_units;
+		float size_w = 8 * digit_units;
+
 		Column cols[] = {
 			{String, 0, 0, 0, 0, "Name"},
-			{String, 20, 0.2, 8, 0, "Address"},
-			{String, 20, 0.1, 5, 0, "Size"}
+			{String, 20, 0.2, addr_w, 0, "Address"},
+			{String, 20, 0.1, size_w, 0, "Size"}
 		};
 
 		ui->reg_table->data.init(cols, 3, 0);
@@ -458,7 +463,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	b.refresh_every = 1;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
-	b.box = {-250, -200, 500, 400};
+	b.box = {-300, -200, 600, 400};
 	b.min_width = 400;
 	b.min_height = 300;
 	b.visible = true;

@@ -29,8 +29,8 @@ struct Glyph {
 	int atlas_y;
 	int img_w;
 	int img_h;
-	int box_w;
-	int box_h;
+	float box_w;
+	float box_h;
 	int left;
 	int top;
 };
@@ -202,21 +202,21 @@ struct Font_Render {
 	Glyph glyphs[N_CHARS] = {};
 	int pts = 0;
 
-	Glyph *glyph_for(char c) {
+	const Glyph *glyph_for(char c) const {
 		if (c < MIN_CHAR || c > MAX_CHAR)
 			return nullptr;
 		return &glyphs[c - MIN_CHAR];
 	}
 
-	int text_width(const char *text, int cursor = 0, int *x_out = nullptr) {
-		int w = 0;
+	float text_width(const char *text, int cursor = 0, float *x_out = nullptr) const {
+		float w = 0;
 		int len = strlen(text);
 
 		for (int i = 0; i < len; i++) {
 			if (x_out && cursor == i)
 				*x_out = w;
 
-			Glyph *gl = glyph_for(text[i]);
+			const Glyph *gl = glyph_for(text[i]);
 			if (gl)
 				w += gl->box_w;
 		}
@@ -227,12 +227,16 @@ struct Font_Render {
 		return w;
 	}
 
-	int text_height() {
+	float text_height() const {
 		return glyph_for('j')->box_h;
 	}
 
-	void draw_text_simple(const char *text, int x, int y);
-	void draw_text(const char *text, int x, int y, Render_Clip& clip);
+	float digit_width() const {
+		return glyph_for('0')->box_w;
+	}
+
+	void draw_text_simple(const char *text, float x, float y);
+	void draw_text(const char *text, float x, float y, Render_Clip& clip);
 
 	Font_Render() = default;
 	~Font_Render() {

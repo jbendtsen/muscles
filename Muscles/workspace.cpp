@@ -194,7 +194,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 		if (hover && !input.rclick)
 			selected = hover;
-
+		/*
 		if (!hover || !hover->current_dd || hover->current_dd->sel < 0) {
 			for (auto& b : boxes) {
 				if (b->current_dd)
@@ -203,6 +203,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 				b->current_dd = nullptr;
 			}
 		}
+		*/
 	}
 
 	if (!input.lmouse) {
@@ -347,6 +348,8 @@ void Box::set_dropdown(Drop_Down *dd) {
 	current_dd = dd;
 	if (current_dd)
 		current_dd->dropped = true;
+
+	dropdown_set = true;
 }
 
 void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
@@ -418,6 +421,14 @@ void Box::update(Workspace& ws, Camera& view, Input& input, bool hovered, bool f
 		refresh_handler(*this, p);
 	ticks++;
 
+	dropdown_set = false;
+
 	if (update_handler)
 		update_handler(*this, view, input, p, hovered, focussed);
+
+	if (input.lclick && !dropdown_set) {
+		if (current_dd)
+			current_dd->dropped = false;
+		current_dd = nullptr;
+	}
 }

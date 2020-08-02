@@ -80,8 +80,8 @@ void make_font_render(FT_Face face, float size, RGBA& color, int dpi_w, int dpi_
 			/*atlas_y*/ (idx / n_cols) * max_h,
 			/*img_w*/   (int)bmp.width,
 			/*img_h*/   (int)bmp.rows,
-			/*box_w*/   (int)FLOAT_FROM_16_16(face->glyph->linearHoriAdvance),
-			/*box_h*/   (int)FLOAT_FROM_16_16(face->glyph->linearVertAdvance),
+			/*box_w*/   (float)FLOAT_FROM_16_16(face->glyph->linearHoriAdvance),
+			/*box_h*/   (float)FLOAT_FROM_16_16(face->glyph->linearVertAdvance),
 			/*left*/    left,
 			/*top*/     top
 		};
@@ -112,13 +112,13 @@ void ft_quit() {
 	FT_Done_FreeType(library);
 }
 
-void Font_Render::draw_text_simple(const char *text, int x, int y) {
+void Font_Render::draw_text_simple(const char *text, float x, float y) {
 	Rect_Fixed src, dst;
 	y += text_height();
 
 	int len = strlen(text);
 	for (int i = 0; i < len; i++) {
-		Glyph *gl = glyph_for(text[i]);
+		const Glyph *gl = glyph_for(text[i]);
 		if (!gl)
 			continue;
 
@@ -138,7 +138,7 @@ void Font_Render::draw_text_simple(const char *text, int x, int y) {
 	}
 }
 
-void Font_Render::draw_text(const char *text, int x, int y, Render_Clip& clip) {
+void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& clip) {
 	bool clip_top = (clip.flags & CLIP_TOP) != 0;
 	bool clip_bottom = (clip.flags & CLIP_BOTTOM) != 0;
 	bool clip_left = (clip.flags & CLIP_LEFT) != 0;
@@ -153,7 +153,7 @@ void Font_Render::draw_text(const char *text, int x, int y, Render_Clip& clip) {
 
 	int len = strlen(text);
 	for (int i = 0; i < len; i++) {
-		Glyph *gl = glyph_for(text[i]);
+		const Glyph *gl = glyph_for(text[i]);
 		if (!gl)
 			continue;
 

@@ -349,13 +349,13 @@ Texture make_glass_icon(RGBA& color, int length) {
 	auto pixels = std::make_unique<u32[]>(length * length);
 	RGBA shade = color;
 
-	const double circle_fade = 0.02;
+	const double circle_fade = 0.025;
 	const double handle_fade = 0.02;
 
 	const double circle_x = 0.4;
 	const double circle_y = 0.4;
 
-	const double inner_edge = 0.2;
+	const double inner_edge = 0.18;
 	const double outer_edge = 0.3;
 
 	const double handle_height = 0.15;

@@ -310,6 +310,7 @@ struct Box {
 	bool visible = false;
 	bool moving = false;
 	bool ui_held = false;
+	bool dropdown_set = false;
 
 	int ticks = 0;
 	int refresh_every = 60;

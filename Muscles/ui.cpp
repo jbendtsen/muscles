@@ -337,7 +337,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
 	float w = data.headers[idx].width;
 	if (w == 0)
-		return total_width * scale - min_width;
+		return (total_width - min_width) * scale;
 
 	w *= total_width * scale;
 
@@ -409,7 +409,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	if (hscroll) {
 		for (int i = 0; i < n_cols; i++)
 			scroll_total += data.headers[i].min_size;
-		scroll_total *= font_height;
+		scroll_total *= font_height / view.scale;
 
 		hscroll->set_maximum(scroll_total, pos.w);
 		table_w = hscroll->maximum;
@@ -417,7 +417,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	}
 	scroll_x *= view.scale;
 
-	float total_width = pos.w - font_units * ((n_cols - 1) * column_spacing);
+	float col_space = column_spacing * font_height;
+	float total_width = pos.w - font_units * ((n_cols + 1) * column_spacing);
 
 	Rect back = make_ui_box(rect, table, view.scale);
 
@@ -455,9 +456,9 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	};
 
 	float pad = padding * view.scale;
-	float x = back.x + pad - scroll_x;
+	float x = back.x + col_space - scroll_x;
 	float y = back.y;
-	float x_max = back.x + back.w - pad;
+	float x_max = back.x + back.w - col_space;
 	float y_max = y + table.h * view.scale;
 
 	float line_off = font->line_offset * font_height;
@@ -611,7 +612,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		key_action(this, input);
 
 	if (delta) {
-		int x = 0;
+		float x = 0;
 		const char *str = get_str();
 		font->render.text_width(str, cursor, &x);
 
@@ -657,7 +658,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	else
 		str = get_str();
 
-	int cur_x;
+	float cur_x;
 	fnt->render.text_width(str, cursor, &cur_x);
 
 	float height = fnt->render.text_height();
@@ -696,8 +697,18 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 }
 
 void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
-	if (hovered && pos.contains(inside)) {
-		if (input.lclick || parent->current_dd)
+	if (hovered) {
+		if (pos.contains(inside)) {
+			if (input.lclick) {
+				if (this == parent->current_dd)
+					parent->set_dropdown(nullptr);
+				else if (!parent->current_dd)
+					parent->set_dropdown(this);
+			}
+			else if (parent->current_dd)
+				parent->set_dropdown(this);
+		}
+		else if (sel >= 0)
 			parent->set_dropdown(this);
 	}
 }
@@ -821,7 +832,7 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 	bool clip = false;
 	for (int i = 0; i < span.size * 2; i++) {
-		Glyph *gl = nullptr;
+		const Glyph *gl = nullptr;
 		int digit = 0;
 		if (i < span.retrieved * 2) {
 			digit = span.cache[i / 2];
