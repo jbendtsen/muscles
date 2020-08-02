@@ -56,10 +56,10 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	float data_x = b.border;
 	float data_y = ui->title->pos.y + ui->title->pos.h + 8;
 
-	float goto_w = (float)ui->goto_digits + 1.5f;
+	float goto_w = (float)ui->goto_digits + 5.0f;
 	goto_w *= ui->goto_box->font->render.glyph_for('0')->box_w / view.scale;
 	float goto_x = data_x;
-	float goto_h = ui->goto_box->font->render.text_height() * 1.4f / view.scale;
+	float goto_h = ui->goto_box->pos.h;
 	float goto_y = b.box.h - b.border - goto_h;
 
 	if (!ui->multiple_regions) {
@@ -332,6 +332,9 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 
 	if (ui->div)
 		ui->div->make_icon(new_scale);
+
+	float goto_h = ui->goto_box->font->render.text_height() * 1.4f / new_scale;
+	ui->goto_box->update_icon(IconGoto, goto_h, new_scale);
 }
 
 void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
@@ -443,10 +446,9 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->key_action = goto_handler;
 	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
 
-	RGBA faded = ws.text_color;
-	faded.a = 0.6;
-	ui->goto_box->ph_font = ws.make_font(goto_font_size, faded);
-
+	ui->goto_box->icon_color = ws.text_color;
+	ui->goto_box->icon_color.a = 0.6;
+	ui->goto_box->ph_font = ws.make_font(goto_font_size, ui->goto_box->icon_color);
 	b.ui.push_back(ui->goto_box);
 
 	b.markup = ui;

@@ -24,7 +24,6 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 		ui->search->pos.x = x1;
 		ui->search->pos.y = y;
 		ui->search->pos.w = x2 - x1;
-		ui->search->pos.h = ui->search->font->render.text_height() * 1.5 / view.scale;
 
 		float hack = 4;
 		y += ui->search->pos.h + hack;
@@ -86,6 +85,11 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 	b.post_update_elements(view, input, inside, hovered, focussed);
 }
 
+void scale_search_bar(Source_Menu *ui, float new_scale) {
+	float height = ui->search->font->render.text_height() * 1.5 / new_scale;
+	ui->search->update_icon(IconGlass, height, new_scale);
+}
+
 Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void (*table_handler)(UI_Element*, bool)) {
 	Source_Menu *ui = new Source_Menu();
 
@@ -115,6 +119,8 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->search->caret = ws.caret_color;
 	ui->search->default_color = ws.dark_color;
 	ui->search->font = ws.make_font(9, ws.text_color);
+	ui->search->icon_color = ws.text_color;
+	ui->search->icon_color.a = 0.7;
 	ui->search->key_action = [](Edit_Box* edit, Input& input) {((Source_Menu*)edit->parent->markup)->table->data.update_filter(edit->line);};
 	ui->search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
 
@@ -236,7 +242,9 @@ void refresh_process_menu(Box& b, Point& cursor) {
 }
 
 void process_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	((Source_Menu*)b.markup)->cross->img = ws.cross;
+	auto ui = (Source_Menu*)b.markup;
+	ui->cross->img = ws.cross;
+	scale_search_bar(ui, new_scale);
 }
 
 void refresh_file_menu(Box& b, Point& cursor) {
@@ -324,6 +332,7 @@ void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	}
 
 	ui->cross->img = ws.cross;
+	scale_search_bar(ui, new_scale);
 }
 
 void make_process_menu(Workspace& ws, Box& b) {

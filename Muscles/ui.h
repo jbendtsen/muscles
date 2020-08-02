@@ -218,6 +218,10 @@ struct Edit_Box : UI_Element {
 	float caret_off_y = 0.2;
 	float caret_width = 0.08;
 
+	int icon_length = 0;
+	RGBA icon_color = {};
+	Texture icon = nullptr;
+
 	Font *ph_font = nullptr;
 
 	std::string line;
@@ -235,6 +239,8 @@ struct Edit_Box : UI_Element {
 	bool remove(bool is_back);
 	void move_cursor(int delta);
 	void clear();
+
+	void update_icon(IconType type, float height, float scale);
 
 	void key_handler(Camera& view, Input& input) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;

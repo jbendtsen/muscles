@@ -587,6 +587,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		update = remove(false);
 	else if (input.strike(input.esc)) {
 		clear();
+		parent->active_edit = nullptr;
 		update = true;
 	}
 	else if (input.strike(input.enter))
@@ -628,9 +629,23 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 	}
 }
 
+void Edit_Box::update_icon(IconType type, float height, float scale) {
+	pos.h = height;
+	icon_length = 0.5 + height * scale - 2 * text_off_y * font->render.text_height();
+
+	switch (type) {
+		case IconGoto:
+			icon = make_goto_icon(icon_color, icon_length);
+			break;
+		case IconGlass:
+			icon = make_glass_icon(icon_color, icon_length);
+			break;
+	}
+}
+
 void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect bar = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(bar, default_color);
+	Rect back = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(back, default_color);
 
 	const char *str = nullptr;
 	Font *fnt = font;
@@ -649,9 +664,16 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	float gap_x = text_off_x * height;
 	float gap_y = text_off_y * height;
 
-	float text_x = pos.x * view.scale + gap_x;
+	float x = gap_x;
+	if (icon) {
+		Rect dst = {back.x + gap_y, back.y + gap_y, (float)icon_length, (float)icon_length};
+		sdl_apply_texture(icon, &dst);
+		x += icon_length;
+	}
+
+	float text_x = pos.x * view.scale + x;
 	float text_y = pos.y * view.scale + gap_y;
-	window_w = (pos.w * view.scale) - gap_x * 2;
+	window_w = (pos.w * view.scale) - x - gap_x;
 
 	clip.x_lower = rect.x + text_x;
 	clip.x_upper = clip.x_lower + window_w;
@@ -766,7 +788,11 @@ void Hex_View::update(float scale) {
 	if (vscroll) {
 		offset = (int)vscroll->position;
 		offset -= offset % columns;
-		vscroll->set_maximum(region_size, rows * columns);
+		u64 size = region_size;
+		if (size % columns > 0)
+			size += columns - (size % columns);
+
+		vscroll->set_maximum(size, rows * columns);
 	}
 
 	if (alive)

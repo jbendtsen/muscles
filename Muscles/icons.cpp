@@ -273,3 +273,125 @@ Texture make_vertical_divider_icon(RGBA& color, int height, double squish, doubl
 
 	return sdl_create_texture(pixels.get(), w, height);
 }
+
+Texture make_goto_icon(RGBA& color, int length) {
+	auto pixels = std::make_unique<u32[]>(length * length);
+	RGBA shade = color;
+
+	const double fade_distance = 0.02;
+	const double inner_edge = 0.3;
+	const double outer_edge = 0.45;
+
+	const double arc_dilation = 1.1;
+	const double arc_x_offset = 0.1;
+	const double arc_y_offset = -0.1;
+
+	const double arrow_size = 0.3;
+	const double arrow_squish = 1.15;
+	const double arrow_fade = 0.08;
+
+	double len = (double)length;
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			double x = ((double)j + 0.5) / len - 0.5;
+			double y = ((double)i + 0.5) / len - 0.5;
+    
+			double lum = 0.0;
+    
+			double cx = x * arc_dilation + arc_x_offset;
+			double cy = y + arc_y_offset;
+			double ix = x + outer_edge - inner_edge;
+
+			double arrow_x = (((outer_edge - arc_x_offset) / arc_dilation) + (inner_edge - (ix - x))) / 2.0;
+
+			if (cy < 0.0 && cy-cx < 0.0) {
+				double outer = sqrt(cx * cx + cy * cy);
+				double inner = sqrt(ix * ix + cy * cy);
+        
+				if (inner >= inner_edge && outer < outer_edge) {
+					inner -= inner_edge;
+					outer = outer_edge - outer;
+
+					if (inner < fade_distance)
+						lum = inner / fade_distance;
+					else if (outer < fade_distance)
+						lum = outer / fade_distance;
+					else
+						lum = 1.0;
+				}
+			}
+
+			double head = 1.0 - (y + abs(x - arrow_x) * arrow_squish) / arrow_size;
+			if (cy >= 0.0 && head > 0.0)
+				lum = clamp(head / arrow_fade, 0.0, 1.0);
+
+			shade.a = color.a * lum;
+			pixels[i*length+j] = lum == 0 ? 0 : rgba_to_u32(shade);
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), length, length);
+}
+
+double smooth_edges(double pos, double end, double fade) {
+    double outer = end - pos;
+
+    double lum = 1.0;
+    if (pos < fade)
+        lum = pos / fade;
+    else if (outer < fade)
+        lum = outer / fade;
+
+    return lum;
+}
+
+Texture make_glass_icon(RGBA& color, int length) {
+	auto pixels = std::make_unique<u32[]>(length * length);
+	RGBA shade = color;
+
+	const double circle_fade = 0.02;
+	const double handle_fade = 0.02;
+
+	const double circle_x = 0.4;
+	const double circle_y = 0.4;
+
+	const double inner_edge = 0.2;
+	const double outer_edge = 0.3;
+
+	const double handle_height = 0.15;
+	const double handle_start = 0.1;
+	const double handle_width = 0.7;
+
+	double len = (double)length;
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			double x = ((double)j + 0.5) / len - 0.5;
+			double y = ((double)i + 0.5) / len - 0.5;
+
+			double lum = 0.0;
+
+			double cx = x + 0.5 - circle_x;
+			double cy = y + 0.5 - circle_y;
+
+			double dist = sqrt(cx*cx + cy*cy);
+			if (dist >= inner_edge && dist < outer_edge)
+				lum = smooth_edges(dist - inner_edge, outer_edge - inner_edge, circle_fade);
+
+			double w = outer_edge - inner_edge;
+			double handle_x = x + y - handle_start;
+			double handle_y = x - y + handle_height / 2.0;
+
+			if (handle_x >= 0.0 && handle_x < handle_width &&
+				handle_y >= 0.0 && handle_y < handle_height
+			) {
+				lum += smooth_edges(handle_x, handle_width, handle_fade) *
+				       smooth_edges(handle_y, handle_height, handle_fade);
+			}
+
+			shade.a = color.a * clamp(lum, 0.0, 1.0);
+			pixels[i*length+j] = lum > 0.0 ? rgba_to_u32(shade) : 0;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), length, length);
+}
