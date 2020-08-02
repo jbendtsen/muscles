@@ -10,6 +10,7 @@ enum ElementType {
 	TypeScroll,
 	TypeEditBox,
 	TypeDropDown,
+	TypeCheckbox,
 	TypeHexView
 };
 
@@ -47,31 +48,7 @@ struct UI_Element {
 	UI_Element(ElementType t) : type(t) {}
 };
 
-struct Image : UI_Element {
-	Image() : UI_Element(TypeImage) {}
-
-	Texture img = nullptr;
-	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-};
-
-struct Label : UI_Element {
-	Label() : UI_Element(TypeLabel) {}
-
-	std::string text;
-	float x = 0;
-	float y = 0;
-	float width = 0;
-
-	Render_Clip clip = {
-		CLIP_RIGHT,
-		0, 0, 0, 0
-	};
-
-	float padding = 0.2;
-
-	void update_position(Camera& view);
-	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-};
+struct Scroll;
 
 struct Button : UI_Element {
 	Button() : UI_Element(TypeButton) {}
@@ -104,64 +81,17 @@ struct Button : UI_Element {
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
-struct Divider : UI_Element {
-	Divider() : UI_Element(TypeDivider) {}
+struct Checkbox : UI_Element {
+	Checkbox() : UI_Element(TypeCheckbox) {}
 
-	bool vertical = false;
-	bool moveable = false;
+	bool checked = false;
+	std::string text;
 
-	bool held = false;
-	float minimum = 0;
-	float maximum = 0;
-	float position = 0;
-	float hold_pos = 0;
+	float border_frac = 0.2;
+	float text_off_x = 0.3;
+	float text_off_y = -0.15;
 
-	float breadth = 0;
-	float padding = 8;
-
-	Texture icon_default = nullptr;
-	Texture icon_hl = nullptr;
-	Texture icon = nullptr;
-	int icon_w = 0;
-	int icon_h = 0;
-
-	void make_icon(float scale);
-
-	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-};
-
-struct Scroll : UI_Element {
-	Scroll() : UI_Element(TypeScroll) {}
-
-	bool vertical = true;
-
-	RGBA back = {};
-
-	float breadth = 16;
-	float length = 0;
-	float padding = 2;
-	float thumb_min = 0.2;
-
-	double thumb_frac = 0;
-	double view_span = 0;
-	double position = 0;
-	double maximum = 0;
-
-	bool show_thumb = true;
-	bool hl = false;
-	bool held = false;
-	int hold_region = 0;
-
-	void set_maximum(double max, double span);
-	void engage(Point& p);
-	void scroll(double delta);
-
-	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-
-	bool highlight(Camera& view, Point& inside) override;
-	void deselect() override;
 };
 
 struct Data_View : UI_Element {
@@ -198,6 +128,60 @@ struct Data_View : UI_Element {
 
 	void deselect() override;
 	void release() override;
+};
+
+struct Divider : UI_Element {
+	Divider() : UI_Element(TypeDivider) {}
+
+	bool vertical = false;
+	bool moveable = false;
+
+	bool held = false;
+	float minimum = 0;
+	float maximum = 0;
+	float position = 0;
+	float hold_pos = 0;
+
+	float breadth = 0;
+	float padding = 8;
+
+	Texture icon_default = nullptr;
+	Texture icon_hl = nullptr;
+	Texture icon = nullptr;
+	int icon_w = 0;
+	int icon_h = 0;
+
+	void make_icon(float scale);
+
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
+struct Drop_Down : UI_Element {
+	Drop_Down() : UI_Element(TypeDropDown) {}
+
+	bool dropped = false;
+	int sel = -1;
+
+	float title_off_x = 0.3;
+	float item_off_x = 0.8;
+	float title_off_y = 0.03;
+	float line_height = 1.2f;
+	float width = 150;
+
+	const char *title = nullptr;
+	std::vector<const char*> lines;
+
+	Render_Clip item_clip = {
+		CLIP_RIGHT,
+		0, 0, 0, 0
+	};
+
+	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
+
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	bool highlight(Camera& view, Point& inside) override;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Edit_Box : UI_Element {
@@ -246,31 +230,63 @@ struct Edit_Box : UI_Element {
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
-struct Drop_Down : UI_Element {
-	Drop_Down() : UI_Element(TypeDropDown) {}
+struct Image : UI_Element {
+	Image() : UI_Element(TypeImage) {}
 
-	bool dropped = false;
-	int sel = -1;
+	Texture img = nullptr;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
 
-	float title_off_x = 0.3;
-	float item_off_x = 0.8;
-	float title_off_y = 0.03;
-	float line_height = 1.2f;
-	float width = 150;
+struct Label : UI_Element {
+	Label() : UI_Element(TypeLabel) {}
 
-	const char *title = nullptr;
-	std::vector<const char*> lines;
+	std::string text;
+	float x = 0;
+	float y = 0;
+	float width = 0;
 
-	Render_Clip item_clip = {
+	Render_Clip clip = {
 		CLIP_RIGHT,
 		0, 0, 0, 0
 	};
 
-	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
+	float padding = 0.2;
+
+	void update_position(Camera& view);
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
+struct Scroll : UI_Element {
+	Scroll() : UI_Element(TypeScroll) {}
+
+	bool vertical = true;
+
+	RGBA back = {};
+
+	float breadth = 16;
+	float length = 0;
+	float padding = 2;
+	float thumb_min = 0.2;
+
+	double thumb_frac = 0;
+	double view_span = 0;
+	double position = 0;
+	double maximum = 0;
+
+	bool show_thumb = true;
+	bool hl = false;
+	bool held = false;
+	int hold_region = 0;
+
+	void set_maximum(double max, double span);
+	void engage(Point& p);
+	void scroll(double delta);
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	bool highlight(Camera& view, Point& inside) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+
+	bool highlight(Camera& view, Point& inside) override;
+	void deselect() override;
 };
 
 struct Hex_View : UI_Element {
@@ -378,6 +394,7 @@ struct Workspace {
 	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
 	RGBA caret_color = {0.9, 0.9, 0.9, 1.0};
+	RGBA cb_color = {0.6, 0.7, 0.9, 1.0};
 
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;

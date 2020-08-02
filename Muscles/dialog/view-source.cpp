@@ -184,6 +184,16 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 		data_w,
 		data_h
 	};
+
+	ui->ascii_box->pos.x = b.box.w - b.border - ui->ascii_box->pos.w;
+	ui->ascii_box->pos.y = b.box.h - b.border - ui->ascii_box->pos.h;
+
+	ui->hex_box->pos.x = ui->ascii_box->pos.x - ui->hex_box->pos.w;
+	ui->hex_box->pos.y = ui->ascii_box->pos.y;
+
+	ui->addr_box->pos.x = ui->hex_box->pos.x - ui->addr_box->pos.w;
+	ui->addr_box->pos.y = ui->hex_box->pos.y;
+
 	ui->hex->update(view.scale);
 
 	if (ui->div)
@@ -455,6 +465,37 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->icon_color.a = 0.6;
 	ui->goto_box->ph_font = ws.make_font(goto_font_size, ui->goto_box->icon_color);
 	b.ui.push_back(ui->goto_box);
+
+	ui->addr_box = new Checkbox();
+	ui->addr_box->font = ui->size_label->font;
+	ui->addr_box->text = "O";
+	ui->addr_box->default_color = ws.scroll_back;
+	ui->addr_box->hl_color = ws.light_color;
+	ui->addr_box->sel_color = ws.cb_color;
+	ui->addr_box->pos.h = ui->addr_box->font->render.text_height() * 1.1f / ws.temp_scale;
+	ui->addr_box->pos.w = 2 * ui->addr_box->pos.h;
+	ui->addr_box->action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->checked = !c->checked;};
+	b.ui.push_back(ui->addr_box);
+
+	ui->hex_box = new Checkbox();
+	ui->hex_box->font = ui->size_label->font;
+	ui->hex_box->text = "H";
+	ui->hex_box->default_color = ui->addr_box->default_color;
+	ui->hex_box->hl_color = ui->addr_box->hl_color;
+	ui->hex_box->sel_color = ui->addr_box->sel_color;
+	ui->hex_box->pos = ui->addr_box->pos;
+	ui->hex_box->action = ui->addr_box->action;
+	b.ui.push_back(ui->hex_box);
+
+	ui->ascii_box = new Checkbox();
+	ui->ascii_box->font = ui->size_label->font;
+	ui->ascii_box->text = "A";
+	ui->ascii_box->default_color = ui->hex_box->default_color;
+	ui->ascii_box->hl_color = ui->addr_box->hl_color;
+	ui->ascii_box->sel_color = ui->addr_box->sel_color;
+	ui->ascii_box->pos = ui->addr_box->pos;
+	ui->ascii_box->action = ui->addr_box->action;
+	b.ui.push_back(ui->ascii_box);
 
 	b.markup = ui;
 	b.update_handler = update_view_source;

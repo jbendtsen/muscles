@@ -33,25 +33,6 @@ float center_align_title(Label *title, Box& b, float scale, float y_offset) {
 	return (line_h + padding * 2) / scale;
 }
 
-void Image::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect box = make_ui_box(rect, pos, view.scale);
-	sdl_apply_texture(img, &box);
-}
-
-void Label::update_position(Camera& view) {
-	float font_height = font->render.text_height();
-	float pad = padding * font_height;
-
-	x = pos.x * view.scale + pad;
-	y = pos.y * view.scale - pad;
-	width = pos.w * view.scale - pad;
-}
-
-void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	clip.x_upper = rect.x + x + width;
-	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, clip);
-}
-
 void Button::update_size(float scale) {
 	Theme *theme = active ? &active_theme : &inactive_theme;
 
@@ -109,190 +90,36 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	theme->font->render.draw_text_simple(text.c_str(), r.x + x, r.y + y_offset * font_height);
 }
 
-void Divider::make_icon(float scale) {
-	bool was_hl = icon == icon_hl;
-	sdl_destroy_texture(&icon_default);
-	sdl_destroy_texture(&icon_hl);
-
-	RGBA fade_color = default_color;
-	fade_color.a = 0.5;
-
-	icon_h = padding * 1.25 * scale + 0.5;
-	int w = 0;
-
-	double squish = 1.0;
-	double gap = breadth * 2 / padding;
-	double thickness = 0.3;
-	double sharpness = 3.0;
-
-	icon_default = make_vertical_divider_icon(fade_color, icon_h, squish, gap, thickness, sharpness, &w);
-	icon_hl = make_vertical_divider_icon(default_color, icon_h, squish, gap, thickness, sharpness, &w);
-
-	icon_w = w;
-	icon = was_hl ? icon_hl : icon_default;
-}
-
-void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (!moveable)
-		return;
-
-	Rect box = pos;
-	if (vertical) {
-		box.x -= padding;
-		box.w += 2 * padding;
-	}
-	else {
-		box.y -= padding;
-		box.h += 2 * padding;
+void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (elem_hovered) {
+		Rect back = make_ui_box(rect, pos, view.scale);
+		sdl_draw_rect(back, hl_color);
 	}
 
-	if (!held && !box.contains(cursor)) {
-		icon = icon_default;
-		return;
-	}
-	icon = icon_hl;
+	Rect box = make_ui_box(rect, pos, view.scale);
+	box.w = box.h;
+	sdl_draw_rect(box, default_color);
 
-	if (!input.lmouse) {
-		held = false;
-		return;
-	}
-
-	if (input.lclick) {
-		hold_pos = vertical ? cursor.x - pos.x : cursor.y - pos.y;
-		held = true;
-		parent->ui_held = true;
-	}
-
-	if (held) {
-		float cur = vertical ? cursor.x : cursor.y;
-		position = clamp(cur - hold_pos, minimum, maximum);
-	}
-}
-
-void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect r = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(r, default_color);
-
-	if (icon) {
-		Rect box = {
-			r.x + (r.w - (float)icon_w) / 2,
-			r.y + (r.h - (float)icon_h) / 2,
-			icon_w,
-			icon_h
+	if (checked) {
+		int w = 0.5 + box.w * border_frac;
+		int h = 0.5 + box.h * border_frac;
+		Rect check = {
+			box.x + w,
+			box.y + h,
+			box.w - 2*w,
+			box.h - 2*h
 		};
-		sdl_apply_texture(icon, &box);
-	}
-}
-
-void Scroll::set_maximum(double max, double span) {
-	maximum = max;
-
-	show_thumb = span < max;
-	if (!show_thumb)
-		span = max;
-
-	view_span = span;
-}
-
-void Scroll::engage(Point& p) {
-	held = true;
-	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
-
-	if (vertical)
-		hold_region = p.y - (pos.y + thumb_pos);
-	else
-		hold_region = p.x - (pos.x + thumb_pos);
-
-	if (hold_region < 0 || hold_region > thumb_frac * length)
-		hold_region = 0;
-
-	parent->ui_held = true;
-}
-
-void Scroll::scroll(double delta) {
-	position = clamp(position + delta, 0, maximum - view_span);
-}
-
-void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (input.lclick && pos.contains(cursor))
-		engage(cursor);
-
-	if (!input.lmouse)
-		held = false;
-
-	double old_pos = position;
-	if (held) {
-		double dist = 0;
-		if (vertical)
-			dist = cursor.y - (pos.y + hold_region);
-		else
-			dist = cursor.x - (pos.x + hold_region);
-
-		double span = (1 - thumb_frac) * length;
-		position = dist * (maximum - view_span) / span;
+		sdl_draw_rect(check, sel_color);
 	}
 
-	// apply bounds-checking
-	scroll(0);
-}
+	float font_height = font->render.text_height();
+	float gap_x = text_off_x * font_height;
+	float gap_y = text_off_y * font_height;
 
-void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	if (vertical)
-		length = pos.h - 2*padding;
-	else
-		length = pos.w - 2*padding;
+	float text_x = box.x + box.w + gap_x;
+	float text_y = box.y + gap_y;
 
-	Rect bar = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(bar, back);
-
-	if (!show_thumb)
-		return;
-
-	thumb_frac = view_span / maximum;
-	if (thumb_frac < thumb_min) thumb_frac = thumb_min;
-
-	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
-	float thumb_len = thumb_frac * length * view.scale;
-
-	float gap = 2*padding * view.scale;
-	float x = padding;
-	float y = padding;
-
-	float w = 0, h = 0;
-	if (vertical) {
-		y += thumb_pos;
-		w = bar.w - gap;
-		h = thumb_len;
-	}
-	else {
-		x += thumb_pos;
-		w = thumb_len;
-		h = bar.h - gap;
-	}
-
-	Rect_Fixed scroll_rect = {
-		bar.x + (float)(x * view.scale + 0.5),
-		bar.y + (float)(y * view.scale + 0.5),
-		w,
-		h
-	};
-
-	RGBA *color = &default_color;
-	if (held)
-		color = &sel_color;
-	else if (hl)
-		color = &hl_color;
-
-	sdl_draw_rect(scroll_rect, *color);
-}
-
-bool Scroll::highlight(Camera& view, Point& inside) {
-	hl = pos.contains(inside);
-	return hl;
-}
-
-void Scroll::deselect() {
-	hl = false;
+	font->render.draw_text_simple(text.c_str(), text_x, text_y);
 }
 
 bool Data_View::highlight(Camera& view, Point& inside) {
@@ -546,6 +373,171 @@ void Data_View::release() {
 	data.release();
 }
 
+void Divider::make_icon(float scale) {
+	bool was_hl = icon == icon_hl;
+	sdl_destroy_texture(&icon_default);
+	sdl_destroy_texture(&icon_hl);
+
+	RGBA fade_color = default_color;
+	fade_color.a = 0.5;
+
+	icon_h = padding * 1.25 * scale + 0.5;
+	int w = 0;
+
+	double squish = 1.0;
+	double gap = breadth * 2 / padding;
+	double thickness = 0.3;
+	double sharpness = 3.0;
+
+	icon_default = make_vertical_divider_icon(fade_color, icon_h, squish, gap, thickness, sharpness, &w);
+	icon_hl = make_vertical_divider_icon(default_color, icon_h, squish, gap, thickness, sharpness, &w);
+
+	icon_w = w;
+	icon = was_hl ? icon_hl : icon_default;
+}
+
+void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (!moveable)
+		return;
+
+	Rect box = pos;
+	if (vertical) {
+		box.x -= padding;
+		box.w += 2 * padding;
+	}
+	else {
+		box.y -= padding;
+		box.h += 2 * padding;
+	}
+
+	if (!held && !box.contains(cursor)) {
+		icon = icon_default;
+		return;
+	}
+	icon = icon_hl;
+
+	if (!input.lmouse) {
+		held = false;
+		return;
+	}
+
+	if (input.lclick) {
+		hold_pos = vertical ? cursor.x - pos.x : cursor.y - pos.y;
+		held = true;
+		parent->ui_held = true;
+	}
+
+	if (held) {
+		float cur = vertical ? cursor.x : cursor.y;
+		position = clamp(cur - hold_pos, minimum, maximum);
+	}
+}
+
+void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect r = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(r, default_color);
+
+	if (icon) {
+		Rect box = {
+			r.x + (r.w - (float)icon_w) / 2,
+			r.y + (r.h - (float)icon_h) / 2,
+			icon_w,
+			icon_h
+		};
+		sdl_apply_texture(icon, &box);
+	}
+}
+
+void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
+	if (hovered) {
+		if (pos.contains(inside)) {
+			if (input.lclick) {
+				if (this == parent->current_dd)
+					parent->set_dropdown(nullptr);
+				else if (!parent->current_dd)
+					parent->set_dropdown(this);
+			}
+			else if (parent->current_dd)
+				parent->set_dropdown(this);
+		}
+		else if (sel >= 0)
+			parent->set_dropdown(this);
+	}
+}
+
+bool Drop_Down::highlight(Camera& view, Point& inside) {
+	sel = -1;
+	if (!dropped || inside.x < pos.x || inside.x >= pos.x + width)
+		return false;
+
+	float font_unit = font->render.text_height() / view.scale;
+	float y = pos.y + pos.h + title_off_y * font_unit;
+	float h = line_height * font_unit;
+
+	for (int i = 0; i < lines.size(); i++) {
+		if (inside.y >= y && inside.y < y + h) {
+			sel = i;
+			return true;
+		}
+		y += h;
+	}
+
+	return false;
+}
+
+void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect, bool held) {
+	float font_height = font->render.text_height();
+
+	Rect box_wsp = {
+		pos.x,
+		pos.y + pos.h,
+		width,
+		0
+	};
+	Rect box = make_ui_box(rect, box_wsp, view.scale);
+	box.h = (title_off_y + line_height * lines.size()) * font_height;
+
+	sdl_draw_rect(box, hl_color);
+
+	if (sel >= 0) {
+		Rect hl = box;
+		hl.y += line_height * sel * font_height;
+		hl.h = (title_off_y + line_height) * font_height + 1;
+		sdl_draw_rect(hl, sel_color);
+	}
+
+	float hack = 3;
+	float item_x = item_off_x * font_height;
+	float item_w = (width - hack) * view.scale - item_x;
+	item_clip.x_upper = box.x + item_x + item_w;
+
+	float y = font_height * ((line_height - 1) / 2 - font->line_offset);
+
+	for (auto& l : lines) {
+		if (l)
+			font->render.draw_text(l, box.x + item_x, box.y + y, item_clip);
+
+		y += font_height * line_height;
+	}
+}
+
+void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect box = make_ui_box(rect, pos, view.scale);
+
+	if (elem_hovered || dropped)
+		sdl_draw_rect(box, hl_color);
+	else
+		sdl_draw_rect(box, default_color);
+
+	float gap_y = title_off_y * font->render.text_height();
+
+	float text_w = font->render.text_width(title);
+	float text_x = pos.x * view.scale + (pos.w * view.scale - text_w) / 2;
+	float text_y = pos.y * view.scale + gap_y;
+
+	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
+}
+
 bool Edit_Box::remove(bool is_back) {
 	if (is_back) {
 		if (cursor <= 0)
@@ -696,96 +688,6 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	sdl_draw_rect(r, caret);
 }
 
-void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
-	if (hovered) {
-		if (pos.contains(inside)) {
-			if (input.lclick) {
-				if (this == parent->current_dd)
-					parent->set_dropdown(nullptr);
-				else if (!parent->current_dd)
-					parent->set_dropdown(this);
-			}
-			else if (parent->current_dd)
-				parent->set_dropdown(this);
-		}
-		else if (sel >= 0)
-			parent->set_dropdown(this);
-	}
-}
-
-bool Drop_Down::highlight(Camera& view, Point& inside) {
-	sel = -1;
-	if (!dropped || inside.x < pos.x || inside.x >= pos.x + width)
-		return false;
-
-	float font_unit = font->render.text_height() / view.scale;
-	float y = pos.y + pos.h + title_off_y * font_unit;
-	float h = line_height * font_unit;
-
-	for (int i = 0; i < lines.size(); i++) {
-		if (inside.y >= y && inside.y < y + h) {
-			sel = i;
-			return true;
-		}
-		y += h;
-	}
-
-	return false;
-}
-
-void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect, bool held) {
-	float font_height = font->render.text_height();
-
-	Rect box_wsp = {
-		pos.x,
-		pos.y + pos.h,
-		width,
-		0
-	};
-	Rect box = make_ui_box(rect, box_wsp, view.scale);
-	box.h = (title_off_y + line_height * lines.size()) * font_height;
-
-	sdl_draw_rect(box, hl_color);
-
-	if (sel >= 0) {
-		Rect hl = box;
-		hl.y += line_height * sel * font_height;
-		hl.h = (title_off_y + line_height) * font_height + 1;
-		sdl_draw_rect(hl, sel_color);
-	}
-
-	float hack = 3;
-	float item_x = item_off_x * font_height;
-	float item_w = (width - hack) * view.scale - item_x;
-	item_clip.x_upper = box.x + item_x + item_w;
-
-	float y = font_height * ((line_height - 1) / 2 - font->line_offset);
-
-	for (auto& l : lines) {
-		if (l)
-			font->render.draw_text(l, box.x + item_x, box.y + y, item_clip);
-
-		y += font_height * line_height;
-	}
-}
-
-void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect box = make_ui_box(rect, pos, view.scale);
-
-	if (elem_hovered || dropped)
-		sdl_draw_rect(box, hl_color);
-	else
-		sdl_draw_rect(box, default_color);
-
-	float gap_y = title_off_y * font->render.text_height();
-
-	float text_w = font->render.text_width(title);
-	float text_x = pos.x * view.scale + (pos.w * view.scale - text_w) / 2;
-	float text_y = pos.y * view.scale + gap_y;
-
-	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
-}
-
 void Hex_View::set_region(u64 address, u64 size) {
 	region_address = address;
 	region_size = size;
@@ -891,4 +793,134 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		if (input.scroll_y < 0)
 			vscroll->scroll(delta);
 	}
+}
+
+void Image::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect box = make_ui_box(rect, pos, view.scale);
+	sdl_apply_texture(img, &box);
+}
+
+void Label::update_position(Camera& view) {
+	float font_height = font->render.text_height();
+	float pad = padding * font_height;
+
+	x = pos.x * view.scale + pad;
+	y = pos.y * view.scale - pad;
+	width = pos.w * view.scale - pad;
+}
+
+void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	clip.x_upper = rect.x + x + width;
+	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, clip);
+}
+
+void Scroll::set_maximum(double max, double span) {
+	maximum = max;
+
+	show_thumb = span < max;
+	if (!show_thumb)
+		span = max;
+
+	view_span = span;
+}
+
+void Scroll::engage(Point& p) {
+	held = true;
+	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
+
+	if (vertical)
+		hold_region = p.y - (pos.y + thumb_pos);
+	else
+		hold_region = p.x - (pos.x + thumb_pos);
+
+	if (hold_region < 0 || hold_region > thumb_frac * length)
+		hold_region = 0;
+
+	parent->ui_held = true;
+}
+
+void Scroll::scroll(double delta) {
+	position = clamp(position + delta, 0, maximum - view_span);
+}
+
+void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (input.lclick && pos.contains(cursor))
+		engage(cursor);
+
+	if (!input.lmouse)
+		held = false;
+
+	double old_pos = position;
+	if (held) {
+		double dist = 0;
+		if (vertical)
+			dist = cursor.y - (pos.y + hold_region);
+		else
+			dist = cursor.x - (pos.x + hold_region);
+
+		double span = (1 - thumb_frac) * length;
+		position = dist * (maximum - view_span) / span;
+	}
+
+	// apply bounds-checking
+	scroll(0);
+}
+
+void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (vertical)
+		length = pos.h - 2*padding;
+	else
+		length = pos.w - 2*padding;
+
+	Rect bar = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(bar, back);
+
+	if (!show_thumb)
+		return;
+
+	thumb_frac = view_span / maximum;
+	if (thumb_frac < thumb_min) thumb_frac = thumb_min;
+
+	float thumb_pos = length * (1 - thumb_frac) * position / (maximum - view_span);
+	float thumb_len = thumb_frac * length * view.scale;
+
+	float gap = 2*padding * view.scale;
+	float x = padding;
+	float y = padding;
+
+	float w = 0, h = 0;
+	if (vertical) {
+		y += thumb_pos;
+		w = bar.w - gap;
+		h = thumb_len;
+	}
+	else {
+		x += thumb_pos;
+		w = thumb_len;
+		h = bar.h - gap;
+	}
+
+	Rect_Fixed scroll_rect = {
+		bar.x + (float)(x * view.scale + 0.5),
+		bar.y + (float)(y * view.scale + 0.5),
+		w,
+		h
+	};
+
+	RGBA *color = &default_color;
+	if (held)
+		color = &sel_color;
+	else if (hl)
+		color = &hl_color;
+
+	sdl_draw_rect(scroll_rect, *color);
+}
+
+bool Scroll::highlight(Camera& view, Point& inside) {
+	hl = pos.contains(inside);
+	return hl;
+}
+
+void Scroll::deselect() {
+	hl = false;
 }

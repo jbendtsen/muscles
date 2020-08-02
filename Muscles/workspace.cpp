@@ -353,7 +353,6 @@ void Box::set_dropdown(Drop_Down *dd) {
 }
 
 void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	
 	for (auto& elem : ui) {
 		elem->parent = this;
 		if (!elem->visible)

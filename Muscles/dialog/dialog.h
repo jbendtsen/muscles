@@ -47,6 +47,9 @@ struct View_Source {
 	Label *reg_name = nullptr;
 	Label *size_label = nullptr;
 	Edit_Box *goto_box = nullptr;
+	Checkbox *addr_box = nullptr;
+	Checkbox *hex_box = nullptr;
+	Checkbox *ascii_box = nullptr;
 
 	Source *source = nullptr;
 	std::vector<u64> region_list;
