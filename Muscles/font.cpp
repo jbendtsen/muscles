@@ -47,8 +47,8 @@ void make_font_render(FT_Face face, float size, RGBA& color, int dpi_w, int dpi_
 	float pt_h = (render.pts * dpi_h) / (72.0 * 64.0);
 
 	float em_units = (float)face->units_per_EM;
-	int max_w = (int)(0.5 + pt_w * (float)face->max_advance_width / em_units);
-	int max_h = (int)(0.5 + pt_h * (float)face->max_advance_height / em_units);
+	int max_w = (int)(1.5 + pt_w * (float)face->max_advance_width / em_units);
+	int max_h = (int)(1.5 + pt_h * (float)face->max_advance_height / em_units);
 
 	if (max_w <= 0)
 		return;

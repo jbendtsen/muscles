@@ -297,6 +297,11 @@ struct Hex_View : UI_Element {
 	int size = 0;
 	int rows = 0;
 	int columns = 16;
+	int addr_digits = 0;
+
+	bool show_addrs = false;
+	bool show_hex = false;
+	bool show_ascii = false;
 
 	u64 region_address = 0;
 	u64 region_size = 0;
@@ -304,11 +309,17 @@ struct Hex_View : UI_Element {
 	Source *source = nullptr;
 	int span_idx = -1;
 
+	float font_height = 0;
+
 	Scroll *vscroll = nullptr;
 	Scroll hscroll = {};
 
 	void set_region(u64 address, u64 size);
 	void update(float scale);
+
+	float print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding);
+	float print_hex_row(Span& span, int idx, float x, float y, Rect& box, float padding);
+	void print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box);
 
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;

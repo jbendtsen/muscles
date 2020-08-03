@@ -230,22 +230,25 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	}
 
 	float scroll_x = 0;
-	float scroll_total = 0;
+	float scroll_total = column_spacing;
 	float table_w = pos.w;
 
 	if (hscroll) {
 		for (int i = 0; i < n_cols; i++)
-			scroll_total += data.headers[i].min_size;
+			scroll_total += data.headers[i].min_size + column_spacing;
 		scroll_total *= font_height / view.scale;
 
 		hscroll->set_maximum(scroll_total, pos.w);
+
+		scroll_x = scroll_total - pos.w;
+		if (scroll_x < 0) scroll_x = 0;
+
+		scroll_x = hscroll->position - scroll_x;
 		table_w = hscroll->maximum;
-		scroll_x = hscroll->position;
 	}
 	scroll_x *= view.scale;
 
 	float col_space = column_spacing * font_height;
-	float total_width = pos.w - font_units * ((n_cols + 1) * column_spacing);
 
 	Rect back = make_ui_box(rect, table, view.scale);
 
@@ -256,7 +259,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		for (int i = 0; i < n_cols; i++) {
 			font->render.draw_text_simple(data.headers[i].name, x, y);
 
-			float w = column_width(total_width, scroll_total, font_height, view.scale, i);
+			float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 			x += w + column_spacing * font_height;
 		}
 	}
@@ -301,7 +304,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float table_off_y = y;
 
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
-		float w = column_width(total_width, scroll_total, font_height, view.scale, i);
+		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 		clip.x_upper = x+w < x_max ? x+w : x_max;
 
 		Type type = data.headers[i].type;
@@ -708,36 +711,31 @@ void Hex_View::update(float scale) {
 		vscroll->set_maximum(size, rows * columns);
 	}
 
+	addr_digits = count_digits(region_address + region_size - 1);
+
 	if (alive)
 		span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
 }
 
-void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	Rect box = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(box, default_color);
+float Hex_View::print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding) {
+	int n_digits = count_digits(address);
+	float text_x = x + (addr_digits - n_digits) * digit_w;
 
-	if (!alive || span_idx < 0)
-		return;
+	char buf[20];
+	print_hex("0123456789abcdef", buf, address, n_digits);
+	font->render.draw_text(buf, box.x + text_x, box.y + y, clip);
 
+	return x + addr_digits * digit_w + 2*padding;
+}
+
+float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, float padding) {
 	Rect_Fixed src, dst;
 
-	float font_height = font->render.text_height();
-	float x_start = 4 * view.scale;
-	float x = x_start;
-	float y = font_height;
-	float padding = font_height / 4;
-
-	float row_height = rows > 0 ? (box.h - padding) / rows : font_height;
-
-	int row_digits = columns * 2;
-	auto& span = source->spans[span_idx];
-
-	bool clip = false;
-	for (int i = 0; i < span.size * 2; i++) {
+	for (int i = 0; i < columns * 2; i++) {
 		const Glyph *gl = nullptr;
 		int digit = 0;
 		if (i < span.retrieved * 2) {
-			digit = span.cache[i / 2];
+			digit = span.cache[idx + i/2];
 			if (i % 2 == 0)
 				digit >>= 4;
 			digit &= 0xf;
@@ -748,37 +746,101 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		else
 			gl = font->render.glyph_for('?');
 
-		if (!clip) {
-			src.x = gl->atlas_x;
-			src.y = gl->atlas_y;
-			src.w = gl->img_w;
-			src.h = gl->img_h;
+		src.x = gl->atlas_x;
+		src.y = gl->atlas_y;
+		src.w = gl->img_w;
+		src.h = gl->img_h;
 
-			float clip_x = x + padding + gl->left;
-			if (clip_x + src.w > box.w)
-				src.w = box.w - clip_x;
+		float clip_x = x + padding + gl->left;
+		if (clip_x + src.w > box.w)
+			src.w = box.w - clip_x;
 
-			dst.x = box.x + x + gl->left;
-			dst.y = box.y + y - gl->top;
-			dst.w = src.w;
-			dst.h = src.h;
+		dst.x = box.x + x + gl->left;
+		dst.y = box.y + y - gl->top;
+		dst.w = src.w;
+		dst.h = src.h;
 
-			sdl_apply_texture(font->render.tex, &dst, &src);
-		}
+		sdl_apply_texture(font->render.tex, &dst, &src);
 
-		if (i % row_digits == row_digits-1) {
-			x = x_start;
-			y += row_height;
-			clip = false;
-		}
-		else {
-			x += gl->box_w;
-			if (i % 2 == 1)
-				x += padding;
-		}
+		x += gl->box_w;
+		if (i % 2 == 1)
+			x += padding;
 
 		if (x >= box.w)
-			clip = true;
+			break;
+	}
+
+	return x + padding;
+}
+
+void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box) {
+	char *ascii = (char*)alloca(columns + 1);
+	for (int i = 0; i < columns; i++) {
+		char c = '?';
+		if (idx+i < span.retrieved) {
+			c = (char)span.cache[idx+i];
+			if (c < ' ' || c > '~')
+				c = '.';
+		}
+		ascii[i] = c;
+	}
+	ascii[columns] = 0;
+
+	font->render.draw_text(ascii, box.x + x, box.y + y, clip);
+}
+
+void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect box = make_ui_box(rect, pos, view.scale);
+
+	if (!alive || span_idx < 0) {
+		sdl_draw_rect(box, default_color);
+		return;
+	}
+
+	Rect_Fixed src, dst;
+
+	font_height = font->render.text_height();
+
+	float x_start = 4 * view.scale;
+	float x = x_start;
+	float y = font_height;
+	float padding = font_height / 4;
+
+	float digit_w = font->render.digit_width();
+	float addr_w = x_start + addr_digits * digit_w + padding;
+
+	Rect back = box;
+	if (show_addrs) {
+		back.x += addr_w;
+		back.w -= addr_w;
+	}
+	sdl_draw_rect(back, default_color);
+
+	Render_Clip addr_clip = {
+		CLIP_RIGHT, 0, 0, box.x + addr_w - padding, 0
+	};
+	Render_Clip ascii_clip = {
+		CLIP_RIGHT, 0, 0, box.x + box.w - padding, 0
+	};
+
+	float row_height = rows > 0 ? (box.h - padding) / rows : font_height;
+
+	auto& span = source->spans[span_idx];
+	int left = span.size;
+
+	while (left > 0) {
+		int idx = span.size - left;
+
+		if (show_addrs)
+			x = print_address(region_address + offset + idx, x, y - font_height, digit_w, addr_clip, box, padding);
+		if (show_hex && x < box.w)
+			x = print_hex_row(span, idx, x, y, box, padding);
+		if (show_ascii && x < box.w)
+			print_ascii_row(span, idx, x, y - font_height, ascii_clip, box);
+
+		x = x_start;
+		y += row_height;
+		left -= columns;
 	}
 }
 

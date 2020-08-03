@@ -3,30 +3,6 @@
 #include "../ui.h"
 #include "dialog.h"
 
-inline int count_digits(u64 num) {
-	if (num == 0)
-		return 1;
-
-	u64 n = num;
-	int n_digits = 0;
-	while (n) {
-		n >>= 4;
-		n_digits++;
-	}
-
-	return n_digits;
-}
-
-inline void print_hex(char *hex, char *out, u64 n, int n_digits) {
-	int shift = (n_digits-1) * 4;
-	char *p = out;
-	for (int i = 0; i < n_digits; i++) {
-		*p++ = hex[(n >> shift) & 0xf];
-		shift -= 4;
-	}
-	*p = 0;
-}
-
 void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
 	b.update_elements(view, input, inside, hovered, focussed);
 
@@ -193,6 +169,10 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 
 	ui->addr_box->pos.x = ui->hex_box->pos.x - ui->addr_box->pos.w;
 	ui->addr_box->pos.y = ui->hex_box->pos.y;
+
+	ui->hex->show_addrs = ui->addr_box->checked;
+	ui->hex->show_hex = ui->hex_box->checked;
+	ui->hex->show_ascii = ui->ascii_box->checked;
 
 	ui->hex->update(view.scale);
 
@@ -484,6 +464,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->hex_box->hl_color = ui->addr_box->hl_color;
 	ui->hex_box->sel_color = ui->addr_box->sel_color;
 	ui->hex_box->pos = ui->addr_box->pos;
+	ui->hex_box->checked = true;
 	ui->hex_box->action = ui->addr_box->action;
 	b.ui.push_back(ui->hex_box);
 

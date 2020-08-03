@@ -24,6 +24,9 @@ void destroy_font_face(Font_Face face);
 
 int run();
 
+int count_digits(u64 num);
+void print_hex(const char *hex, char *out, u64 n, int n_digits);
+
 struct Glyph {
 	int atlas_x;
 	int atlas_y;

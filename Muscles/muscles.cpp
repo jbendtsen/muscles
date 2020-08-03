@@ -80,3 +80,27 @@ int run() {
 
 	return 0;
 }
+
+int count_digits(u64 num) {
+	if (num == 0)
+		return 1;
+
+	u64 n = num;
+	int n_digits = 0;
+	while (n) {
+		n >>= 4;
+		n_digits++;
+	}
+
+	return n_digits;
+}
+
+void print_hex(const char *hex, char *out, u64 n, int n_digits) {
+	int shift = (n_digits-1) * 4;
+	char *p = out;
+	for (int i = 0; i < n_digits; i++) {
+		*p++ = hex[(n >> shift) & 0xf];
+		shift -= 4;
+	}
+	*p = 0;
+}
