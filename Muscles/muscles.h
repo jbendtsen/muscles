@@ -155,8 +155,12 @@ struct Table {
 		return headers.size() > 0 ? columns[0].size() : 0;
 	}
 
-	int index_from_selection(int sel) {
+	int index_from_filtered(int sel) {
 		return filtered < 0 ? sel : *std::next(list.begin(), sel);
+	}
+	int filtered_from_index(int idx) {
+		auto it = list.find(idx);
+		return it == list.end() ? -1 : std::distance(list.begin(), it);
 	}
 
 	void init(Column *headers, int n_cols, int n_rows);

@@ -694,6 +694,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 void Hex_View::set_region(u64 address, u64 size) {
 	region_address = address;
 	region_size = size;
+	sel = -1;
 	alive = true;
 }
 
@@ -701,14 +702,14 @@ void Hex_View::update(float scale) {
 	float font_height = font->render.text_height();
 	rows = pos.h * scale / font_height;
 
-	if (vscroll) {
-		offset = (int)vscroll->position;
+	if (scroll) {
+		offset = (int)scroll->position;
 		offset -= offset % columns;
 		u64 size = region_size;
 		if (size % columns > 0)
 			size += columns - (size % columns);
 
-		vscroll->set_maximum(size, rows * columns);
+		scroll->set_maximum(size, rows * columns);
 	}
 
 	addr_digits = count_digits(region_address + region_size - 1);
@@ -717,7 +718,7 @@ void Hex_View::update(float scale) {
 		span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
 }
 
-float Hex_View::print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding) {
+float Hex_View::print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float pad) {
 	int n_digits = count_digits(address);
 	float text_x = x + (addr_digits - n_digits) * digit_w;
 
@@ -725,10 +726,10 @@ float Hex_View::print_address(u64 address, float x, float y, float digit_w, Rend
 	print_hex("0123456789abcdef", buf, address, n_digits);
 	font->render.draw_text(buf, box.x + text_x, box.y + y, clip);
 
-	return x + addr_digits * digit_w + 2*padding;
+	return x + addr_digits * digit_w + 2*pad;
 }
 
-float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, float padding) {
+float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, float pad) {
 	Rect_Fixed src, dst;
 
 	for (int i = 0; i < columns * 2; i++) {
@@ -751,7 +752,7 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 		src.w = gl->img_w;
 		src.h = gl->img_h;
 
-		float clip_x = x + padding + gl->left;
+		float clip_x = x + pad + gl->left;
 		if (clip_x + src.w > box.w)
 			src.w = box.w - clip_x;
 
@@ -764,13 +765,13 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 
 		x += gl->box_w;
 		if (i % 2 == 1)
-			x += padding;
+			x += pad;
 
 		if (x >= box.w)
 			break;
 	}
 
-	return x + padding;
+	return x + pad;
 }
 
 void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box) {
@@ -789,10 +790,48 @@ void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Cli
 	font->render.draw_text(ascii, box.x + x, box.y + y, clip);
 }
 
+void Hex_View::draw_cursors(int idx, Rect& back, float x_start, float pad, float scale) {
+	int row = idx / columns;
+	int col = idx % columns;
+
+	float cur_w = cursor_width * scale;
+	float digit_w = font->render.digit_width();
+	float byte_w = 2 * digit_w + pad;
+	float hex_w = (float)columns * byte_w;
+
+	float x = back.x + x_start;
+	float hex_x = x + (float)col * byte_w;
+	float ascii_x = x + (float)col * digit_w;
+	if (show_hex)
+		ascii_x += hex_w + pad;
+
+	float x_max = back.x + back.w - cur_w;
+	float y = back.y + (float)row * row_height + (pad / 2);
+
+	if (show_hex && hex_x < x_max) {
+		Rect cursor = {
+			hex_x,
+			y,
+			cur_w,
+			row_height
+		};
+		sdl_draw_rect(cursor, caret);
+	}
+	if (show_ascii && ascii_x < x_max) {
+		Rect cursor = {
+			ascii_x,
+			y,
+			cur_w,
+			row_height
+		};
+		sdl_draw_rect(cursor, caret);
+	}
+}
+
 void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
-	if (!alive || span_idx < 0) {
+	if (!alive || span_idx < 0 || rows <= 0 || columns <= 0) {
 		sdl_draw_rect(box, default_color);
 		return;
 	}
@@ -801,13 +840,13 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 	font_height = font->render.text_height();
 
-	float x_start = 4 * view.scale;
+	float x_start = x_offset * view.scale;
 	float x = x_start;
 	float y = font_height;
-	float padding = font_height / 4;
+	float pad = padding * font_height;
 
 	float digit_w = font->render.digit_width();
-	float addr_w = x_start + addr_digits * digit_w + padding;
+	float addr_w = addr_digits * digit_w + 2*pad;
 
 	Rect back = box;
 	if (show_addrs) {
@@ -817,13 +856,13 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	sdl_draw_rect(back, default_color);
 
 	Render_Clip addr_clip = {
-		CLIP_RIGHT, 0, 0, box.x + addr_w - padding, 0
+		CLIP_RIGHT, 0, 0, box.x + addr_w - pad, 0
 	};
 	Render_Clip ascii_clip = {
-		CLIP_RIGHT, 0, 0, box.x + box.w - padding, 0
+		CLIP_RIGHT, 0, 0, box.x + box.w - pad, 0
 	};
 
-	float row_height = rows > 0 ? (box.h - padding) / rows : font_height;
+	row_height = rows > 0 ? (box.h - pad) / (float)rows : font_height;
 
 	auto& span = source->spans[span_idx];
 	int left = span.size;
@@ -832,9 +871,9 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		int idx = span.size - left;
 
 		if (show_addrs)
-			x = print_address(region_address + offset + idx, x, y - font_height, digit_w, addr_clip, box, padding);
+			x = print_address(region_address + offset + idx, x, y - font_height, digit_w, addr_clip, box, pad);
 		if (show_hex && x < box.w)
-			x = print_hex_row(span, idx, x, y, box, padding);
+			x = print_hex_row(span, idx, x, y, box, pad);
 		if (show_ascii && x < box.w)
 			print_ascii_row(span, idx, x, y - font_height, ascii_clip, box);
 
@@ -842,18 +881,49 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		y += row_height;
 		left -= columns;
 	}
+
+	if (sel >= 0 && sel >= offset && sel < offset + span.size)
+		draw_cursors(sel - offset, back, x_start, pad, view.scale);
 }
 
 void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (vscroll && hovered && pos.contains(cursor)) {
+	if (!hovered || !pos.contains(cursor))
+		return;
+
+	if (scroll) {
 		int delta = columns;
 		if (input.lshift || input.rshift)
 			delta *= rows;
 
 		if (input.scroll_y > 0)
-			vscroll->scroll(-delta);
+			scroll->scroll(-delta);
 		if (input.scroll_y < 0)
-			vscroll->scroll(delta);
+			scroll->scroll(delta);
+	}
+
+	if (input.lclick) {
+		sel = -1;
+
+		float font_h = font_height / view.scale;
+		float pad = padding * font_h;
+		float row_height = rows > 0 ? (pos.h - pad) / (float)rows : font_h;
+
+		float digit_w = font->render.digit_width() / view.scale;
+		float byte_w = 2*digit_w + pad;
+		float hex_w = (float)columns * byte_w;
+
+		float x_start = x_offset;
+		if (show_addrs)
+			x_start += addr_digits * digit_w + 2*pad;
+
+		float x = cursor.x - pos.x - x_start + (pad / 2);
+		float y = cursor.y - pos.y - (pad / 2);
+
+		if (x >= 0 && x < hex_w) {
+			int row = y / row_height;
+			int col = x / byte_w;
+			sel = offset + (row * columns) + col;
+		}
 	}
 }
 

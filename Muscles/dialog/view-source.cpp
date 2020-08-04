@@ -200,7 +200,7 @@ void update_regions_table(View_Source *ui) {
 		return;
 	}
 
-	sel = ui->reg_table->data.index_from_selection(sel);
+	sel = ui->reg_table->data.index_from_filtered(sel);
 
 	char *name = (char*)ui->reg_table->data.columns[0][sel];
 	ui->reg_name->text = name ? name : "";
@@ -266,9 +266,7 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 
 	if (ui->reg_table->data.filtered > 0) {
 		ui->reg_table->data.update_filter(ui->reg_search->line);
-		auto& list = ui->reg_table->data.list;
-		auto it = list.find(sel);
-		sel = it == list.end() ? -1 : std::distance(list.begin(), it);
+		sel = ui->reg_table->data.filtered_from_index(sel);
 	}
 
 	ui->reg_table->sel_row = sel;
@@ -472,8 +470,9 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->hex = new Hex_View();
 	ui->hex->font = ws.make_font(8, ws.text_color);
 	ui->hex->default_color = ws.dark_color;
+	ui->hex->caret = ws.caret_color;
 	ui->hex->source = ui->source;
-	ui->hex->vscroll = ui->hex_scroll;
+	ui->hex->scroll = ui->hex_scroll;
 	b.ui.push_back(ui->hex);
 
 	ui->goto_box = new Edit_Box();

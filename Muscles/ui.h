@@ -230,6 +230,48 @@ struct Edit_Box : UI_Element {
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
+struct Hex_View : UI_Element {
+	Hex_View() : UI_Element(TypeHexView) {}
+
+	bool alive = false;
+	int offset = 0;
+	int sel = -1;
+	int rows = 0;
+	int columns = 16;
+	int addr_digits = 0;
+
+	bool show_addrs = false;
+	bool show_hex = false;
+	bool show_ascii = false;
+
+	RGBA caret = {};
+
+	u64 region_address = 0;
+	u64 region_size = 0;
+
+	Source *source = nullptr;
+	int span_idx = -1;
+
+	float font_height = 0;
+	float row_height = 0;
+	float x_offset = 4;
+	float padding = 0.25;
+	float cursor_width = 1.5;
+
+	Scroll *scroll = nullptr;
+
+	void set_region(u64 address, u64 size);
+	void update(float scale);
+
+	float print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding);
+	float print_hex_row(Span& span, int idx, float x, float y, Rect& box, float padding);
+	void print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box);
+	void draw_cursors(int idx, Rect& back, float x_start, float pad, float scale);
+
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+};
+
 struct Image : UI_Element {
 	Image() : UI_Element(TypeImage) {}
 
@@ -287,42 +329,6 @@ struct Scroll : UI_Element {
 
 	bool highlight(Camera& view, Point& inside) override;
 	void deselect() override;
-};
-
-struct Hex_View : UI_Element {
-	Hex_View() : UI_Element(TypeHexView) {}
-
-	bool alive = false;
-	int offset = 0;
-	int size = 0;
-	int rows = 0;
-	int columns = 16;
-	int addr_digits = 0;
-
-	bool show_addrs = false;
-	bool show_hex = false;
-	bool show_ascii = false;
-
-	u64 region_address = 0;
-	u64 region_size = 0;
-
-	Source *source = nullptr;
-	int span_idx = -1;
-
-	float font_height = 0;
-
-	Scroll *vscroll = nullptr;
-	Scroll hscroll = {};
-
-	void set_region(u64 address, u64 size);
-	void update(float scale);
-
-	float print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding);
-	float print_hex_row(Span& span, int idx, float x, float y, Rect& box, float padding);
-	void print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box);
-
-	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
-	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 };
 
 enum BoxType {
@@ -405,7 +411,7 @@ struct Workspace {
 	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
 	RGBA caret_color = {0.9, 0.9, 0.9, 1.0};
-	RGBA cb_color = {0.6, 0.7, 0.9, 1.0};
+	RGBA cb_color = {0.55, 0.7, 0.9, 1.0};
 
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;
