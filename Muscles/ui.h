@@ -416,6 +416,7 @@ struct Workspace {
 	Box *focus = nullptr;
 	Box *selected = nullptr;
 	Box *new_box = nullptr;
+	bool box_moving = false;
 
 	std::vector<Source*> sources;
 

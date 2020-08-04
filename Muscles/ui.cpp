@@ -139,7 +139,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
-	int n_rows = data.visible >= 0 ? data.visible : data.row_count();
+	int n_rows = data.filtered >= 0 ? data.filtered : data.row_count();
 	int n_cols = data.column_count();
 	float total_width = table.w - font_units * ((n_cols - 1) * column_spacing);
 
@@ -220,7 +220,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	int top = 0;
 	int n_visible = table.h / item_height;
 
-	int n_items = data.visible;
+	int n_items = data.filtered;
 	if (n_items < 0)
 		n_items = n_rows;
 
@@ -309,7 +309,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 		Type type = data.headers[i].type;
 
-		if (data.visible >= 0) {
+		if (data.filtered >= 0) {
 			int n = -1;
 			for (auto& idx : data.list) {
 				if (y >= y_max)
@@ -906,6 +906,9 @@ void Scroll::scroll(double delta) {
 }
 
 void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (!show_thumb)
+		return;
+
 	if (input.lclick && pos.contains(cursor))
 		engage(cursor);
 

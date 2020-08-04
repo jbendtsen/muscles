@@ -41,6 +41,7 @@ struct View_Source {
 	Data_View *reg_table = nullptr;
 	Scroll *reg_scroll = nullptr;
 	Scroll *reg_lat_scroll = nullptr;
+	Edit_Box *reg_search = nullptr;
 	Label *hex_title = nullptr;
 	Hex_View *hex = nullptr;
 	Scroll *hex_scroll = nullptr;
@@ -56,6 +57,7 @@ struct View_Source {
 	u64 selected_region = 0;
 	int goto_digits = 2;
 	bool multiple_regions = false;
+	bool needs_region_update = true;
 };
 
 void make_file_menu(Workspace& ws, Box& b);

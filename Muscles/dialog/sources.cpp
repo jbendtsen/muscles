@@ -146,7 +146,7 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (table->hl_row < 0)
 		return;
 
-	int idx = table->data.visible == -1 ? table->hl_row : *std::next(table->data.list.begin(), table->hl_row);
+	int idx = table->data.index_from_selection(table->hl_row);
 	char *process = (char*)table->data.columns[1][idx];
 
 	elem->parent->parent->delete_box(elem->parent);
@@ -184,7 +184,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 
 	auto ui = (Source_Menu*)table->parent->markup;
 
-	int idx = table->data.visible == -1 ? table->hl_row : *std::next(table->data.list.begin(), table->hl_row);
+	int idx = table->data.index_from_selection(table->hl_row);
 	auto file = (File_Entry*)table->data.columns[1][idx];
 
 	if (file->flags & 8) {

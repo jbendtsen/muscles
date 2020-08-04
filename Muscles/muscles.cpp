@@ -54,11 +54,12 @@ int run() {
 			ctx.adjust_scale(old_scale, camera.scale);
 		}
 
-		if (input.lmouse && (input.lctrl || input.rctrl)) {
+		if (!ctx.box_moving && input.lmouse && (input.lctrl || input.rctrl)) {
 			camera.moving = true;
 			sdl_acquire_mouse();
 		}
 		if (!input.lmouse) {
+			ctx.box_moving = false;
 			for (auto& b : ctx.boxes)
 				b->moving = false;
 

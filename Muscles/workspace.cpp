@@ -367,8 +367,10 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 	if (this == parent->selected && !ui_held) {
 		if (input.lclick)
 			select_edge(view, inside);
-		if (input.lmouse && input.held == move_start)
+		if (input.lmouse && input.held == move_start) {
 			moving = true;
+			parent->box_moving = true;
+		}
 	}
 }
 

@@ -142,7 +142,7 @@ struct Table {
 	std::vector<Column> headers;
 	std::unique_ptr<std::vector<void*>[]> columns;
 	std::set<int> list;
-	int visible = -1;
+	int filtered = -1;
 
 	Table() = default;
 	Table(const Table& t);
@@ -153,6 +153,10 @@ struct Table {
 	}
 	int row_count() const {
 		return headers.size() > 0 ? columns[0].size() : 0;
+	}
+
+	int index_from_selection(int sel) {
+		return filtered < 0 ? sel : *std::next(list.begin(), sel);
 	}
 
 	void init(Column *headers, int n_cols, int n_rows);

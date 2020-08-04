@@ -89,7 +89,7 @@ void Table::init(Column *headers, int n_cols, int n_rows) {
 
 void Table::clear_filter() {
 	list.clear();
-	visible = -1;
+	filtered = -1;
 }
 
 void Table::clear_data() {
@@ -107,7 +107,7 @@ inline void lowify(char *str) {
 void Table::update_filter(std::string& filter) {
 	list.clear();
 	if (!filter.size()) {
-		visible = -1;
+		filtered = -1;
 		return;
 	}
 
@@ -120,7 +120,7 @@ void Table::update_filter(std::string& filter) {
 	int n_rows = row_count();
 	int n_cols = column_count();
 
-	visible = 0;
+	filtered = 0;
 	for (int i = 0; i < n_cols; i++) {
 		Type type = headers[i].type;
 		if (headers[i].type == String || headers[i].type == File) {
@@ -134,7 +134,7 @@ void Table::update_filter(std::string& filter) {
 
 				if (strstr(cell, sub)) {
 					auto res = list.insert(j);
-					visible += res.second ? 1 : 0;
+					filtered += res.second ? 1 : 0;
 				}
 			}
 		}

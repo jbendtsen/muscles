@@ -98,6 +98,13 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 			ui->reg_lat_scroll->pos.w,
 			ui->reg_scroll->pos.h
 		};
+
+		ui->reg_search->pos = {
+			b.border,
+			goto_y,
+			120,
+			goto_h
+		};
 	}
 
 	ui->hex_title->pos = {
@@ -193,6 +200,8 @@ void update_regions_table(View_Source *ui) {
 		return;
 	}
 
+	sel = ui->reg_table->data.index_from_selection(sel);
+
 	char *name = (char*)ui->reg_table->data.columns[0][sel];
 	ui->reg_name->text = name ? name : "";
 
@@ -207,25 +216,31 @@ void update_regions_table(View_Source *ui) {
 void regions_handler(UI_Element *elem, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 	table->sel_row = table->hl_row;
-	update_regions_table((View_Source*)table->parent->markup);
+
+	auto ui = (View_Source*)table->parent->markup;
+	ui->selected_region = 0;
+	update_regions_table(ui);
 }
 
 void refresh_region_list(View_Source *ui, Point& cursor) {
 	int n_rows = ui->reg_table->data.row_count();
 	bool hovered = ui->reg_table->pos.contains(cursor);
-
-	if (!n_rows || (ui->source->region_refreshed && !hovered)) {
-		int n_sources = ui->source->regions.size();
-		if (n_sources != ui->region_list.size()) {
-			u64 sel_addr = 0;
-
-			ui->reg_table->data.resize(n_sources);
-			ui->region_list.resize(n_sources);
-			std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
-		}
-	}
-
 	ui->source->block_region_refresh = hovered;
+
+	if (!n_rows)
+		ui->needs_region_update = true;
+
+	if (!ui->needs_region_update && !ui->source->region_refreshed)
+		return;
+
+	int n_sources = ui->source->regions.size();
+	if (n_sources != ui->region_list.size()) {
+		u64 sel_addr = 0;
+
+		ui->reg_table->data.resize(n_sources);
+		ui->region_list.resize(n_sources);
+		std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
+	}
 
 	// place a hex digit LUT on the stack
 	char hex[16];
@@ -237,13 +252,6 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 
 	int idx = 0, sel = -1;
 	for (auto& r : ui->region_list) {
-		/*
-		if (it == ui->source->regions.end()) {
-			strcpy(addrs[idx], "???");
-			strcpy(sizes[idx], "???");
-			strcpy(names[idx], "???");
-		}
-		*/
 		auto& reg = ui->source->regions[r];
 		if (ui->selected_region == reg.base)
 			sel = idx;
@@ -254,19 +262,29 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 		idx++;
 	}
 
-	ui->goto_digits = count_digits(ui->source->regions[idx-1].base) + 2;
+	ui->goto_digits = idx <= 0 ? 4 : count_digits(ui->source->regions[idx-1].base) + 2;
+
+	if (ui->reg_table->data.filtered > 0) {
+		ui->reg_table->data.update_filter(ui->reg_search->line);
+		auto& list = ui->reg_table->data.list;
+		auto it = list.find(sel);
+		sel = it == list.end() ? -1 : std::distance(list.begin(), it);
+	}
 
 	ui->reg_table->sel_row = sel;
+
+	ui->needs_region_update = false;
 }
 
 void goto_handler(Edit_Box *edit, Input& input) {
 	if (input.enter != 1 || !edit->line.size())
 		return;
 
+	auto ui = (View_Source*)edit->parent->markup;
+
 	u64 base = 0;
 	u64 address = strtoull(edit->line.c_str(), nullptr, 16);
 
-	auto ui = (View_Source*)edit->parent->markup;
 	if (ui->multiple_regions) {
 		int sel_row = -1;
 		for (auto& idx : ui->region_list) {
@@ -277,6 +295,9 @@ void goto_handler(Edit_Box *edit, Input& input) {
 				break;
 			}
 		}
+
+		if (sel_row > 0)
+			ui->reg_table->data.clear_filter();
 
 		ui->reg_table->sel_row = sel_row;
 		update_regions_table(ui);
@@ -290,6 +311,14 @@ void goto_handler(Edit_Box *edit, Input& input) {
 	ui->hex_scroll->position = (double)offset;
 
 	edit->clear();
+}
+
+void region_search_handler(Edit_Box *edit, Input& input) {
+	auto ui = (View_Source*)edit->parent->markup;
+	ui->reg_table->data.update_filter(edit->line);
+	ui->reg_table->hl_row = ui->reg_table->sel_row = -1;
+	ui->reg_scroll->position = 0;
+	ui->selected_region = 0;
 }
 
 static void refresh_handler(Box& b, Point& cursor) {
@@ -325,6 +354,9 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 
 	float goto_h = ui->goto_box->font->render.text_height() * 1.4f / new_scale;
 	ui->goto_box->update_icon(IconGoto, goto_h, new_scale);
+
+	if (ui->reg_search)
+		ui->reg_search->update_icon(IconGlass, goto_h, new_scale);
 }
 
 void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
@@ -400,6 +432,16 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 
 		ui->reg_table->data.init(cols, 3, 0);
 		b.ui.push_back(ui->reg_table);
+
+		ui->reg_search = new Edit_Box();
+		ui->reg_search->font = ui->reg_title->font;
+		ui->reg_search->caret = ws.caret_color;
+		ui->reg_search->default_color = ws.dark_color;
+		ui->reg_search->icon_color = ws.text_color;
+		ui->reg_search->icon_color.a = 0.6;
+		ui->reg_search->key_action = region_search_handler;
+		ui->reg_search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
+		b.ui.push_back(ui->reg_search);
 
 		ui->reg_name = new Label();
 		ui->reg_name->font = ui->reg_title->font;
