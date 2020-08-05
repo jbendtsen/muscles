@@ -1059,3 +1059,135 @@ bool Scroll::highlight(Camera& view, Point& inside) {
 void Scroll::deselect() {
 	hl = false;
 }
+
+void Text_Editor::expunge(bool is_back) {
+	if (is_back) {
+		if (cursor <= 0)
+			return;
+
+		cursor--;
+	}
+	else if (cursor >= text.size())
+		return;
+
+	text.erase(cursor, 1);
+}
+
+void Text_Editor::set_cursor(int line_idx, int col_idx) {
+	if (line == line_idx && column == col_idx)
+		return;
+
+	if (col_idx < 0)
+		line_idx--;
+
+	if (line_idx < 0) {
+		line = column = cursor = 0;
+		return;
+	}
+
+	int l = 0, c = 0;
+	int len = text.size();
+	int line_len = (int)text.find_first_of('\n');
+	int col = col_idx < 0 ? col_idx + line_len : col_idx;
+
+	int i;
+	for (i = 0; i < len; i++) {
+		c++;
+		if (text[i] == '\n') {
+			l++;
+			c = 0;
+			line_len = (int)text.find_first_of('\n', i+1);
+			col = col_idx < 0 ? col_idx + line_len : col_idx;
+		}
+
+		if (l > line_idx || (l == line_idx && col >= 0 && c >= col))
+			break;
+	}
+
+	line = l;
+	column = c;
+	cursor = i;
+}
+
+void Text_Editor::key_handler(Camera& view, Input& input) {
+	if (this != parent->active_edit)
+		return;
+
+	int line_delta = 0;
+	int col_delta = 0;
+	char ch = 0;
+
+	if (input.strike(input.back))
+		expunge(true);
+	else if (input.strike(input.del))
+		expunge(false);
+	else if (input.strike(input.esc))
+		parent->active_edit = nullptr;
+	else if (input.strike(input.enter))
+		ch = '\n';
+	else if (input.strike(input.tab))
+		ch = '\t';
+	else if (input.strike(input.left))
+		col_delta = -1;
+	else if (input.strike(input.right))
+		col_delta = 1;
+	else if (input.strike(input.up))
+		line_delta = -1;
+	else if (input.strike(input.down))
+		line_delta = 1;
+	else if (input.ch)
+		ch = input.ch;
+
+	set_cursor(line + line_delta, column + col_delta);
+
+	if (ch) {
+		text.insert(text.begin() + cursor, ch);
+		cursor++;
+	}
+}
+
+void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	parent->active_edit = this;
+}
+
+void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect back = make_ui_box(rect, pos, view.scale);
+	sdl_draw_rect(back, default_color);
+
+	float scroll_x = hscroll ? hscroll->position : 0;
+	float scroll_y = vscroll ? vscroll->position : 0;
+
+	float edge = border * view.scale;
+
+	clip.x_lower = back.x + edge;
+	clip.x_upper = back.x + back.w - edge;
+	clip.y_lower = back.y + edge;
+	clip.y_upper = back.y + back.h - edge;
+
+	font->render.draw_text(text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, 4, true);
+
+	if (this != parent->active_edit)
+		return;
+
+	int idx = 0, line = 0, col = 0;
+	for (char& c : text) {
+		if (idx == cursor)
+			break;
+
+		idx++;
+		col++;
+		if (c == '\n') {
+			line++;
+			col = 0;
+		}
+	}
+
+	float font_h = font->render.text_height();
+	float line_pad = font_h * 0.15f;
+
+	float caret_x = back.x + edge + ((float)col * font->render.digit_width());
+	float caret_y = back.y + edge + line_pad + ((float)line * font_h);
+
+	Rect caret = { caret_x, caret_y, cursor_width * view.scale, font_h - line_pad };
+	sdl_draw_rect(caret, caret_color);
+}

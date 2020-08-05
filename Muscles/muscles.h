@@ -247,7 +247,7 @@ struct Font_Render {
 	}
 
 	void draw_text_simple(const char *text, float x, float y);
-	void draw_text(const char *text, float x, float y, Render_Clip& clip);
+	void draw_text(const char *text, float x, float y, Render_Clip& clip, int tab_cols = 4, bool multiline = false);
 
 	Font_Render() = default;
 	~Font_Render() {
@@ -339,6 +339,7 @@ struct Input {
 	int back = 0;
 	int esc = 0;
 	int enter = 0;
+	int tab = 0;
 
 	int left = 0;
 	int down = 0;

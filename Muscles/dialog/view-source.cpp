@@ -8,12 +8,10 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 
 	auto ui = (View_Source*)b.markup;
 
-	if (ui->cross) {
-		ui->cross->pos.y = b.cross_size * 0.5;
-		ui->cross->pos.x = b.box.w - b.cross_size * 1.5;
-		ui->cross->pos.w = b.cross_size;
-		ui->cross->pos.h = b.cross_size;
-	}
+	ui->cross->pos.y = b.cross_size * 0.5;
+	ui->cross->pos.x = b.box.w - b.cross_size * 1.5;
+	ui->cross->pos.w = b.cross_size;
+	ui->cross->pos.h = b.cross_size;
 
 	float w = ui->title->font->render.text_width(ui->title->text.c_str()) / view.scale;
 	float max_title_w = b.box.w - 5 * b.cross_size;
@@ -438,7 +436,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_search->icon_color = ws.text_color;
 		ui->reg_search->icon_color.a = 0.6;
 		ui->reg_search->key_action = region_search_handler;
-		ui->reg_search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
+		ui->reg_search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 		b.ui.push_back(ui->reg_search);
 
 		ui->reg_name = new Label();
@@ -480,7 +478,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->default_color = ws.dark_color;
 	ui->goto_box->font = ui->hex_title->font;
 	ui->goto_box->key_action = goto_handler;
-	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = dynamic_cast<Edit_Box*>(elem);};
+	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 
 	ui->goto_box->icon_color = ws.text_color;
 	ui->goto_box->icon_color.a = 0.6;

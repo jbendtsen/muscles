@@ -11,7 +11,8 @@ enum ElementType {
 	TypeEditBox,
 	TypeDropDown,
 	TypeCheckbox,
-	TypeHexView
+	TypeHexView,
+	TypeTextEditor
 };
 
 struct Box;
@@ -331,6 +332,34 @@ struct Scroll : UI_Element {
 	void deselect() override;
 };
 
+struct Text_Editor : UI_Element {
+	Text_Editor() : UI_Element(TypeTextEditor) {}
+
+	float border = 4;
+	float cursor_width = 1;
+	RGBA caret_color = {};
+
+	Scroll *vscroll = nullptr;
+	Scroll *hscroll = nullptr;
+
+	int cursor = 0;
+	int line = 0;
+	int column = 0;
+
+	Render_Clip clip = {
+		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
+		0, 0, 0, 0
+	};
+	std::string text;
+
+	void expunge(bool is_back); // when "remove" and "erase" just aren't dramatic enough
+	void set_cursor(int line_idx, int col_idx);
+
+	void key_handler(Camera& view, Input& input) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
 enum BoxType {
 	NoBoxType = 0,
 	TypeMain
@@ -351,7 +380,7 @@ struct Box {
 
 	Workspace *parent = nullptr;
 	Drop_Down *current_dd = nullptr;
-	Edit_Box *active_edit = nullptr;
+	UI_Element *active_edit = nullptr;
 	void *markup = nullptr;
 
 	void (*update_handler)(Box&, Camera&, Input&, Point&, bool, bool) = nullptr;
@@ -406,7 +435,7 @@ struct Workspace {
 	RGBA inactive_color = { 0.2, 0.3, 0.5, 1.0 };
 	RGBA inactive_text_color = { 0.7, 0.7, 0.7, 1.0 };
 	RGBA inactive_outline_color = { 0.55, 0.6, 0.65, 1.0 };
-	RGBA scroll_back = {0, 0.1, 0.4, 1.0};
+	RGBA scroll_back = {0, 0.15, 0.4, 1.0};
 	RGBA scroll_color = {0.4, 0.45, 0.55, 1.0};
 	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};

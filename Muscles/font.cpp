@@ -138,7 +138,7 @@ void Font_Render::draw_text_simple(const char *text, float x, float y) {
 	}
 }
 
-void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& clip) {
+void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& clip, int tab_cols, bool multiline) {
 	bool clip_top = (clip.flags & CLIP_TOP) != 0;
 	bool clip_bottom = (clip.flags & CLIP_BOTTOM) != 0;
 	bool clip_left = (clip.flags & CLIP_LEFT) != 0;
@@ -147,15 +147,40 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 	if (clip_right && x > clip.x_upper)
 		return;
 
+	float x_start = x;
 	Rect_Fixed src, dst;
 
-	y += text_height();
+	float height = text_height();
+	y += height;
 
+	bool draw = true;
+	int col = 0;
 	int len = strlen(text);
-	for (int i = 0; i < len; i++) {
-		const Glyph *gl = glyph_for(text[i]);
-		if (!gl)
+
+	for (int i = 0; i < len; i++, col++) {
+		if (text[i] == '\t') {
+			int add = tab_cols - (col % tab_cols);
+			x += (float)add * glyph_for(' ')->box_w;
+			col += add - 1;
 			continue;
+		}
+
+		if (multiline && text[i] == '\n') {
+			x = x_start;
+			y += height;
+			col = -1;
+			draw = true;
+			continue;
+		}
+
+		if (!draw)
+			continue;
+
+		const Glyph *gl = glyph_for(text[i]);
+		if (!gl) {
+			col--;
+			continue;
+		}
 
 		float advance = gl->box_w;
 
@@ -209,7 +234,7 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 
 		x += advance;
 		if (clip_right && x > clip.x_upper)
-			break;
+			draw = false;
 	}
 }
 

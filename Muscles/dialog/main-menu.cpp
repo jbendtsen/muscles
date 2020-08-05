@@ -125,9 +125,16 @@ void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dd->sel < 0)
 		return;
 
+	auto ui = (Main_Menu*)dd->parent->markup;
 	if (dd->sel == 0) {
-		auto ui = (Main_Menu*)dd->parent->markup;
 		open_view_source(*elem->parent->parent, ui->table->sel_row);
+	}
+	else if (dd->sel == 3) {
+		Box *box = new Box();
+		Workspace *ws = dd->parent->parent;
+		make_struct_box(*ws, *box);
+		ws->add_box(box);
+		ws->focus = ws->boxes.back();
 	}
 
 	dd->parent->set_dropdown(nullptr);

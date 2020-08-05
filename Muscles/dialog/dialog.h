@@ -60,6 +60,14 @@ struct View_Source {
 	bool needs_region_update = true;
 };
 
+struct Struct_Box {
+	Image *cross = nullptr;
+	Text_Editor *edit = nullptr;
+	Scroll *hscroll = nullptr;
+	Scroll *vscroll = nullptr;
+};
+
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
 void make_view_source_menu(Workspace& ws, Source *s, Box& b);
+void make_struct_box(Workspace& ws, Box& b);
