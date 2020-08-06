@@ -345,6 +345,7 @@ struct Text_Editor : UI_Element {
 	int cursor = 0;
 	int line = 0;
 	int column = 0;
+	int target_column = 0;
 
 	Render_Clip clip = {
 		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
@@ -353,7 +354,9 @@ struct Text_Editor : UI_Element {
 	std::string text;
 
 	void expunge(bool is_back); // when "remove" and "erase" just aren't dramatic enough
-	void set_cursor(int line_idx, int col_idx);
+	void set_cursor(int cur);
+	void set_line(int line_idx);
+	void set_column(int col_idx);
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;

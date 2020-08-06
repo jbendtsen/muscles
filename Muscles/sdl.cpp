@@ -73,6 +73,8 @@ bool sdl_poll_input(Input& input) {
 	if (input.esc) input.esc++;
 	if (input.enter) input.enter++;
 	if (input.tab) input.tab++;
+	if (input.home) input.home++;
+	if (input.end) input.end++;
 	if (input.left) input.left++;
 	if (input.down) input.down++;
 	if (input.right) input.right++;
@@ -114,6 +116,12 @@ bool sdl_poll_input(Input& input) {
 					case SDLK_TAB:
 						input.tab = 1;
 						break;
+					case SDLK_HOME:
+						input.home = 1;
+						break;
+					case SDLK_END:
+						input.end = 1;
+						break;
 					case SDLK_LEFT:
 						input.left = 1;
 						break;
@@ -153,6 +161,12 @@ bool sdl_poll_input(Input& input) {
 						break;
 					case SDLK_TAB:
 						input.tab = 0;
+						break;
+					case SDLK_HOME:
+						input.home = 0;
+						break;
+					case SDLK_END:
+						input.end = 0;
 						break;
 					case SDLK_LEFT:
 						input.left = 0;

@@ -1065,7 +1065,7 @@ void Text_Editor::expunge(bool is_back) {
 		if (cursor <= 0)
 			return;
 
-		cursor--;
+		set_cursor(cursor - 1);
 	}
 	else if (cursor >= text.size())
 		return;
@@ -1073,50 +1073,107 @@ void Text_Editor::expunge(bool is_back) {
 	text.erase(cursor, 1);
 }
 
-void Text_Editor::set_cursor(int line_idx, int col_idx) {
-	if (line == line_idx && column == col_idx)
-		return;
-
-	if (col_idx < 0)
-		line_idx--;
-
-	if (line_idx < 0) {
-		line = column = cursor = 0;
-		return;
-	}
-
+// Used for left/right arrow movement and when adding/removing characters
+void Text_Editor::set_cursor(int cur) {
 	int l = 0, c = 0;
-	int len = text.size();
-	int line_len = (int)text.find_first_of('\n');
-	int col = col_idx < 0 ? col_idx + line_len : col_idx;
+	int i, len = text.size();
 
-	int i;
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < cur && i < len; i++) {
 		c++;
 		if (text[i] == '\n') {
-			l++;
 			c = 0;
-			line_len = (int)text.find_first_of('\n', i+1);
-			col = col_idx < 0 ? col_idx + line_len : col_idx;
+			l++;
 		}
-
-		if (l > line_idx || (l == line_idx && col >= 0 && c >= col))
-			break;
 	}
 
 	line = l;
 	column = c;
+	target_column = c;
 	cursor = i;
+}
+
+// Used for up/down arrow movement and mouse selection on y-axis
+void Text_Editor::set_line(int line_idx) {
+	if (line_idx < 0 || line == line_idx)
+		return;
+
+	int l = 0, c = 0;
+	int len = text.size();
+	int prev_col_end = 0;
+	int last_nl = 0;
+
+	bool reached_target = false;
+	int i;
+	for (i = 0; i < len; i++) {
+		if (l == line_idx && c >= target_column) {
+			column = c;
+			reached_target = true;
+			break;
+		}
+		if (l > line_idx) {
+			column = prev_col_end;
+			l--;
+			i--;
+			reached_target = true;
+			break;
+		}
+
+		c++;
+		if (text[i] == '\n') {
+			l++;
+			last_nl = i+1;
+			prev_col_end = c-1;
+			c = 0;
+		}
+	}
+
+	if (!reached_target) {
+		int end = len - last_nl;
+		if (column > end || target_column >= end)
+			column = end;
+		cursor = last_nl + column;
+	}
+	else
+		cursor = i;
+
+	line = l;
+}
+
+// Used for home/end movement and mouse selection on x-axis
+void Text_Editor::set_column(int col_idx) {
+	int len = text.size();
+	int start = 0, end = 0;
+	int i, l = 0;
+	for (i = 0; i < len; i++) {
+		if (text[i] != '\n')
+			continue;
+
+		if (end) start = end+1;
+		end = i;
+
+		if (l >= line)
+			break;
+
+		l++;
+	}
+	if (i >= len) {
+		if (end) start = end+1;
+		end = i;
+	}
+
+	if (col_idx < 0 || col_idx > end-start)
+		col_idx = end-start;
+
+	column = target_column = col_idx;
+	line = l;
+	cursor = start + column;
 }
 
 void Text_Editor::key_handler(Camera& view, Input& input) {
 	if (this != parent->active_edit)
 		return;
 
-	int line_delta = 0;
-	int col_delta = 0;
 	char ch = 0;
-
 	if (input.strike(input.back))
 		expunge(true);
 	else if (input.strike(input.del))
@@ -1127,22 +1184,24 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		ch = '\n';
 	else if (input.strike(input.tab))
 		ch = '\t';
+	else if (input.strike(input.home))
+		set_column(0);
+	else if (input.strike(input.end))
+		set_column(-1);
 	else if (input.strike(input.left))
-		col_delta = -1;
+		set_cursor(cursor - 1);
 	else if (input.strike(input.right))
-		col_delta = 1;
+		set_cursor(cursor + 1);
 	else if (input.strike(input.up))
-		line_delta = -1;
+		set_line(line - 1);
 	else if (input.strike(input.down))
-		line_delta = 1;
+		set_line(line + 1);
 	else if (input.ch)
 		ch = input.ch;
 
-	set_cursor(line + line_delta, column + col_delta);
-
 	if (ch) {
 		text.insert(text.begin() + cursor, ch);
-		cursor++;
+		set_cursor(cursor + 1);
 	}
 }
 
@@ -1169,25 +1228,12 @@ void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool b
 	if (this != parent->active_edit)
 		return;
 
-	int idx = 0, line = 0, col = 0;
-	for (char& c : text) {
-		if (idx == cursor)
-			break;
-
-		idx++;
-		col++;
-		if (c == '\n') {
-			line++;
-			col = 0;
-		}
-	}
-
 	float font_h = font->render.text_height();
 	float line_pad = font_h * 0.15f;
 
-	float caret_x = back.x + edge + ((float)col * font->render.digit_width());
+	float caret_x = back.x + edge + ((float)column * font->render.digit_width());
 	float caret_y = back.y + edge + line_pad + ((float)line * font_h);
 
-	Rect caret = { caret_x, caret_y, cursor_width * view.scale, font_h - line_pad };
+	Rect caret = { caret_x, caret_y, cursor_width * view.scale, font_h - (line_pad / 2) };
 	sdl_draw_rect(caret, caret_color);
 }

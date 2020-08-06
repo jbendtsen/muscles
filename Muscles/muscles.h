@@ -340,6 +340,8 @@ struct Input {
 	int esc = 0;
 	int enter = 0;
 	int tab = 0;
+	int home = 0;
+	int end = 0;
 
 	int left = 0;
 	int down = 0;
