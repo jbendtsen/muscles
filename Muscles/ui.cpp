@@ -1075,11 +1075,16 @@ void Text_Editor::expunge(bool is_back) {
 
 // Used for left/right arrow movement and when adding/removing characters
 void Text_Editor::set_cursor(int cur) {
-	int l = 0, c = 0;
+	int c = 0;
+	int l = 0;
 	int i, len = text.size();
 
 	for (i = 0; i < cur && i < len; i++) {
-		c++;
+		if (text[i] == '\t')
+			c += tab_width;
+		else
+			c++;
+			
 		if (text[i] == '\n') {
 			c = 0;
 			l++;
@@ -1097,28 +1102,34 @@ void Text_Editor::set_line(int line_idx) {
 	if (line_idx < 0 || line == line_idx)
 		return;
 
-	int l = 0, c = 0;
+	int l = 0;
+	int c = 0;
 	int len = text.size();
 	int prev_col_end = 0;
 	int last_nl = 0;
 
 	bool reached_target = false;
-	int i;
-	for (i = 0; i < len; i++) {
+	int idx = 0;
+	for (int i = 0; i < len; i++) {
 		if (l == line_idx && c >= target_column) {
 			column = c;
 			reached_target = true;
+			idx = i;
 			break;
 		}
 		if (l > line_idx) {
 			column = prev_col_end;
 			l--;
-			i--;
+			idx = i-1;
 			reached_target = true;
 			break;
 		}
 
-		c++;
+		if (text[i] == '\t')
+			c += tab_width;
+		else
+			c++;
+
 		if (text[i] == '\n') {
 			l++;
 			last_nl = i+1;
@@ -1128,13 +1139,23 @@ void Text_Editor::set_line(int line_idx) {
 	}
 
 	if (!reached_target) {
-		int end = len - last_nl;
+		int end = 0;
+		int chars = 0;
+
+		for (int i = last_nl; i < len; i++) {
+			if (end < column)
+				chars++;
+
+			end += text[i] == '\t' ? tab_width : 1;
+		}
+
 		if (column > end || target_column >= end)
 			column = end;
-		cursor = last_nl + column;
+
+		cursor = last_nl + chars;
 	}
 	else
-		cursor = i;
+		cursor = idx;
 
 	line = l;
 }
@@ -1143,30 +1164,58 @@ void Text_Editor::set_line(int line_idx) {
 void Text_Editor::set_column(int col_idx) {
 	int len = text.size();
 	int start = 0, end = 0;
-	int i, l = 0;
-	for (i = 0; i < len; i++) {
+	bool past_end = true;
+	int l = 0;
+
+	for (int i = 0; i < len; i++) {
 		if (text[i] != '\n')
 			continue;
 
 		if (end) start = end+1;
 		end = i;
 
-		if (l >= line)
+		if (l >= line) {
+			past_end = false;
 			break;
+		}
 
 		l++;
 	}
-	if (i >= len) {
+	if (past_end) {
 		if (end) start = end+1;
-		end = i;
+		end = len;
 	}
 
-	if (col_idx < 0 || col_idx > end-start)
-		col_idx = end-start;
+	int max_cols = 0;
+	int cols = 0;
+	int chars = 0;
+	int line_len = end - start;
+
+	bool found_column = false;
+	for (int i = 0; i < line_len; i++) {
+		if (!found_column && max_cols >= col_idx) {
+			cols = max_cols;
+			chars = i;
+			found_column = true;
+		}
+
+		max_cols += text[start+i] == '\t' ? tab_width : 1;
+	}
+	if (!found_column) {
+		cols = max_cols;
+		chars = line_len;
+	}
+
+	if (col_idx < 0 || col_idx > max_cols) {
+		col_idx = max_cols;
+		chars = line_len;
+	}
+	else
+		col_idx = cols;
 
 	column = target_column = col_idx;
 	line = l;
-	cursor = start + column;
+	cursor = start + chars;
 }
 
 void Text_Editor::key_handler(Camera& view, Input& input) {
@@ -1206,7 +1255,22 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	parent->active_edit = this;
+	if (hovered && input.lmouse && pos.contains(cursor)) {
+		float x = (cursor.x - pos.x) * view.scale;
+		float y = (cursor.y - pos.y) * view.scale;
+
+		float edge = border * view.scale;
+		float gl_w = font->render.digit_width();
+		float gl_h = font->render.text_height();
+
+		set_line((y - edge) / gl_h);
+		set_column((x - edge) / gl_w + 0.5);
+
+		parent->active_edit = this;
+
+		if (input.lclick)
+			parent->ui_held = true;
+	}
 }
 
 void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -1223,7 +1287,7 @@ void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool b
 	clip.y_lower = back.y + edge;
 	clip.y_upper = back.y + back.h - edge;
 
-	font->render.draw_text(text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, 4, true);
+	font->render.draw_text(text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, tab_width, true);
 
 	if (this != parent->active_edit)
 		return;

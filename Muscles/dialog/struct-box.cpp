@@ -61,7 +61,8 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit->default_color = ws.scroll_back;
 	ui->edit->caret_color = ws.caret_color;
 	ui->edit->font = ws.make_font(10, ws.text_color);
-	ui->edit->text = "struct Test {\nint a;\nint b;\n};";
+	ui->edit->text = "struct Test {\n\tint a;\n\tint b;\n};";
+	ui->edit->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 	b.ui.push_back(ui->edit);
 
 	ui->hscroll = new Scroll();

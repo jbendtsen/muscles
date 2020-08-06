@@ -335,6 +335,7 @@ struct Scroll : UI_Element {
 struct Text_Editor : UI_Element {
 	Text_Editor() : UI_Element(TypeTextEditor) {}
 
+	int tab_width = 4;
 	float border = 4;
 	float cursor_width = 1;
 	RGBA caret_color = {};
