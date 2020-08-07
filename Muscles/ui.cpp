@@ -1099,7 +1099,7 @@ void Text_Editor::set_cursor(Cursor& cursor, int cur) {
 
 // Used for up/down arrow movement and mouse selection on y-axis
 void Text_Editor::set_line(Cursor& cursor, int line_idx) {
-	if (line_idx < 0 || cursor.line == line_idx)
+	if (cursor.line == line_idx)
 		return;
 
 	int l = 0;
@@ -1117,7 +1117,7 @@ void Text_Editor::set_line(Cursor& cursor, int line_idx) {
 			idx = i;
 			break;
 		}
-		if (l > line_idx) {
+		if (l > line_idx && line_idx >= 0) {
 			cursor.column = prev_col_end;
 			l--;
 			idx = i-1;
@@ -1218,22 +1218,108 @@ void Text_Editor::set_column(Cursor& cursor, int col_idx) {
 	cursor.cursor = start + chars;
 }
 
+bool is_word_char(char c) {
+	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+}
+
+bool is_space(char c) {
+	return c == ' ' || c == '\t';
+}
+
+int previous_word(std::string& text, int cur) {
+	if (cur > 0) cur--;
+	int old = cur;
+
+	while (cur > 0 && is_space(text[cur]))
+		cur--;
+	while (cur > 0 && is_word_char(text[cur]))
+		cur--;
+	if (old > cur && cur < text.size() && (text[cur] == ' ' || text[cur] == '\t'))
+		cur++;
+
+	return cur;
+}
+
+int next_word(std::string& text, int cur, bool selecting) {
+	bool skip_word = true;
+	if (is_space(text[cur])) {
+		skip_word = selecting;
+		while (cur < text.size() && is_space(text[cur]))
+			cur++;
+	}
+	if (skip_word) {
+		cur++;
+		while (cur < text.size() && is_word_char(text[cur]))
+			cur++;
+	}
+
+	if (!selecting) {
+		while (cur < text.size() && (text[cur] == ' ' || text[cur] == '\t'))
+			cur++;
+	}
+
+	return cur;
+}
+
 void Text_Editor::key_handler(Camera& view, Input& input) {
 	if (this != parent->active_edit)
 		return;
 
 	char ch = 0;
+	bool ctrl = input.lctrl || input.rctrl;
+	bool shift = input.lshift || input.rshift;
 	bool end_selection = true;
 	bool erased = false;
 
 	if (input.strike(input.back)) {
-		if (!selected || (selected && primary.cursor == secondary.cursor))
-			erase(primary, true);
+		if (selected && primary.cursor == secondary.cursor)
+			selected = false;
+
+		if (!selected) {
+			if (ctrl) {
+				int end = primary.cursor;
+				int cur = primary.cursor - 1;
+				if (shift) {
+					shift = false;
+					while (cur > 0 && text[cur] != '\n')
+						cur--;
+					if (text[cur] == '\n')
+						cur++;
+				}
+				else
+					cur = previous_word(text, primary.cursor);
+
+				if (cur < 0) cur = 0;
+				text.erase(cur, end - cur);
+				set_cursor(primary, cur);
+			}
+			else
+				erase(primary, true);
+		}
 		erased = true;
 	}
 	else if (input.strike(input.del)) {
-		if (!selected || (selected && primary.cursor == secondary.cursor))
-			erase(primary, false);
+		if (selected && primary.cursor == secondary.cursor)
+			selected = false;
+
+		if (!selected) {
+			if (ctrl) {
+				int start = primary.cursor;
+				int cur = primary.cursor + 1;
+				if (shift) {
+					shift = false;
+					while (cur <= text.size() && text[cur] != '\n')
+						cur++;
+				}
+				else
+					cur = next_word(text, primary.cursor, false);
+
+				text.erase(start, cur - start);
+				set_cursor(primary, start);
+			}
+			else
+				erase(primary, false);
+		}
 		erased = true;
 	}
 	else if (input.strike(input.esc))
@@ -1242,19 +1328,39 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		ch = '\n';
 	else if (input.strike(input.tab))
 		ch = '\t';
-	else if (input.strike(input.home))
+	else if (input.strike(input.home)) {
+		if (ctrl)
+			set_line(primary, 0);
 		set_column(primary, 0);
-	else if (input.strike(input.end))
+	}
+	else if (input.strike(input.end)) {
+		if (ctrl)
+			set_line(primary, -1);
 		set_column(primary, -1);
-	else if (input.strike(input.left))
-		set_cursor(primary, primary.cursor - 1);
-	else if (input.strike(input.right))
-		set_cursor(primary, primary.cursor + 1);
-	else if (input.strike(input.up))
-		set_line(primary, primary.line - 1);
-	else if (input.strike(input.down))
+	}
+	else if (input.strike(input.left)) {
+		int cur = primary.cursor - 1;
+		if (ctrl)
+			cur = previous_word(text, primary.cursor);
+
+		set_cursor(primary, cur);
+	}
+	else if (input.strike(input.right)) {
+		int cur = primary.cursor + 1;
+		if (ctrl)
+			cur = next_word(text, primary.cursor, shift);
+
+		set_cursor(primary, cur);
+	}
+	else if (input.strike(input.up) && !ctrl) {
+		int l = primary.line - 1;
+		if (l < 0) l = 0;
+		set_line(primary, l);
+	}
+	else if (input.strike(input.down) && !ctrl) {
 		set_line(primary, primary.line + 1);
-	else if (input.ch)
+	}
+	else if (input.ch && !ctrl)
 		ch = input.ch;
 	else
 		end_selection = false;
@@ -1282,8 +1388,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		text.insert(text.begin() + primary.cursor, ch);
 		set_cursor(primary, primary.cursor + 1);
 	}
-
-	if (input.lmouse || input.lshift || input.rshift)
+	else if (input.lmouse || shift)
 		selected = true;
 
 	if (!selected)
