@@ -59,6 +59,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 
 	ui->edit = new Text_Editor();
 	ui->edit->default_color = ws.scroll_back;
+	ui->edit->sel_color = ws.inactive_outline_color;
 	ui->edit->caret_color = ws.caret_color;
 	ui->edit->font = ws.make_font(10, ws.text_color);
 	ui->edit->text = "struct Test {\n\tint a;\n\tint b;\n};";

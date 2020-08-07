@@ -1060,21 +1060,21 @@ void Scroll::deselect() {
 	hl = false;
 }
 
-void Text_Editor::expunge(bool is_back) {
+void Text_Editor::erase(Cursor& cursor, bool is_back) {
 	if (is_back) {
-		if (cursor <= 0)
+		if (cursor.cursor <= 0)
 			return;
 
-		set_cursor(cursor - 1);
+		set_cursor(cursor, cursor.cursor - 1);
 	}
-	else if (cursor >= text.size())
+	else if (cursor.cursor >= text.size())
 		return;
 
-	text.erase(cursor, 1);
+	text.erase(cursor.cursor, 1);
 }
 
 // Used for left/right arrow movement and when adding/removing characters
-void Text_Editor::set_cursor(int cur) {
+void Text_Editor::set_cursor(Cursor& cursor, int cur) {
 	int c = 0;
 	int l = 0;
 	int i, len = text.size();
@@ -1091,15 +1091,15 @@ void Text_Editor::set_cursor(int cur) {
 		}
 	}
 
-	line = l;
-	column = c;
-	target_column = c;
-	cursor = i;
+	cursor.line = l;
+	cursor.column = c;
+	cursor.target_column = c;
+	cursor.cursor = i;
 }
 
 // Used for up/down arrow movement and mouse selection on y-axis
-void Text_Editor::set_line(int line_idx) {
-	if (line_idx < 0 || line == line_idx)
+void Text_Editor::set_line(Cursor& cursor, int line_idx) {
+	if (line_idx < 0 || cursor.line == line_idx)
 		return;
 
 	int l = 0;
@@ -1111,14 +1111,14 @@ void Text_Editor::set_line(int line_idx) {
 	bool reached_target = false;
 	int idx = 0;
 	for (int i = 0; i < len; i++) {
-		if (l == line_idx && c >= target_column) {
-			column = c;
+		if (l == line_idx && c >= cursor.target_column) {
+			cursor.column = c;
 			reached_target = true;
 			idx = i;
 			break;
 		}
 		if (l > line_idx) {
-			column = prev_col_end;
+			cursor.column = prev_col_end;
 			l--;
 			idx = i-1;
 			reached_target = true;
@@ -1143,25 +1143,25 @@ void Text_Editor::set_line(int line_idx) {
 		int chars = 0;
 
 		for (int i = last_nl; i < len; i++) {
-			if (end < column)
+			if (end < cursor.column)
 				chars++;
 
 			end += text[i] == '\t' ? tab_width : 1;
 		}
 
-		if (column > end || target_column >= end)
-			column = end;
+		if (cursor.column > end || cursor.target_column >= end)
+			cursor.column = end;
 
-		cursor = last_nl + chars;
+		cursor.cursor = last_nl + chars;
 	}
 	else
-		cursor = idx;
+		cursor.cursor = idx;
 
-	line = l;
+	cursor.line = l;
 }
 
 // Used for home/end movement and mouse selection on x-axis
-void Text_Editor::set_column(int col_idx) {
+void Text_Editor::set_column(Cursor& cursor, int col_idx) {
 	int len = text.size();
 	int start = 0, end = 0;
 	bool past_end = true;
@@ -1174,7 +1174,7 @@ void Text_Editor::set_column(int col_idx) {
 		if (end) start = end+1;
 		end = i;
 
-		if (l >= line) {
+		if (l >= cursor.line) {
 			past_end = false;
 			break;
 		}
@@ -1213,9 +1213,9 @@ void Text_Editor::set_column(int col_idx) {
 	else
 		col_idx = cols;
 
-	column = target_column = col_idx;
-	line = l;
-	cursor = start + chars;
+	cursor.column = cursor.target_column = col_idx;
+	cursor.line = l;
+	cursor.cursor = start + chars;
 }
 
 void Text_Editor::key_handler(Camera& view, Input& input) {
@@ -1223,10 +1223,19 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		return;
 
 	char ch = 0;
-	if (input.strike(input.back))
-		expunge(true);
-	else if (input.strike(input.del))
-		expunge(false);
+	bool end_selection = true;
+	bool erased = false;
+
+	if (input.strike(input.back)) {
+		if (!selected || (selected && primary.cursor == secondary.cursor))
+			erase(primary, true);
+		erased = true;
+	}
+	else if (input.strike(input.del)) {
+		if (!selected || (selected && primary.cursor == secondary.cursor))
+			erase(primary, false);
+		erased = true;
+	}
 	else if (input.strike(input.esc))
 		parent->active_edit = nullptr;
 	else if (input.strike(input.enter))
@@ -1234,28 +1243,63 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	else if (input.strike(input.tab))
 		ch = '\t';
 	else if (input.strike(input.home))
-		set_column(0);
+		set_column(primary, 0);
 	else if (input.strike(input.end))
-		set_column(-1);
+		set_column(primary, -1);
 	else if (input.strike(input.left))
-		set_cursor(cursor - 1);
+		set_cursor(primary, primary.cursor - 1);
 	else if (input.strike(input.right))
-		set_cursor(cursor + 1);
+		set_cursor(primary, primary.cursor + 1);
 	else if (input.strike(input.up))
-		set_line(line - 1);
+		set_line(primary, primary.line - 1);
 	else if (input.strike(input.down))
-		set_line(line + 1);
+		set_line(primary, primary.line + 1);
 	else if (input.ch)
 		ch = input.ch;
+	else
+		end_selection = false;
+
+	if (end_selection) {
+		bool expunge = selected && (erased || ch);
+		if (expunge && secondary.cursor != primary.cursor) {
+			int start, len;
+			if (primary.cursor < secondary.cursor) {
+				start = primary.cursor;
+				len = secondary.cursor - primary.cursor;
+			}
+			else {
+				start = secondary.cursor;
+				len = primary.cursor - secondary.cursor;
+				primary = secondary;
+			}
+
+			text.erase(start, len);
+		}
+		selected = false;
+	}
 
 	if (ch) {
-		text.insert(text.begin() + cursor, ch);
-		set_cursor(cursor + 1);
+		text.insert(text.begin() + primary.cursor, ch);
+		set_cursor(primary, primary.cursor + 1);
 	}
+
+	if (input.lmouse || input.lshift || input.rshift)
+		selected = true;
+
+	if (!selected)
+		secondary = primary;
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (hovered && input.lmouse && pos.contains(cursor)) {
+	if (hovered && input.lclick && pos.contains(cursor)) {
+		parent->ui_held = true;
+		parent->active_edit = this;
+		mouse_held = true;
+	}
+	if (!input.lmouse)
+		mouse_held = false;
+
+	if (mouse_held) {
 		float x = (cursor.x - pos.x) * view.scale;
 		float y = (cursor.y - pos.y) * view.scale;
 
@@ -1263,14 +1307,67 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 		float gl_w = font->render.digit_width();
 		float gl_h = font->render.text_height();
 
-		set_line((y - edge) / gl_h);
-		set_column((x - edge) / gl_w + 0.5);
+		int line = (y - edge) / gl_h;
+		int col = (x - edge) / gl_w + 0.5;
+		if (line < 0) line = 0;
+		if (col < 0) col = 0;
 
-		parent->active_edit = this;
+		set_line(primary, line);
+		set_column(primary, col);
 
 		if (input.lclick)
-			parent->ui_held = true;
+			secondary = primary;
 	}
+}
+
+void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float font_h, float line_pad) {
+	Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
+	Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
+
+	float y = clip.y_lower + line_pad;
+	Rect r = {0};
+	if (first->line == second->line) {
+		r.x = clip.x_lower + first->column * digit_w;
+		r.y = y + first->line * font_h;
+		r.w = (second->column - first->column) * digit_w;
+		r.h = font_h + 1;
+		sdl_draw_rect(r, sel_color);
+	}
+	else {
+		float line_w = clip.x_upper - clip.x_lower;
+
+		float x = first->column * digit_w;
+		r.x = clip.x_lower + x;
+		r.y = y + first->line * font_h;
+		r.w = line_w - x;
+		r.h = font_h + 1;
+		sdl_draw_rect(r, sel_color);
+
+		int gulf = second->line - first->line - 1;
+		if (gulf > 0) {
+			r.x = clip.x_lower;
+			r.y += font_h;
+			r.w = line_w;
+			r.h = gulf * font_h + 1;
+			sdl_draw_rect(r, sel_color);
+		}
+
+		if (second->column > 0) {
+			r.x = clip.x_lower;
+			r.y = y + second->line * font_h;
+			r.w = second->column * digit_w;
+			r.h = font_h + 1;
+			sdl_draw_rect(r, sel_color);
+		}
+	}
+}
+
+void Text_Editor::draw_cursor(Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale) {
+	float caret_x = back.x + edge + ((float)cursor.column * digit_w);
+	float caret_y = back.y + edge + line_pad + ((float)cursor.line * font_h) + (line_pad / 2);
+
+	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
+	sdl_draw_rect(caret, caret_color);
 }
 
 void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -1287,17 +1384,19 @@ void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool b
 	clip.y_lower = back.y + edge;
 	clip.y_upper = back.y + back.h - edge;
 
+	float digit_w = font->render.digit_width();
+	float font_h = font->render.text_height();
+	float line_pad = font_h * 0.15f;
+
+	if (secondary.cursor != primary.cursor)
+		draw_selection_box(clip, digit_w, font_h, line_pad);
+
 	font->render.draw_text(text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, tab_width, true);
 
 	if (this != parent->active_edit)
 		return;
 
-	float font_h = font->render.text_height();
-	float line_pad = font_h * 0.15f;
-
-	float caret_x = back.x + edge + ((float)column * font->render.digit_width());
-	float caret_y = back.y + edge + line_pad + ((float)line * font_h);
-
-	Rect caret = { caret_x, caret_y, cursor_width * view.scale, font_h - (line_pad / 2) };
-	sdl_draw_rect(caret, caret_color);
+	draw_cursor(primary, back, digit_w, font_h, line_pad, edge, view.scale);
+	if (secondary.cursor != primary.cursor)
+		draw_cursor(secondary, back, digit_w, font_h, line_pad, edge, view.scale);
 }

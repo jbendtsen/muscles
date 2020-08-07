@@ -335,6 +335,9 @@ struct Scroll : UI_Element {
 struct Text_Editor : UI_Element {
 	Text_Editor() : UI_Element(TypeTextEditor) {}
 
+	bool selected = false;
+	bool mouse_held = false;
+
 	int tab_width = 4;
 	float border = 4;
 	float cursor_width = 1;
@@ -343,10 +346,14 @@ struct Text_Editor : UI_Element {
 	Scroll *vscroll = nullptr;
 	Scroll *hscroll = nullptr;
 
-	int cursor = 0;
-	int line = 0;
-	int column = 0;
-	int target_column = 0;
+	struct Cursor {
+		int cursor;
+		int line;
+		int column;
+		int target_column;
+	}
+	primary = {0},
+	secondary = {0};
 
 	Render_Clip clip = {
 		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
@@ -354,13 +361,16 @@ struct Text_Editor : UI_Element {
 	};
 	std::string text;
 
-	void expunge(bool is_back); // when "remove" and "erase" just aren't dramatic enough
-	void set_cursor(int cur);
-	void set_line(int line_idx);
-	void set_column(int col_idx);
+	void erase(Cursor& cursor, bool is_back);
+	void set_cursor(Cursor& cursor, int cur);
+	void set_line(Cursor& cursor, int line_idx);
+	void set_column(Cursor& cursor, int col_idx);
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+
+	void draw_cursor(Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
+	void draw_selection_box(Render_Clip& clip, float digit_w, float font_h, float line_pad);
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -435,7 +445,7 @@ struct Workspace {
 	RGBA light_color = { 0.15, 0.35, 0.85, 1.0 };
 	RGBA default_color = {};
 	RGBA hl_color = { 0.2, 0.4, 0.7, 1.0 };
-	RGBA sel_color = { 0.1, 0.25, 0.8, 1.0 };
+	RGBA active_color = { 0.1, 0.25, 0.8, 1.0 };
 	RGBA inactive_color = { 0.2, 0.3, 0.5, 1.0 };
 	RGBA inactive_text_color = { 0.7, 0.7, 0.7, 1.0 };
 	RGBA inactive_outline_color = { 0.55, 0.6, 0.65, 1.0 };
@@ -445,6 +455,7 @@ struct Workspace {
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
 	RGBA caret_color = {0.9, 0.9, 0.9, 1.0};
 	RGBA cb_color = {0.55, 0.7, 0.9, 1.0};
+	RGBA sel_color = {0.45, 0.5, 0.6, 1.0};
 
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;

@@ -186,7 +186,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->sources->action = sources_main_menu_handler;
 	ui->sources->default_color = ws.back_color;
 	ui->sources->hl_color = ws.hl_color;
-	ui->sources->sel_color = ws.sel_color;
+	ui->sources->sel_color = ws.active_color;
 	ui->sources->lines = {
 		"Add File",
 		"Add Process"
@@ -198,7 +198,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->view->action = view_main_menu_handler;
 	ui->view->default_color = ws.back_color;
 	ui->view->hl_color = ws.hl_color;
-	ui->view->sel_color = ws.sel_color;
+	ui->view->sel_color = ws.active_color;
 	ui->view->lines = {
 		"<source>",
 		"Mappings",
