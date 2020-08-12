@@ -22,6 +22,7 @@ struct UI_Element {
 	bool active = true;
 
 	enum ElementType type;
+	enum CursorType cursor_type = CursorDefault;
 	int id = 0;
 
 	Box *parent = nullptr;
@@ -46,7 +47,7 @@ struct UI_Element {
 	virtual void release() {}
 
 	UI_Element() = default;
-	UI_Element(ElementType t) : type(t) {}
+	UI_Element(ElementType t, CursorType ct = CursorDefault) : type(t), cursor_type(ct) {}
 };
 
 struct Scroll;
@@ -186,7 +187,7 @@ struct Drop_Down : UI_Element {
 };
 
 struct Edit_Box : UI_Element {
-	Edit_Box() : UI_Element(TypeEditBox) {}
+	Edit_Box() : UI_Element(TypeEditBox, CursorEdit) {}
 
 	bool update = false;
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
@@ -333,7 +334,7 @@ struct Scroll : UI_Element {
 };
 
 struct Text_Editor : UI_Element {
-	Text_Editor() : UI_Element(TypeTextEditor) {}
+	Text_Editor() : UI_Element(TypeTextEditor, CursorEdit) {}
 
 	bool selected = false;
 	bool mouse_held = false;
@@ -376,7 +377,8 @@ struct Text_Editor : UI_Element {
 
 enum BoxType {
 	NoBoxType = 0,
-	TypeMain
+	TypeMain,
+	TypeStructs
 };
 
 struct Workspace;
@@ -467,6 +469,8 @@ struct Workspace {
 	Box *selected = nullptr;
 	Box *new_box = nullptr;
 	bool box_moving = false;
+
+	bool cursor_set = false;
 
 	std::vector<Source*> sources;
 

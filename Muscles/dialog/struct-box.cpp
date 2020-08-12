@@ -13,6 +13,18 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, bool h
 		b.cross_size
 	};
 
+	float w = ui->title->font->render.text_width(ui->title->text.c_str()) / view.scale;
+	float max_title_w = b.box.w - 5 * b.cross_size;
+	w = w < max_title_w ? w : max_title_w;
+
+	ui->title->pos = {
+		(b.box.w - w) / 2,
+		2,
+		w,
+		ui->title->font->render.text_height() * 1.1f / view.scale
+	};
+	ui->title->update_position(view);
+
 	float scroll_w = 14;
 
 	float edit_y = 2*b.cross_size;
@@ -57,6 +69,12 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->cross->img = ws.cross;
 	b.ui.push_back(ui->cross);
 
+	ui->title = new Label();
+	ui->title->font = ws.default_font;
+	ui->title->text = "Structs";
+	ui->title->padding = 0;
+	b.ui.push_back(ui->title);
+
 	ui->edit = new Text_Editor();
 	ui->edit->default_color = ws.scroll_back;
 	ui->edit->sel_color = ws.inactive_outline_color;
@@ -81,6 +99,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->vscroll->sel_color = ws.scroll_sel_color;
 	b.ui.push_back(ui->vscroll);
 
+	b.type = TypeStructs;
 	b.markup = ui;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
@@ -91,4 +110,17 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.min_width = 200;
 	b.min_height = 200;
 	b.visible = true;
+}
+
+void open_view_structs(Workspace& ws) {
+	Box *box = ws.first_box_of_type(TypeStructs);
+	if (!box) {
+		Box *box = new Box();
+		make_struct_box(ws, *box);
+		ws.add_box(box);
+	}
+	else
+		ws.bring_to_front(box);
+
+	ws.focus = ws.boxes.back();
 }

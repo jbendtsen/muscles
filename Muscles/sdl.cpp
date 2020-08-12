@@ -8,8 +8,19 @@ int main(int argc, char **argv) {
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
+std::unordered_map<CursorType, SDL_Cursor*> cursors;
+CursorType cursor = CursorDefault;
+
 bool capture = false;
 int dpi_w = 0, dpi_h = 0;
+
+void sdl_set_cursor(CursorType type) {
+	if (type == cursor)
+		return;
+
+	cursor = type;
+	SDL_SetCursor(cursors[cursor]);
+}
 
 void sdl_get_dpi(int& w, int& h) {
 	w = dpi_w;
@@ -34,6 +45,15 @@ bool sdl_init(const char *title, int width, int height) {
 	}
 
 	SDL_StartTextInput();
+
+	cursors[CursorDefault]          = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+	cursors[CursorClick]            = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+	cursors[CursorEdit]             = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	cursors[CursorPan]              = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+	cursors[CursorResizeNorthSouth] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+	cursors[CursorResizeWestEast]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+	cursors[CursorResizeNESW]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+	cursors[CursorResizeNWSE]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
 
 	float hdpi, vdpi;
 	SDL_GetDisplayDPI(SDL_GetWindowDisplayIndex(window), nullptr, &hdpi, &vdpi);
@@ -304,6 +324,13 @@ void sdl_close() {
 	if (window) {
 		SDL_DestroyWindow(window);
 		window = nullptr;
+	}
+
+	for (auto& c : cursors) {
+		if (c.second) {
+			SDL_FreeCursor(c.second);
+			c.second = nullptr;
+		}
 	}
 
 	SDL_Quit();

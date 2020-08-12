@@ -419,6 +419,9 @@ void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 	}
 	icon = icon_hl;
 
+	sdl_set_cursor(cursor_type);
+	parent->parent->cursor_set = true;
+
 	if (!input.lmouse) {
 		held = false;
 		return;

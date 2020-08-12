@@ -3,8 +3,9 @@
 #include <string>
 #include <memory>
 #include <vector>
-#include <set>
+#include <unordered_map>
 #include <map>
+#include <set>
 
 #define MIN_CHAR ' '
 #define MAX_CHAR '~'
@@ -69,6 +70,18 @@ struct Rect_Fixed {
 struct Input;
 struct Camera;
 
+enum CursorType {
+	CursorDefault = 0,
+	CursorClick,
+	CursorEdit,
+	CursorPan,
+	CursorResizeNorthSouth,
+	CursorResizeWestEast,
+	CursorResizeNESW,
+	CursorResizeNWSE
+};
+
+void sdl_set_cursor(CursorType type);
 void sdl_get_dpi(int& w, int& h);
 
 void sdl_log_string(const char *msg);

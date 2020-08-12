@@ -2,6 +2,7 @@
 
 struct Main_Menu {
 	Drop_Down *sources = nullptr;
+	Drop_Down *edit = nullptr;
 	Drop_Down *view = nullptr;
 	Data_View *table = nullptr;
 	Button *button = nullptr;
@@ -62,6 +63,7 @@ struct View_Source {
 
 struct Struct_Box {
 	Image *cross = nullptr;
+	Label *title = nullptr;
 	Text_Editor *edit = nullptr;
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
@@ -70,4 +72,4 @@ struct Struct_Box {
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
 void make_view_source_menu(Workspace& ws, Source *s, Box& b);
-void make_struct_box(Workspace& ws, Box& b);
+void open_view_structs(Workspace& ws);

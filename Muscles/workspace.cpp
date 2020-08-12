@@ -184,12 +184,10 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 	if (input.lclick || input.rclick) {
 		if (!view.moving) {
+			sdl_acquire_mouse();
 			focus = hover;
-
-			if (hover && focus >= 0) {
+			if (hover)
 				bring_to_front(focus);
-				sdl_acquire_mouse();
-			}
 		}
 
 		if (hover && !input.rclick)
@@ -221,8 +219,12 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		box_input.action = false;
 	}
 
+	cursor_set = false;
 	for (int i = boxes.size() - 1; i >= 0; i--)
 		boxes[i]->update(*this, view, box_input, hover == boxes[i], focus == boxes[i]);
+
+	if (!cursor_set)
+		sdl_set_cursor(CursorDefault);
 
 	if (new_box) {
 		new_box->parent = this;
@@ -281,15 +283,17 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 
 void Box::select_edge(Camera& view, Point& p) {
 	edge = 0;
-	float gap = 5 / view.scale;
-	if (p.x < gap)
-		edge |= 1;
-	if (p.x > box.w - gap)
-		edge |= 2;
-	if (p.y < gap)
-		edge |= 4;
-	if (p.y > box.h - gap)
-		edge |= 8;
+	float gap = 6 / view.scale;
+	if (p.x >= -gap && p.x < box.w + gap && p.y >= -gap && p.y < box.h + gap) {
+		if (p.x < 0)
+			edge |= 1;
+		if (p.x >= box.w)
+			edge |= 2;
+		if (p.y < 0)
+			edge |= 4;
+		if (p.y >= box.h)
+			edge |= 8;
+	}
 }
 
 void Box::move(float dx, float dy, Camera& view, Input& input) {
@@ -364,9 +368,25 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovere
 			elem->key_handler(view, input);
 	}
 
-	if (this == parent->selected && !ui_held) {
-		if (input.lclick)
-			select_edge(view, inside);
+	if (!input.lmouse)
+		select_edge(view, inside);
+
+	CursorType ct = CursorDefault;
+	if (edge == 5 || edge == 10)
+		ct = CursorResizeNWSE;
+	else if (edge == 6 || edge == 9)
+		ct = CursorResizeNESW;
+	else if (edge & 3)
+		ct = CursorResizeWestEast;
+	else if (edge & 12)
+		ct = CursorResizeNorthSouth;
+
+	if (ct != CursorDefault) {
+		sdl_set_cursor(ct);
+		parent->cursor_set = true;
+	}
+
+	if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
 		if (input.lmouse && input.held == move_start) {
 			moving = true;
 			parent->box_moving = true;
@@ -388,12 +408,18 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool h
 		if (!elem->visible)
 			continue;
 
-		if (!hl && hovered && !moving)
+		bool within = elem->pos.contains(inside);
+		if (!hl && hovered && !moving) {
 			hl = elem->highlight(view, inside);
+			if (within && !parent->cursor_set) {
+				sdl_set_cursor(elem->cursor_type);
+				parent->cursor_set = true;
+			}
+		}
 		else
 			elem->deselect();
 
-		if (focussed && input.action && elem->active && elem->action && elem->pos.contains(inside)) {
+		if (focussed && input.action && elem->active && elem->action && within) {
 			elem->action(elem, input.double_click);
 			input.action = false;
 		}

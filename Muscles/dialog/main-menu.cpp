@@ -17,10 +17,15 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 
 	float x = b.border;
 	float y = b.border;
+	float dd_x = x;
 
-	ui->sources->pos = { x, y, 75, 25 };
+	ui->sources->pos = { dd_x, y, 80, 25 };
+	dd_x += ui->sources->pos.w;
 
-	ui->view->pos = { x + ui->sources->pos.w, y, 50, 25 };
+	ui->edit->pos = { dd_x, y, 56, 25 };
+	dd_x += ui->edit->pos.w;
+
+	ui->view->pos = { dd_x, y, 56, 25 };
 
 	y += ui->sources->pos.h + b.border;
 
@@ -120,21 +125,31 @@ void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
+void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
+	auto dd = dynamic_cast<Drop_Down*>(elem);
+	if (dd->sel < 0)
+		return;
+
+	auto ui = (Main_Menu*)dd->parent->markup;
+	Workspace *ws = dd->parent->parent;
+	
+	if (dd->sel == 1) {
+		open_view_structs(*ws);
+	}
+
+	dd->parent->set_dropdown(nullptr);
+}
+
 void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0)
 		return;
 
 	auto ui = (Main_Menu*)dd->parent->markup;
+	Workspace *ws = dd->parent->parent;
+
 	if (dd->sel == 0) {
-		open_view_source(*elem->parent->parent, ui->table->sel_row);
-	}
-	else if (dd->sel == 3) {
-		Box *box = new Box();
-		Workspace *ws = dd->parent->parent;
-		make_struct_box(*ws, *box);
-		ws->add_box(box);
-		ws->focus = ws->boxes.back();
+		open_view_source(*ws, ui->table->sel_row);
 	}
 
 	dd->parent->set_dropdown(nullptr);
@@ -187,9 +202,25 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->sources->default_color = ws.back_color;
 	ui->sources->hl_color = ws.hl_color;
 	ui->sources->sel_color = ws.active_color;
+	ui->sources->width = 150;
 	ui->sources->lines = {
 		"Add File",
 		"Add Process"
+	};
+
+	ui->edit = new Drop_Down();
+	ui->edit->title = "Edit";
+	ui->edit->font = ui->sources->font;
+	ui->edit->action = edit_main_menu_handler;
+	ui->edit->default_color = ws.back_color;
+	ui->edit->hl_color = ws.hl_color;
+	ui->edit->sel_color = ws.active_color;
+	ui->edit->width = 150;
+	ui->edit->lines = {
+		"New Object",
+		"Structs",
+		"Mappings",
+		"Types"
 	};
 
 	ui->view = new Drop_Down();
@@ -199,12 +230,10 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->view->default_color = ws.back_color;
 	ui->view->hl_color = ws.hl_color;
 	ui->view->sel_color = ws.active_color;
+	ui->view->width = 140;
 	ui->view->lines = {
-		"<source>",
-		"Mappings",
-		"Types",
-		"Structs",
-		"Instances"
+		"<source>"
+		"Search"
 	};
 
 	ui->table = new Data_View();
@@ -246,6 +275,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->button->update_size(ws.temp_scale);
 
 	b.ui.push_back(ui->sources);
+	b.ui.push_back(ui->edit);
 	b.ui.push_back(ui->view);
 	b.ui.push_back(ui->table);
 	b.ui.push_back(ui->button);

@@ -381,6 +381,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->div->moveable = true;
 		ui->div->minimum = 8 * ui->title->font->render.text_height();
 		ui->div->position = ui->div->minimum + 100;
+		ui->div->cursor_type = CursorResizeWestEast;
 		ui->div->make_icon(ws.temp_scale);
 		b.ui.push_back(ui->div);
 
