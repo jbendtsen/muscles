@@ -151,12 +151,12 @@
     <ClCompile Include="data.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
     <ClCompile Include="dialog\sources.cpp" />
-	<ClCompile Include="dialog\struct-box.cpp" />
+    <ClCompile Include="dialog\edit-structs.cpp" />
     <ClCompile Include="dialog\view-source.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="icons.cpp" />
     <ClCompile Include="io-win32.cpp" />
-	<ClCompile Include="io.cpp" />
+    <ClCompile Include="io.cpp" />
     <ClCompile Include="sdl.cpp" />
     <ClCompile Include="muscles.cpp" />
     <ClCompile Include="ui.cpp" />

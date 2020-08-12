@@ -1385,6 +1385,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 			text.erase(start, len);
 		}
 		selected = false;
+		ticks = 0;
 	}
 
 	if (ch) {
@@ -1504,7 +1505,10 @@ void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool b
 	if (this != parent->active_edit)
 		return;
 
-	draw_cursor(primary, back, digit_w, font_h, line_pad, edge, view.scale);
-	if (secondary.cursor != primary.cursor)
-		draw_cursor(secondary, back, digit_w, font_h, line_pad, edge, view.scale);
+	ticks++;
+	if (secondary.cursor != primary.cursor || ticks % (caret_on_time + caret_off_time) < caret_on_time) {
+		draw_cursor(primary, back, digit_w, font_h, line_pad, edge, view.scale);
+		if (secondary.cursor != primary.cursor)
+			draw_cursor(secondary, back, digit_w, font_h, line_pad, edge, view.scale);
+	}
 }

@@ -23,7 +23,7 @@ struct UI_Element {
 
 	enum ElementType type;
 	enum CursorType cursor_type = CursorDefault;
-	int id = 0;
+	//int id = 0;
 
 	Box *parent = nullptr;
 
@@ -342,6 +342,10 @@ struct Text_Editor : UI_Element {
 	int tab_width = 4;
 	float border = 4;
 	float cursor_width = 1;
+
+	int ticks = 0;
+	int caret_on_time = 35;
+	int caret_off_time = 30;
 	RGBA caret_color = {};
 
 	Scroll *vscroll = nullptr;

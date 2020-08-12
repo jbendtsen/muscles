@@ -48,6 +48,12 @@
     <ClCompile Include="icons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="io.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dialog\edit-structs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dialog\dialog.h">
@@ -58,9 +64,6 @@
     </ClInclude>
     <ClInclude Include="ui.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="io.cpp">
-      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
