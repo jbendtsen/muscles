@@ -2,10 +2,10 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	b.update_elements(view, input, inside, hovered, focussed);
+void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	b.update_elements(view, input, inside, hover, focussed);
 
-	auto ui = (Struct_Box*)b.markup;
+	auto ui = (Edit_Structs*)b.markup;
 	ui->cross->pos = {
 		b.box.w - b.cross_size * 1.5f,
 		b.cross_size * 0.5f,
@@ -49,7 +49,7 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, bool h
 		scroll_w
 	};
 
-	b.post_update_elements(view, input, inside, hovered, focussed);
+	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
 static void refresh_handler(Box& b, Point& cursor) {
@@ -57,12 +57,12 @@ static void refresh_handler(Box& b, Point& cursor) {
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	auto ui = (Struct_Box*)b.markup;
+	auto ui = (Edit_Structs*)b.markup;
 	ui->cross->img = ws.cross;
 }
 
 void make_struct_box(Workspace& ws, Box& b) {
-	auto ui = new Struct_Box();
+	auto ui = new Edit_Structs();
 
 	ui->cross = new Image();
 	ui->cross->action = [](UI_Element *elem, bool dbl_click) {elem->parent->parent->delete_box(elem->parent);};
@@ -112,15 +112,17 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.visible = true;
 }
 
-void open_view_structs(Workspace& ws) {
+void open_edit_structs(Workspace& ws) {
 	Box *box = ws.first_box_of_type(TypeStructs);
 	if (!box) {
 		Box *box = new Box();
 		make_struct_box(ws, *box);
 		ws.add_box(box);
 	}
-	else
+	else {
+		box->visible = true;
 		ws.bring_to_front(box);
+	}
 
 	ws.focus = ws.boxes.back();
 }

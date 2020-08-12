@@ -189,8 +189,8 @@ struct Drop_Down : UI_Element {
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(TypeEditBox, CursorEdit) {}
 
-	bool update = false;
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
+	bool update = false;
 
 	int cursor = 0;
 	float offset = 0;
@@ -204,6 +204,7 @@ struct Edit_Box : UI_Element {
 	float caret_off_y = 0.2;
 	float caret_width = 0.08;
 
+	bool icon_right = false;
 	int icon_length = 0;
 	RGBA icon_color = {};
 	Texture icon = nullptr;
@@ -403,7 +404,7 @@ struct Box {
 	UI_Element *active_edit = nullptr;
 	void *markup = nullptr;
 
-	void (*update_handler)(Box&, Camera&, Input&, Point&, bool, bool) = nullptr;
+	void (*update_handler)(Box&, Camera&, Input&, Point&, Box*, bool) = nullptr;
 	void (*refresh_handler)(Box&, Point&) = nullptr;
 	void (*scale_change_handler)(Workspace& ws, Box&, float) = nullptr;
 
@@ -432,9 +433,9 @@ struct Box {
 	void move(float dx, float dy, Camera& view, Input& input);
 
 	void set_dropdown(Drop_Down *dd);
-	void update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed);
-	void post_update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed);
-	void update(Workspace& ws, Camera& view, Input& input, bool hovered, bool focussed);
+	void update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed);
+	void post_update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed);
+	void update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed);
 };
 
 struct Workspace {
@@ -445,6 +446,7 @@ struct Workspace {
 	float cross_size = 16;
 
 	RGBA text_color = { 1, 1, 1, 1 };
+	RGBA ph_text_color = { 1, 1, 1, 0.7 };
 	RGBA outline_color = { 0.4, 0.6, 0.8, 1.0 };
 	RGBA back_color = { 0.1, 0.2, 0.7, 1.0 };
 	RGBA dark_color = { 0.05, 0.2, 0.5, 1.0 };

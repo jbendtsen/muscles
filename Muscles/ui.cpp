@@ -664,15 +664,22 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	float gap_y = text_off_y * height;
 
 	float x = gap_x;
+	float icon_w = 0;
 	if (icon) {
 		Rect dst = {back.x + gap_y, back.y + gap_y, (float)icon_length, (float)icon_length};
+		if (icon_right) {
+			icon_w = dst.w;
+			dst.x = back.x + back.w - gap_y - icon_w;
+		}
+		else {
+			x += icon_length;
+		}
 		sdl_apply_texture(icon, &dst);
-		x += icon_length;
 	}
 
 	float text_x = pos.x * view.scale + x;
 	float text_y = pos.y * view.scale + gap_y;
-	window_w = (pos.w * view.scale) - x - gap_x;
+	window_w = (pos.w * view.scale) - x - icon_w - gap_x;
 
 	clip.x_lower = rect.x + text_x;
 	clip.x_upper = clip.x_lower + window_w;

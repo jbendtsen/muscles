@@ -2,7 +2,7 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
+void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	Main_Menu *ui = (Main_Menu*)b.markup;
 	if (ui->table->sel_row >= 0) {
 		ui->button->active = true;
@@ -13,7 +13,7 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 		ui->view->lines[0] = "<source>";
 	}
 
-	b.update_elements(view, input, inside, hovered, focussed);
+	b.update_elements(view, input, inside, hover, focussed);
 
 	float x = b.border;
 	float y = b.border;
@@ -48,7 +48,7 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, bool ho
 		b.box.h - y - 2*b.border - view_h
 	};
 
-	b.post_update_elements(view, input, inside, hovered, focussed);
+	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
 void refresh_main_menu(Box& b, Point& cursor) {
@@ -133,8 +133,14 @@ void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto ui = (Main_Menu*)dd->parent->markup;
 	Workspace *ws = dd->parent->parent;
 	
-	if (dd->sel == 1) {
-		open_view_structs(*ws);
+	if (dd->sel == 0) {
+		Box *b = new Box();
+		make_view_object(*ws, *b);
+		ws->add_box(b);
+		ws->focus = ws->boxes.back();
+	}
+	else if (dd->sel == 1) {
+		open_edit_structs(*ws);
 	}
 
 	dd->parent->set_dropdown(nullptr);
@@ -310,8 +316,8 @@ void opening_menu_handler(UI_Element *elem, bool dbl_click) {
 		table->parent->visible = false;
 }
 
-void update_opening_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	b.update_elements(view, input, inside, hovered, focussed);
+void update_opening_menu(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	b.update_elements(view, input, inside, hover, focussed);
 
 	auto title = dynamic_cast<Label*>(b.ui[0]);
 	float y = b.border;
@@ -323,7 +329,7 @@ void update_opening_menu(Box& b, Camera& view, Input& input, Point& inside, bool
 	table->pos.w = b.box.w - b.border * 2;
 	table->pos.h = b.box.h - y - b.border;
 
-	b.post_update_elements(view, input, inside, hovered, focussed);
+	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
 void make_opening_menu(Workspace& ws, Box& b) {

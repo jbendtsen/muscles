@@ -2,8 +2,8 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	b.update_elements(view, input, inside, hovered, focussed);
+void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	b.update_elements(view, input, inside, hover, focussed);
 
 	Source_Menu *ui = (Source_Menu*)b.markup;
 
@@ -82,7 +82,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, bool 
 		};
 	}
 
-	b.post_update_elements(view, input, inside, hovered, focussed);
+	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
 void scale_search_bar(Source_Menu *ui, float new_scale) {

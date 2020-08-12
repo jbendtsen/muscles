@@ -221,7 +221,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 	cursor_set = false;
 	for (int i = boxes.size() - 1; i >= 0; i--)
-		boxes[i]->update(*this, view, box_input, hover == boxes[i], focus == boxes[i]);
+		boxes[i]->update(*this, view, box_input, hover, focus == boxes[i]);
 
 	if (!cursor_set)
 		sdl_set_cursor(CursorDefault);
@@ -236,7 +236,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 			new_box->scale_change_handler(*this, *new_box, view.scale);
 
 		if (new_box->update_handler)
-			new_box->update(*this, view, box_input, false, false);
+			new_box->update(*this, view, box_input, nullptr, false);
 
 		new_box = nullptr;
 	}
@@ -356,48 +356,51 @@ void Box::set_dropdown(Drop_Down *dd) {
 	dropdown_set = true;
 }
 
-void Box::update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
+void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	for (auto& elem : ui) {
 		elem->parent = this;
 		if (!elem->visible)
 			continue;
 
-		elem->mouse_handler(view, input, inside, hovered);
+		elem->mouse_handler(view, input, inside, this == hover);
 
 		if (focussed)
 			elem->key_handler(view, input);
 	}
 
-	if (!input.lmouse)
-		select_edge(view, inside);
+	if (!hover || this == hover) {
+		if (!input.lmouse)
+			select_edge(view, inside);
 
-	CursorType ct = CursorDefault;
-	if (edge == 5 || edge == 10)
-		ct = CursorResizeNWSE;
-	else if (edge == 6 || edge == 9)
-		ct = CursorResizeNESW;
-	else if (edge & 3)
-		ct = CursorResizeWestEast;
-	else if (edge & 12)
-		ct = CursorResizeNorthSouth;
+		CursorType ct = CursorDefault;
+		if (edge == 5 || edge == 10)
+			ct = CursorResizeNWSE;
+		else if (edge == 6 || edge == 9)
+			ct = CursorResizeNESW;
+		else if (edge & 3)
+			ct = CursorResizeWestEast;
+		else if (edge & 12)
+			ct = CursorResizeNorthSouth;
 
-	if (ct != CursorDefault) {
-		sdl_set_cursor(ct);
-		parent->cursor_set = true;
-	}
+		if (ct != CursorDefault) {
+			sdl_set_cursor(ct);
+			parent->cursor_set = true;
+		}
 
-	if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
-		if (input.lmouse && input.held == move_start) {
-			moving = true;
-			parent->box_moving = true;
+		if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
+			if (input.lmouse && input.held == move_start) {
+				moving = true;
+				parent->box_moving = true;
+			}
 		}
 	}
 }
 
-void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
+void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	if (input.action)
 		active_edit = nullptr;
 
+	bool hovered = this == hover;
 	if (hovered && input.action && current_dd && current_dd->action) {
 		current_dd->action(current_dd, input.double_click);
 		input.action = false;
@@ -426,7 +429,7 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, bool h
 	}
 }
 
-void Box::update(Workspace& ws, Camera& view, Input& input, bool hovered, bool focussed) {
+void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed) {
 	this->parent = &ws;
 
 	if (!visible)
@@ -451,7 +454,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, bool hovered, bool f
 	dropdown_set = false;
 
 	if (update_handler)
-		update_handler(*this, view, input, p, hovered, focussed);
+		update_handler(*this, view, input, p, hover, focussed);
 
 	if (input.lclick && !dropdown_set) {
 		if (current_dd)

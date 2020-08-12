@@ -61,7 +61,7 @@ struct View_Source {
 	bool needs_region_update = true;
 };
 
-struct Struct_Box {
+struct Edit_Structs {
 	Image *cross = nullptr;
 	Label *title = nullptr;
 	Text_Editor *edit = nullptr;
@@ -69,7 +69,27 @@ struct Struct_Box {
 	Scroll *vscroll = nullptr;
 };
 
+struct View_Object {
+	Image *cross = nullptr;
+	Edit_Box *title_edit = nullptr;
+	Label *struct_label = nullptr;
+	Label *source_label = nullptr;
+	Label *addr_label = nullptr;
+	Edit_Box *struct_edit = nullptr;
+	Drop_Down *struct_dd = nullptr;
+	Edit_Box *source_edit = nullptr;
+	Drop_Down *source_dd = nullptr;
+	Edit_Box *addr_edit = nullptr;
+	Button *hide_meta = nullptr;
+	Data_View *view = nullptr;
+	Scroll *hscroll = nullptr;
+	Scroll *vscroll = nullptr;
+	Button *all_btn = nullptr;
+	Button *sel_btn = nullptr;
+};
+
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
 void make_view_source_menu(Workspace& ws, Source *s, Box& b);
-void open_view_structs(Workspace& ws);
+void make_view_object(Workspace& ws, Box& b);
+void open_edit_structs(Workspace& ws);

@@ -3,8 +3,8 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool hovered, bool focussed) {
-	b.update_elements(view, input, inside, hovered, focussed);
+void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	b.update_elements(view, input, inside, hover, focussed);
 
 	auto ui = (View_Source*)b.markup;
 
@@ -188,7 +188,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, bool 
 	snprintf(buf, 19, "%#llx", ui->hex->region_address + ui->hex->offset);
 	ui->goto_box->placeholder = buf;
 
-	b.post_update_elements(view, input, inside, hovered, focussed);
+	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
 void update_regions_table(View_Source *ui) {
