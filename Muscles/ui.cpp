@@ -649,7 +649,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 
 	if (delta) {
 		float x = 0;
-		const char *str = get_str();
+		const char *str = line.c_str();
 		font->render.text_width(str, cursor, &x);
 
 		float front = 0;
@@ -711,7 +711,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		str = placeholder.c_str();
 	}
 	else
-		str = get_str();
+		str = line.c_str();
 
 	float cur_x;
 	fnt->render.text_width(str, cursor, &cur_x);
@@ -1343,6 +1343,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	bool shift = input.lshift || input.rshift;
 	bool end_selection = true;
 	bool erased = false;
+	bool update = false;
 
 	if (input.strike(input.back)) {
 		if (selected && primary.cursor == secondary.cursor)
@@ -1370,6 +1371,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 				erase(primary, true);
 		}
 		erased = true;
+		update = true;
 	}
 	else if (input.strike(input.del)) {
 		if (selected && primary.cursor == secondary.cursor)
@@ -1394,6 +1396,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 				erase(primary, false);
 		}
 		erased = true;
+		update = true;
 	}
 	else if (input.strike(input.esc))
 		parent->active_edit = nullptr;
@@ -1461,12 +1464,16 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	if (ch) {
 		text.insert(text.begin() + primary.cursor, ch);
 		set_cursor(primary, primary.cursor + 1);
+		update = true;
 	}
 	else if (input.lmouse || shift)
 		selected = true;
 
 	if (!selected)
 		secondary = primary;
+
+	if (update && key_action)
+		key_action(this, input);
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {

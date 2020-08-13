@@ -232,10 +232,6 @@ struct Edit_Box : UI_Element {
 		0, 0, 0, 0
 	};
 
-	const char *get_str() const {
-		return line.c_str();
-	}
-
 	bool remove(bool is_back);
 	void move_cursor(int delta);
 	void clear();
@@ -381,6 +377,8 @@ struct Text_Editor : UI_Element {
 		0, 0, 0, 0
 	};
 	std::string text;
+
+	void (*key_action)(Text_Editor*, Input&) = nullptr;
 
 	void erase(Cursor& cursor, bool is_back);
 	void set_cursor(Cursor& cursor, int cur);

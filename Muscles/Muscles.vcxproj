@@ -149,10 +149,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="data.cpp" />
-	<ClCompile Include="dialog\edit-structs.cpp" />
+    <ClCompile Include="dialog\edit-structs.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
     <ClCompile Include="dialog\sources.cpp" />
-	<ClCompile Include="dialog\view-object.cpp" />
+    <ClCompile Include="dialog\view-object.cpp" />
     <ClCompile Include="dialog\view-source.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="icons.cpp" />
@@ -160,6 +160,7 @@
     <ClCompile Include="io.cpp" />
     <ClCompile Include="sdl.cpp" />
     <ClCompile Include="muscles.cpp" />
+    <ClCompile Include="structs.cpp" />
     <ClCompile Include="ui.cpp" />
     <ClCompile Include="workspace.cpp" />
   </ItemGroup>

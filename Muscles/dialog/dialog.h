@@ -67,6 +67,12 @@ struct Edit_Structs {
 	Text_Editor *edit = nullptr;
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
+
+	std::vector<char> tokens;
+	char *name_pool = nullptr;
+	std::vector<Struct*> structs;
+	std::vector<char*> struct_names;
+	bool first_run = true;
 };
 
 struct View_Object {

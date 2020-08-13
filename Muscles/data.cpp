@@ -13,23 +13,18 @@ void *Arena::allocate(int size) {
 	return ptr;
 }
 
-void *Arena::alloc_cell(Column& info) {
-	int size = 0;
-	if (info.type == String)
-		size = 1;
-
-	size *= info.count_per_cell;
-	return allocate(size);
-}
-
 char *Arena::alloc_string(char *str) {
 	if (!str)
 		return nullptr;
 
 	int len = strlen(str) + 1;
 	char *p = (char*)allocate(len);
-	if (p)
-		strcpy(p, str);
+	if (p) {
+		if (len > 1)
+			strcpy(p, str);
+		else
+			*p = 0;
+	}
 
 	return p;
 }

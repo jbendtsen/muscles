@@ -167,6 +167,12 @@ void select_view_type(View_Object *ui, bool all) {
 	ui->sel_btn->inactive_theme = *theme_sel;
 }
 
+static void refresh_handler(Box& b, Point& cursor) {
+	auto ui = (View_Object*)b.markup;
+	Box *structs_box = b.parent->first_box_of_type(TypeStructs);
+	ui->struct_dd->external = structs_box ? &((Edit_Structs*)structs_box->markup)->struct_names : nullptr;
+}
+
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto ui = (View_Object*)b.markup;
 	ui->cross->img = ws.cross;
@@ -270,10 +276,6 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->struct_dd->hl_color = ws.hl_color;
 	ui->struct_dd->sel_color = ws.active_color;
 	ui->struct_dd->width = 250;
-	ui->struct_dd->content = {
-		(char*)"Some Stuff",
-		(char*)"Wait these aren't structs"
-	};
 	b.ui.push_back(ui->struct_dd);
 
 	ui->struct_edit = new Edit_Box();
@@ -341,7 +343,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.markup = ui;
 	b.update_handler = update_view_object;
 	b.scale_change_handler = scale_change_handler;
-	//b.refresh_handler = refresh_handler;
+	b.refresh_handler = refresh_handler;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-200, -225, 400, 450};

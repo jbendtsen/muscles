@@ -52,8 +52,32 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
-static void refresh_handler(Box& b, Point& cursor) {
+void structs_edit_handler(Text_Editor *edit, Input& input) {
+	auto ui = (Edit_Structs*)edit->parent->markup;
 
+	if (ui->first_run)
+		ui->tokens.reserve(edit->text.size());
+	else {
+		ui->tokens.clear();
+		ui->structs.clear();
+		ui->struct_names.clear();
+	}
+
+	tokenize(ui->tokens, edit->text.c_str(), edit->text.size());
+
+	if (ui->name_pool)
+		delete[] ui->name_pool;
+
+	ui->name_pool = new char[ui->tokens.size()];
+
+	char *tokens = ui->tokens.data();
+	char *pool_alias = ui->name_pool;
+	parse_c_struct(ui->structs, &tokens, &pool_alias);
+
+	for (auto& s : ui->structs)
+		ui->struct_names.push_back(s->name);
+
+	ui->first_run = false;
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -82,6 +106,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit->font = ws.make_font(10, ws.text_color);
 	ui->edit->text = "struct Test {\n\tint a;\n\tint b;\n};";
 	ui->edit->action = get_set_active_edit();
+	ui->edit->key_action = structs_edit_handler;
 	b.ui.push_back(ui->edit);
 
 	ui->hscroll = new Scroll();
@@ -103,7 +128,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.markup = ui;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
-	b.refresh_handler = refresh_handler;
+	//b.refresh_handler = refresh_handler;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-200, -225, 400, 450};

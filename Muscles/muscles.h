@@ -206,7 +206,6 @@ struct Arena {
 	}
 
 	void *allocate(int size);
-	void *alloc_cell(Column& info);
 	char *alloc_string(char *str);
 };
 
@@ -437,3 +436,66 @@ void refresh_file_spans(Source& source, Arena& arena);
 void refresh_process_spans(Source& source, Arena& arena);
 
 void close_source(Source& source);
+
+#define FLAG_POINTER     0x0001
+#define FLAG_BITFIELD    0x0002
+#define FLAG_UNNAMED     0x0004
+#define FLAG_COMPOSITE   0x0008
+#define FLAG_SIGNED      0x0010
+#define FLAG_FLOAT       0x0020
+#define FLAG_BIG_ENDIAN  0x0040
+
+#define FLAG_UNION  0x0001
+
+#define FLAG_UNUSABLE      0x4000
+#define FLAG_UNRECOGNISED  0x8000
+
+struct Struct;
+
+struct Field {
+	char *field_name;
+	char *type_name;
+	Struct *st;
+	int bit_offset;
+	int bit_size;
+	int default_bit_size;
+	int array_len;
+	int pointer_levels;
+	int flags;
+};
+
+struct Field_Vector {
+	Field *data = nullptr;
+	int pool_size = 8;
+	int n_fields = 0;
+
+	Field_Vector();
+	~Field_Vector();
+
+	void expand();
+
+	Field& back();
+	Field& add(Field&& f);
+	Field& add(Field& f);
+
+	void cancel_latest();
+	void zero_out();
+};
+
+struct Struct {
+	char *name;
+	int offset;
+	int total_size;
+	int longest_primitive;
+	int flags;
+	Field_Vector fields;
+};
+
+struct Primitive {
+	const char *name;
+	int bit_size;
+	int flags;
+};
+
+void tokenize(std::vector<char>& tokens, const char *text, int sz);
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, bool top_level = true);
