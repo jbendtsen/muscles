@@ -360,7 +360,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->source = s;
 
 	ui->cross = new Image();
-	ui->cross->action = [](UI_Element *elem, bool dbl_click) {elem->parent->parent->delete_box(elem->parent);};
+	ui->cross->action = get_delete_box();
 	ui->cross->img = ws.cross;
 	b.ui.push_back(ui->cross);
 
@@ -437,7 +437,6 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_search->icon_color = ws.text_color;
 		ui->reg_search->icon_color.a = 0.6;
 		ui->reg_search->key_action = region_search_handler;
-		ui->reg_search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 		b.ui.push_back(ui->reg_search);
 
 		ui->reg_name = new Label();
@@ -479,7 +478,6 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->goto_box->default_color = ws.dark_color;
 	ui->goto_box->font = ui->hex_title->font;
 	ui->goto_box->key_action = goto_handler;
-	ui->goto_box->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 
 	ui->goto_box->icon_color = ws.text_color;
 	ui->goto_box->icon_color.a = 0.6;

@@ -44,7 +44,7 @@ Texture make_circle(RGBA& color, int diameter) {
 	return sdl_create_texture(pixels.get(), diameter, diameter);
 }
 
-Texture make_triangle(RGBA& color, int width, int height) {
+Texture make_triangle(RGBA& color, int width, int height, bool up) {
 	auto pixels = std::make_unique<u32[]>(width * height);
 	RGBA shade = color;
 
@@ -68,7 +68,8 @@ Texture make_triangle(RGBA& color, int width, int height) {
 			}
 
 			shade.a = color.a * lum;
-			pixels[i*width+j] = rgba_to_u32(shade);
+			int row = up ? height - i - 1 : i;
+			pixels[row * width + j] = rgba_to_u32(shade);
 		}
 	}
 

@@ -86,6 +86,15 @@ struct View_Object {
 	Scroll *vscroll = nullptr;
 	Button *all_btn = nullptr;
 	Button *sel_btn = nullptr;
+
+	Button::Theme theme_on = {};
+	Button::Theme theme_off = {};
+
+	float meta_btn_width = 20;
+	float meta_btn_height = 20;
+	bool meta_hidden = false;
+
+	bool all = true;
 };
 
 void make_file_menu(Workspace& ws, Box& b);

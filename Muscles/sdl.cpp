@@ -287,12 +287,12 @@ void sdl_get_texture_size(Texture tex, int *w, int *h) {
 	SDL_QueryTexture((SDL_Texture*)tex, nullptr, nullptr, w, h);
 }
 
-void sdl_apply_texture(Texture tex, Rect_Fixed *dst, Rect_Fixed *src) {
-	SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, (SDL_Rect*)dst);
+void sdl_apply_texture(Texture tex, Rect_Fixed& dst, Rect_Fixed *src) {
+	SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, (SDL_Rect*)&dst);
 }
 
-void sdl_apply_texture(Texture tex, Rect *dst, Rect_Fixed *src) {
-	SDL_Rect dst_fixed = {(int)(dst->x + 0.5), (int)(dst->y + 0.5), (int)(dst->w + 0.5), (int)(dst->h + 0.5)};
+void sdl_apply_texture(Texture tex, Rect& dst, Rect_Fixed *src) {
+	SDL_Rect dst_fixed = {(int)(dst.x + 0.5), (int)(dst.y + 0.5), (int)(dst.w + 0.5), (int)(dst.h + 0.5)};
 	SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, &dst_fixed);
 }
 

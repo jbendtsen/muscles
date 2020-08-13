@@ -94,7 +94,7 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	Source_Menu *ui = new Source_Menu();
 
 	ui->cross = new Image();
-	ui->cross->action = [](UI_Element *elem, bool dbl_click) {elem->parent->parent->delete_box(elem->parent);};
+	ui->cross->action = get_delete_box();
 	ui->cross->img = ws.cross;
 
 	ui->scroll = new Scroll();
@@ -122,7 +122,6 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->search->icon_color = ws.text_color;
 	ui->search->icon_color.a = 0.7;
 	ui->search->key_action = [](Edit_Box* edit, Input& input) {((Source_Menu*)edit->parent->markup)->table->data.update_filter(edit->line);};
-	ui->search->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 
 	b.ui.push_back(ui->scroll);
 	b.ui.push_back(ui->table);
@@ -395,7 +394,6 @@ void make_file_menu(Workspace& ws, Box& b) {
 	ui->path->caret = ws.caret_color;
 	ui->path->placeholder = get_root_folder();
 	ui->path->key_action = file_path_handler;
-	ui->path->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 
 	RGBA ph_color = ws.text_color;
 	ph_color.a = 0.75;

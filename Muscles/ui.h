@@ -24,7 +24,6 @@ struct UI_Element {
 
 	enum ElementType type;
 	enum CursorType cursor_type = CursorDefault;
-	//int id = 0;
 
 	Box *parent = nullptr;
 
@@ -45,12 +44,15 @@ struct UI_Element {
 
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
 	virtual void deselect() {}
-	virtual void disengage(bool try_select) {}
+	virtual bool disengage(bool try_select) { return false; }
 	virtual void release() {}
 
 	UI_Element() = default;
 	UI_Element(ElementType t, CursorType ct = CursorDefault) : type(t), cursor_type(ct) {}
 };
+
+void (*get_set_active_edit(void))(UI_Element*, bool);
+void (*get_delete_box(void))(UI_Element*, bool);
 
 struct Scroll;
 
@@ -174,12 +176,17 @@ struct Drop_Down : UI_Element {
 	float width = 150;
 
 	const char *title = nullptr;
-	std::vector<const char*> lines;
+	std::vector<char*> content;
+	std::vector<char*> *external = nullptr;
 
 	Render_Clip item_clip = {
 		CLIP_RIGHT,
 		0, 0, 0, 0
 	};
+
+	std::vector<char*> *get_content() {
+		return external ? external : &content;
+	}
 
 	void draw_menu(Camera& view, Rect_Fixed& rect);
 
@@ -189,7 +196,9 @@ struct Drop_Down : UI_Element {
 };
 
 struct Edit_Box : UI_Element {
-	Edit_Box() : UI_Element(TypeEditBox, CursorEdit) {}
+	Edit_Box() : UI_Element(TypeEditBox, CursorEdit) {
+		action = get_set_active_edit();
+	}
 
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
 	bool update = false;
@@ -233,7 +242,7 @@ struct Edit_Box : UI_Element {
 
 	void update_icon(IconType type, float height, float scale);
 
-	void disengage(bool try_select) override;
+	bool disengage(bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -457,6 +466,7 @@ struct Workspace {
 	RGBA back_color = { 0.1, 0.2, 0.7, 1.0 };
 	RGBA dark_color = { 0.05, 0.2, 0.5, 1.0 };
 	RGBA light_color = { 0.15, 0.35, 0.85, 1.0 };
+	RGBA light_hl_color = { 0.2, 0.5, 1.0, 1.0 };
 	RGBA default_color = {};
 	RGBA hl_color = { 0.2, 0.4, 0.7, 1.0 };
 	RGBA active_color = { 0.1, 0.25, 0.8, 1.0 };

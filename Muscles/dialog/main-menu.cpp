@@ -6,11 +6,11 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *ho
 	Main_Menu *ui = (Main_Menu*)b.markup;
 	if (ui->table->sel_row >= 0) {
 		ui->button->active = true;
-		ui->view->lines[0] = (char*)ui->table->data.columns[2][ui->table->sel_row];
+		ui->view->content[0] = (char*)ui->table->data.columns[2][ui->table->sel_row];
 	}
 	else {
 		ui->button->active = false;
-		ui->view->lines[0] = "<source>";
+		ui->view->content[0] = (char*)"<source>";
 	}
 
 	b.update_elements(view, input, inside, hover, focussed);
@@ -209,9 +209,9 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->sources->hl_color = ws.hl_color;
 	ui->sources->sel_color = ws.active_color;
 	ui->sources->width = 150;
-	ui->sources->lines = {
-		"Add File",
-		"Add Process"
+	ui->sources->content = {
+		(char*)"Add File",
+		(char*)"Add Process"
 	};
 
 	ui->edit = new Drop_Down();
@@ -222,11 +222,11 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->edit->hl_color = ws.hl_color;
 	ui->edit->sel_color = ws.active_color;
 	ui->edit->width = 150;
-	ui->edit->lines = {
-		"New Object",
-		"Structs",
-		"Mappings",
-		"Types"
+	ui->edit->content = {
+		(char*)"New Object",
+		(char*)"Structs",
+		(char*)"Mappings",
+		(char*)"Types"
 	};
 
 	ui->view = new Drop_Down();
@@ -237,9 +237,9 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->view->hl_color = ws.hl_color;
 	ui->view->sel_color = ws.active_color;
 	ui->view->width = 140;
-	ui->view->lines = {
-		"<source>"
-		"Search"
+	ui->view->content = {
+		(char*)"<source>",
+		(char*)"Search"
 	};
 
 	ui->table = new Data_View();

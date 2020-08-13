@@ -33,6 +33,20 @@ float center_align_title(Label *title, Box& b, float scale, float y_offset) {
 	return (line_h + padding * 2) / scale;
 }
 
+void set_active_edit(UI_Element *elem, bool dbl_click) {
+	elem->parent->active_edit = elem;
+}
+void (*get_set_active_edit(void))(UI_Element*, bool) {
+	return set_active_edit;
+}
+
+void delete_box(UI_Element *elem, bool dbl_click) {
+	elem->parent->parent->delete_box(elem->parent);
+}
+void (*get_delete_box(void))(UI_Element*, bool) {
+	return delete_box;
+}
+
 void Button::update_size(float scale) {
 	Theme *theme = active ? &active_theme : &inactive_theme;
 
@@ -61,7 +75,6 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	r.h -= pad * 2;
 
 	Theme *theme = active ? &active_theme : &inactive_theme;
-	float font_height = theme->font->render.text_height();
 
 	RGBA *color = &theme->back;
 	if (held)
@@ -70,6 +83,14 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 		color = &theme->hover;
 
 	sdl_draw_rect(r, *color);
+
+	if (!theme->font) {
+		if (icon)
+			sdl_apply_texture(icon, r);
+		return;
+	}
+
+	float font_height = theme->font->render.text_height();
 
 	float x = x_offset * font_height;
 	float y = y_offset * font_height;
@@ -84,7 +105,7 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 			x += font_height * 1.2f;
 		}
 
-		sdl_apply_texture(icon, &box);
+		sdl_apply_texture(icon, box);
 	}
 
 	theme->font->render.draw_text_simple(text.c_str(), r.x + x, r.y + y_offset * font_height);
@@ -282,7 +303,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 			dst.h = h;
 		}
 
-		sdl_apply_texture(t, &dst, &src);
+		sdl_apply_texture(t, dst, &src);
 	};
 
 	float pad = padding * view.scale;
@@ -450,7 +471,7 @@ void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_h
 			icon_w,
 			icon_h
 		};
-		sdl_apply_texture(icon, &box);
+		sdl_apply_texture(icon, box);
 	}
 }
 
@@ -480,7 +501,8 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	float y = pos.y + pos.h + title_off_y * font_unit;
 	float h = line_height * font_unit;
 
-	for (int i = 0; i < lines.size(); i++) {
+	auto lines = get_content();
+	for (int i = 0; i < lines->size(); i++) {
 		if (inside.y >= y && inside.y < y + h) {
 			sel = i;
 			return true;
@@ -493,6 +515,7 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 
 void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 	float font_height = font->render.text_height();
+	auto lines = get_content();
 
 	Rect box_wsp = {
 		pos.x,
@@ -501,7 +524,7 @@ void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 		0
 	};
 	Rect box = make_ui_box(rect, box_wsp, view.scale);
-	box.h = (title_off_y + line_height * lines.size()) * font_height;
+	box.h = (title_off_y + line_height * lines->size()) * font_height;
 
 	sdl_draw_rect(box, hl_color);
 
@@ -519,7 +542,7 @@ void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 
 	float y = font_height * ((line_height - 1) / 2 - font->line_offset);
 
-	for (auto& l : lines) {
+	for (auto& l : *lines) {
 		if (l)
 			font->render.draw_text(l, box.x + item_x, box.y + y, item_clip);
 
@@ -572,15 +595,18 @@ void Edit_Box::clear() {
 	offset = 0;
 }
 
-void Edit_Box::disengage(bool try_select) {
+bool Edit_Box::disengage(bool try_select) {
+	float cancel_lclick = false;
 	if (dropdown) {
 		if (try_select && dropdown->sel >= 0) {
-			line = dropdown->lines[dropdown->sel];
+			line = (*dropdown->get_content())[dropdown->sel];
 			cursor = 0;
 			offset = 0;
+			cancel_lclick = true;
 		}
 		dropdown->dropped = false;
 	}
+	return cancel_lclick;
 }
 
 void Edit_Box::key_handler(Camera& view, Input& input) {
@@ -705,7 +731,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		else {
 			x += icon_length;
 		}
-		sdl_apply_texture(icon, &dst);
+		sdl_apply_texture(icon, dst);
 	}
 
 	float text_x = pos.x * view.scale + x;
@@ -808,7 +834,7 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(font->render.tex, &dst, &src);
+		sdl_apply_texture(font->render.tex, dst, &src);
 
 		x += gl->box_w;
 		if (i % 2 == 1)
@@ -976,7 +1002,7 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 
 void Image::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
-	sdl_apply_texture(img, &box);
+	sdl_apply_texture(img, box);
 }
 
 void Label::update_position(Camera& view) {

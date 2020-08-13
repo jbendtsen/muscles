@@ -360,8 +360,10 @@ void Box::set_dropdown(Drop_Down *dd) {
 
 void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	if (input.lclick) {
-		if (active_edit)
-			active_edit->disengage(true);
+		if (active_edit) {
+			if (active_edit->disengage(true))
+				input.lclick = false;
+		}
 		active_edit = nullptr;
 	}
 

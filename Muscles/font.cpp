@@ -132,7 +132,7 @@ void Font_Render::draw_text_simple(const char *text, float x, float y) {
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(tex, &dst, &src);
+		sdl_apply_texture(tex, dst, &src);
 
 		x += gl->box_w;
 	}
@@ -229,7 +229,7 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(tex, &dst, &src);
+		sdl_apply_texture(tex, dst, &src);
 		//RGBA white = {1, 1, 1, 1};
 		//sdl_draw_rect(dst, white);
 

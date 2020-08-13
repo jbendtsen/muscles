@@ -95,8 +95,8 @@ void sdl_update_camera(Camera& camera);
 void sdl_acquire_mouse();
 void sdl_release_mouse();
 
-void sdl_apply_texture(Texture tex, Rect_Fixed *dst, Rect_Fixed *src = nullptr);
-void sdl_apply_texture(Texture tex, Rect *dst, Rect_Fixed *src = nullptr);
+void sdl_apply_texture(Texture tex, Rect_Fixed& dst, Rect_Fixed *src = nullptr);
+void sdl_apply_texture(Texture tex, Rect& dst, Rect_Fixed *src = nullptr);
 
 void sdl_draw_rect(Rect_Fixed& rect, RGBA& color);
 void sdl_draw_rect(Rect& rect, RGBA& color);
@@ -119,7 +119,7 @@ enum IconType {
 };
 
 Texture make_circle(RGBA& color, int diameter);
-Texture make_triangle(RGBA& color, int width, int height);
+Texture make_triangle(RGBA& color, int width, int height, bool up = false);
 Texture make_cross_icon(RGBA& color, int length);
 Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
 Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);

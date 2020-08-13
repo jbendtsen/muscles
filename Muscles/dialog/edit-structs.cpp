@@ -65,7 +65,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	auto ui = new Edit_Structs();
 
 	ui->cross = new Image();
-	ui->cross->action = [](UI_Element *elem, bool dbl_click) {elem->parent->parent->delete_box(elem->parent);};
+	ui->cross->action = get_delete_box();
 	ui->cross->img = ws.cross;
 	b.ui.push_back(ui->cross);
 
@@ -81,7 +81,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit->caret_color = ws.caret_color;
 	ui->edit->font = ws.make_font(10, ws.text_color);
 	ui->edit->text = "struct Test {\n\tint a;\n\tint b;\n};";
-	ui->edit->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
+	ui->edit->action = get_set_active_edit();
 	b.ui.push_back(ui->edit);
 
 	ui->hscroll = new Scroll();
