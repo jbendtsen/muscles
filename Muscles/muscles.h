@@ -114,11 +114,13 @@ void sdl_destroy_texture(Texture *tex);
 enum IconType {
 	IconNone = 0,
 	IconGoto,
-	IconGlass
+	IconGlass,
+	IconTriangle
 };
 
-Texture make_circle(int diameter, RGBA& color);
-Texture make_cross_icon(int length, RGBA& color);
+Texture make_circle(RGBA& color, int diameter);
+Texture make_triangle(RGBA& color, int width, int height);
+Texture make_cross_icon(RGBA& color, int length);
 Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
 Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
 Texture make_process_icon(RGBA& back, RGBA& outline, int length);

@@ -491,7 +491,7 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	return false;
 }
 
-void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect, bool held) {
+void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 	float font_height = font->render.text_height();
 
 	Rect box_wsp = {
@@ -572,6 +572,17 @@ void Edit_Box::clear() {
 	offset = 0;
 }
 
+void Edit_Box::disengage(bool try_select) {
+	if (dropdown) {
+		if (try_select && dropdown->sel >= 0) {
+			line = dropdown->lines[dropdown->sel];
+			cursor = 0;
+			offset = 0;
+		}
+		dropdown->dropped = false;
+	}
+}
+
 void Edit_Box::key_handler(Camera& view, Input& input) {
 	update = false;
 	if (this != parent->active_edit)
@@ -586,6 +597,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		update = remove(false);
 	else if (input.strike(input.esc)) {
 		clear();
+		disengage(false);
 		parent->active_edit = nullptr;
 		update = true;
 	}
@@ -628,6 +640,22 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 	}
 }
 
+void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (!hovered)
+		return;
+
+	float w = pos.h;
+	float x = icon_right ? pos.x + pos.w - w : pos.x;
+	bool on_icon = icon && cursor.y >= pos.y && cursor.y < pos.y + pos.h && cursor.x >= x && cursor.x - x < w;
+	use_default_cursor = on_icon;
+
+	if (dropdown) {
+		dropdown->highlight(view, cursor);
+		if (input.lclick && on_icon)
+			dropdown->dropped = !dropdown->dropped;
+	}
+}
+
 void Edit_Box::update_icon(IconType type, float height, float scale) {
 	pos.h = height;
 	icon_length = 0.5 + height * scale - 2 * text_off_y * font->render.text_height();
@@ -638,6 +666,9 @@ void Edit_Box::update_icon(IconType type, float height, float scale) {
 			break;
 		case IconGlass:
 			icon = make_glass_icon(icon_color, icon_length);
+			break;
+		case IconTriangle:
+			icon = make_triangle(icon_color, icon_length, icon_length);
 			break;
 	}
 }
@@ -685,20 +716,26 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	clip.x_upper = clip.x_lower + window_w;
 	fnt->render.draw_text(str, rect.x + text_x - offset, rect.y + text_y, clip);
 
-	if (this != parent->active_edit)
+	if (this == parent->active_edit) {
+		float caret_y = (float)caret_off_y * height;
+		float caret_w = (float)caret_width * height;
+
+		Rect_Fixed r = {
+			rect.x + text_x + cur_x - offset,
+			rect.y + text_y + (int)caret_y + gap_y,
+			(int)caret_w,
+			(int)height
+		};
+
+		sdl_draw_rect(r, caret);
+	}
+
+	if (!dropdown)
 		return;
 
-	float caret_y = (float)caret_off_y * height;
-	float caret_w = (float)caret_width * height;
-
-	Rect_Fixed r = {
-		rect.x + text_x + cur_x - offset,
-		rect.y + text_y + (int)caret_y + gap_y,
-		(int)caret_w,
-		(int)height
-	};
-
-	sdl_draw_rect(r, caret);
+	dropdown->pos = pos;
+	if (dropdown->dropped)
+		dropdown->draw_menu(view, rect);
 }
 
 void Hex_View::set_region(u64 address, u64 size) {

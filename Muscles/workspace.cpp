@@ -5,7 +5,7 @@ Workspace::Workspace(Font_Face face) {
 	this->face = face;
 
 	RGBA cross_color = { 1.0, 1.0, 1.0, 1.0 };
-	cross = make_cross_icon(48, cross_color);
+	cross = make_cross_icon(cross_color, 48);
 
 	sdl_get_dpi(dpi_w, dpi_h);
 
@@ -145,7 +145,7 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 		f->adjust_scale(new_scale, dpi_w, dpi_h);
 
 	sdl_destroy_texture(&cross);
-	cross = make_cross_icon(cross_size * new_scale, text_color);
+	cross = make_cross_icon(text_color, cross_size * new_scale);
 
 	for (auto& b : boxes) {
 		if (b->scale_change_handler)
@@ -274,11 +274,13 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	};
 	sdl_draw_rect(rect, back);
 
-	for (auto& e : ui)
-		e->draw(view, rect, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+	for (auto& e : ui) {
+		if (e->visible)
+			e->draw(view, rect, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+	}
 
 	if (current_dd)
-		current_dd->draw_menu(view, rect, held);
+		current_dd->draw_menu(view, rect);
 }
 
 void Box::select_edge(Camera& view, Point& p) {
@@ -357,6 +359,12 @@ void Box::set_dropdown(Drop_Down *dd) {
 }
 
 void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	if (input.lclick) {
+		if (active_edit)
+			active_edit->disengage(true);
+		active_edit = nullptr;
+	}
+
 	for (auto& elem : ui) {
 		elem->parent = this;
 		if (!elem->visible)
@@ -397,9 +405,6 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover,
 }
 
 void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	if (input.action)
-		active_edit = nullptr;
-
 	bool hovered = this == hover;
 	if (hovered && input.action && current_dd && current_dd->action) {
 		current_dd->action(current_dd, input.double_click);
@@ -414,7 +419,7 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *h
 		bool within = elem->pos.contains(inside);
 		if (!hl && hovered && !moving) {
 			hl = elem->highlight(view, inside);
-			if (within && !parent->cursor_set) {
+			if (within && !elem->use_default_cursor && !parent->cursor_set) {
 				sdl_set_cursor(elem->cursor_type);
 				parent->cursor_set = true;
 			}

@@ -20,6 +20,7 @@ struct Box;
 struct UI_Element {
 	bool visible = true;
 	bool active = true;
+	bool use_default_cursor = false;
 
 	enum ElementType type;
 	enum CursorType cursor_type = CursorDefault;
@@ -44,6 +45,7 @@ struct UI_Element {
 
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
 	virtual void deselect() {}
+	virtual void disengage(bool try_select) {}
 	virtual void release() {}
 
 	UI_Element() = default;
@@ -179,7 +181,7 @@ struct Drop_Down : UI_Element {
 		0, 0, 0, 0
 	};
 
-	void draw_menu(Camera& view, Rect_Fixed& rect, bool held);
+	void draw_menu(Camera& view, Rect_Fixed& rect);
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
@@ -209,6 +211,8 @@ struct Edit_Box : UI_Element {
 	RGBA icon_color = {};
 	Texture icon = nullptr;
 
+	Drop_Down *dropdown = nullptr;
+
 	Font *ph_font = nullptr;
 
 	std::string line;
@@ -229,7 +233,9 @@ struct Edit_Box : UI_Element {
 
 	void update_icon(IconType type, float height, float scale);
 
+	void disengage(bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 

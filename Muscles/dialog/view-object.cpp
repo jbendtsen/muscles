@@ -2,6 +2,10 @@
 #include "ui.h"
 #include "dialog.h"
 
+float get_edit_height(View_Object *ui, float scale) {
+	return ui->struct_edit->font->render.text_height() * 1.4f / scale;
+}
+
 void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	b.update_elements(view, input, inside, hover, focussed);
 
@@ -31,9 +35,9 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 	float label_x = 2*b.border;
 	float label_h = ui->struct_label->font->render.text_height() * 1.2f / view.scale;
 
-	float edit_h = ui->struct_edit->font->render.text_height() * 1.4f / view.scale;
+	float edit_h = get_edit_height(ui, view.scale);
 	float edit_gap = edit_h + b.border;
-	float edit_y = meta_y - (edit_gap - label_h) / 2;
+	float edit_y = meta_y - (edit_h - label_h) / 2;
 
 	ui->struct_label->pos = {
 		label_x,
@@ -77,6 +81,9 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto ui = (View_Object*)b.markup;
 	ui->cross->img = ws.cross;
+
+	float height = get_edit_height(ui, new_scale);
+	ui->struct_edit->update_icon(IconTriangle, height, new_scale);
 }
 
 void make_view_object(Workspace& ws, Box& b) {
@@ -117,10 +124,28 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->struct_label->padding = 0;
 	b.ui.push_back(ui->struct_label);
 
+	ui->struct_dd = new Drop_Down();
+	ui->struct_dd->visible = false;
+	ui->struct_dd->font = ui->struct_label->font;
+	ui->struct_dd->default_color = ws.back_color;
+	ui->struct_dd->hl_color = ws.hl_color;
+	ui->struct_dd->sel_color = ws.active_color;
+	ui->struct_dd->width = 250;
+	ui->struct_dd->lines = {
+		"Some Stuff",
+		"Wait these aren't structs"
+	};
+	b.ui.push_back(ui->struct_dd);
+
 	ui->struct_edit = new Edit_Box();
 	ui->struct_edit->font = ui->struct_label->font;
 	ui->struct_edit->caret = ws.caret_color;
 	ui->struct_edit->default_color = ws.dark_color;
+	ui->struct_edit->icon_color = ws.text_color;
+	ui->struct_edit->icon_color.a = 0.7;
+	ui->struct_edit->icon_right = true;
+	ui->struct_edit->dropdown = ui->struct_dd;
+	ui->struct_edit->action = [](UI_Element *elem, bool dbl_click) {elem->parent->active_edit = elem;};
 	b.ui.push_back(ui->struct_edit);
 
 	ui->source_label = new Label();

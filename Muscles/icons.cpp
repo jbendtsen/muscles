@@ -19,7 +19,7 @@ static inline float clamp(float f, float min, float max) {
 	return f;
 }
 
-Texture make_circle(int diameter, RGBA& color) {
+Texture make_circle(RGBA& color, int diameter) {
 	auto pixels = std::make_unique<u32[]>(diameter * diameter);
 	float radius = (diameter / 2) - 2;
 
@@ -44,7 +44,38 @@ Texture make_circle(int diameter, RGBA& color) {
 	return sdl_create_texture(pixels.get(), diameter, diameter);
 }
 
-Texture make_cross_icon(int length, RGBA& color) {
+Texture make_triangle(RGBA& color, int width, int height) {
+	auto pixels = std::make_unique<u32[]>(width * height);
+	RGBA shade = color;
+
+	const double y_begin = -0.15;
+	const double y_inter = 0.25;
+	const double x_dil = 1.2;
+	const double intensity = 20.0;
+
+	double w = (double)width;
+	double h = (double)height;
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			double x = -0.5 + ((double)j + 0.5) / w;
+			double y = -0.5 + ((double)i + 0.5) / h;
+
+			float lum = 0.0;
+			if (y >= y_begin) {
+				double l = y_inter - (abs(x * x_dil) + y);
+				lum = clamp(l * intensity, 0.0, 1.0);
+			}
+
+			shade.a = color.a * lum;
+			pixels[i*width+j] = rgba_to_u32(shade);
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), width, height);
+}
+
+Texture make_cross_icon(RGBA& color, int length) {
 	auto pixels = std::make_unique<u32[]>(length * length);
 
 	float l = (float)length + 0.5;
