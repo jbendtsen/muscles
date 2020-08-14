@@ -471,6 +471,8 @@ void close_source(Source& source);
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000
 
+#define FLAG_AVAILABLE  0x10000
+
 struct Struct;
 
 struct Field {
@@ -519,4 +521,4 @@ struct Primitive {
 };
 
 void tokenize(std::vector<char>& tokens, const char *text, int sz);
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, bool top_level = true);
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, Struct *st = nullptr);

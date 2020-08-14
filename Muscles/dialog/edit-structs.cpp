@@ -59,8 +59,10 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 		ui->tokens.reserve(edit->text.size());
 	else {
 		ui->tokens.clear();
-		ui->structs.clear();
 		ui->struct_names.clear();
+
+		for (auto& s : ui->structs)
+			s->flags |= FLAG_AVAILABLE;
 	}
 
 	tokenize(ui->tokens, edit->text.c_str(), edit->text.size());

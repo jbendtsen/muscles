@@ -96,6 +96,10 @@ struct View_Object {
 	Button::Theme theme_on = {};
 	Button::Theme theme_off = {};
 
+	Struct *record = nullptr;
+	Source *source = nullptr;
+	int span_idx = -1;
+
 	float meta_btn_width = 20;
 	float meta_btn_height = 20;
 	bool meta_hidden = false;

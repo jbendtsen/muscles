@@ -79,7 +79,7 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 		ui->struct_edit->pos = {
 			label_x + ui->struct_label->pos.w + b.border,
 			y,
-			150,
+			160,
 			edit_h
 		};
 		y += edit_gap;
@@ -87,7 +87,7 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 		ui->source_edit->pos = {
 			label_x + ui->source_label->pos.w + b.border,
 			y,
-			150,
+			160,
 			edit_h
 		};
 		y += edit_gap;
@@ -95,7 +95,7 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 		ui->addr_edit->pos = {
 			label_x + ui->addr_label->pos.w + b.border,
 			y,
-			130,
+			140,
 			edit_h
 		};
 
@@ -177,10 +177,83 @@ void struct_edit_refresh(Edit_Box *edit, Input& input) {
 	}
 }
 
+void source_edit_refresh(Edit_Box *edit, Input& input) {
+	auto ui = (View_Object*)edit->parent->markup;
+
+	Source *src = nullptr;
+
+	if (edit->line.size() > 0) {
+		Workspace& ws = *edit->parent->parent;
+		for (auto& s : ws.sources) {
+			if (s->name == edit->line) {
+				src = s;
+				break;
+			}
+		}
+	}
+
+	if (src != ui->source || !src) {
+		if (ui->source && ui->span_idx >= 0)
+			ui->source->delete_span(ui->span_idx);
+
+		ui->source = src;
+		ui->span_idx = -1;
+	}
+}
+
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Object*)b.markup;
 	Box *structs_box = b.parent->first_box_of_type(BoxStructs);
-	ui->struct_dd->external = structs_box ? &((Edit_Structs*)structs_box->markup)->struct_names : nullptr;
+	Edit_Structs *es = structs_box ? (Edit_Structs*)structs_box->markup : nullptr;
+
+	ui->struct_dd->external = es ? &es->struct_names : nullptr;
+	if (!es || !ui->record || !ui->source)
+		return;
+
+	u64 address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
+	int size = (ui->record->total_size + 7) / 8;
+
+	ui->span_idx = ui->source->reset_span(ui->span_idx, address, size);
+	Span& span = ui->source->spans[ui->span_idx];
+
+	char hex[16];
+	memcpy(hex, "0123456789abcdef", 16);
+
+	int idx = 0;
+	for (auto& row : ui->view->data.columns[1]) {
+		auto name = (const char*)row;
+		for (int i = 0; i < ui->record->fields.n_fields; i++) {
+			if (strcmp(ui->record->fields.data[i].field_name, name))
+				continue;
+
+			Field& field = ui->record->fields.data[i];
+			if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
+				continue;
+
+			auto& cell = (char*&)ui->view->data.columns[2][idx];
+
+			int offset = (field.bit_offset + 7) / 8;
+			if (offset >= span.retrieved) {
+				strcpy(cell, "???");
+				break;
+			}
+
+			u64 n = 0;
+			int off = field.bit_offset;
+			int out_pos = field.bit_size - 1;
+			for (int j = 0; j < field.bit_size; j++, off++, out_pos--) {
+				u8 byte = span.cache[off / 8];
+				int bit = 7 - (off % 8);
+				n |= (u64)((byte >> bit) & 1) << out_pos;
+			}
+
+			strcpy(cell, "0x");
+
+			int digits = count_digits(n);
+			print_hex(hex, &cell[2], n, digits);
+		}
+		idx++;
+	}
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -277,6 +350,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->source_edit->icon_color = icon_color;
 	ui->source_edit->icon_right = true;
 	ui->source_edit->dropdown = ui->source_dd;
+	ui->source_edit->key_action = source_edit_refresh;
 	b.ui.push_back(ui->source_edit);
 
 	ui->struct_dd = new Drop_Down();
@@ -381,27 +455,28 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs) {
 	ui->view->data.clear_data();
 	ui->view->data.arena.rewind();
 
+	ui->record = nullptr;
+
 	if (!ui->struct_edit->line.size())
 		return;
 
 	const char *name_str = ui->struct_edit->line.c_str();
-	Struct *record = nullptr;
 
 	for (auto& s : structs) {
 		if (s && !strcmp(s->name, name_str)) {
-			record = s;
+			ui->record = s;
 			break;
 		}
 	}
 
-	if (!record || (record->flags & FLAG_UNUSABLE) != 0 || record->fields.n_fields <= 0)
+	if (!ui->record || (ui->record->flags & FLAG_UNUSABLE) != 0 || ui->record->fields.n_fields <= 0)
 		return;
 
-	int n_rows = record->fields.n_fields;
+	int n_rows = ui->record->fields.n_fields;
 	ui->view->data.resize(n_rows);
 
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view->data, 0, i, false);
-		ui->view->data.columns[1][i] = (void*)record->fields.data[i].field_name;
+		ui->view->data.columns[1][i] = (void*)ui->record->fields.data[i].field_name;
 	}
 }

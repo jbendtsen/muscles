@@ -311,20 +311,43 @@ Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char 
 	return record;
 }
 
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, bool top_level) {
+Struct *find_new_struct(std::vector<Struct*>& structs) {
+	Struct *new_st = nullptr;
+	if (structs.size() > 0) {
+		for (auto& s : structs) {
+			if (s->flags & FLAG_AVAILABLE) {
+				s->name = nullptr;
+				s->offset = 0;
+				s->total_size = 0;
+				s->longest_primitive = 0;
+				s->flags = 0;
+				s->fields.zero_out();
+
+				new_st = s;
+				break;
+			}
+		}
+	}
+	if (!new_st) {
+		new_st = new Struct();
+		structs.push_back(new_st);
+	}
+
+	return new_st;
+}
+
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, Struct *st) {
 	char *name_head = *name_buf;
 	std::string type;
 
 	char *t = *tokens;
 	char *prev = nullptr;
 
-	Struct *st;
-	if (!structs.size()) {
-		st = new Struct();
-		structs.push_back(st);
+	bool top_level = false;
+	if (!st) {
+		st = find_new_struct(structs);
+		top_level = true;
 	}
-	else
-		st = structs.back();
 
 	Field *f = nullptr;
 	int field_flags = 0;
@@ -356,14 +379,12 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_bu
 			if (!top_level) {
 				bool is_union = !strcmp(type.c_str(), "union");
 
-				Struct *new_st = new Struct();
+				Struct *new_st = find_new_struct(structs);
 				new_st->flags |= is_union ? FLAG_UNION : 0;
 				store_word(&name_head, name, &new_st->name);
 
-				structs.push_back(new_st);
-
 				t += strlen(t) + 1;
-				parse_c_struct(structs, &t, &name_head, false);
+				parse_c_struct(structs, &t, &name_head, new_st);
 
 				add_struct_instances(st, new_st, &t, &name_head);
 				next = t + strlen(t) + 1;
