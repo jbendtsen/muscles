@@ -146,7 +146,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 void open_edit_structs(Workspace& ws) {
 	Box *box = ws.first_box_of_type(BoxStructs);
 	if (!box) {
-		Box *box = new Box();
+		box = new Box();
 		make_struct_box(ws, *box);
 		ws.add_box(box);
 	}
@@ -156,4 +156,10 @@ void open_edit_structs(Workspace& ws) {
 	}
 
 	ws.focus = ws.boxes.back();
+
+	Input blank = {0};
+	Text_Editor *edit = ((Edit_Structs*)box->markup)->edit;
+	edit->parent = box;
+	edit->parent->parent = &ws;
+	structs_edit_handler(edit, blank);
 }

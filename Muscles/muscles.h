@@ -176,6 +176,9 @@ struct File_Entry {
 #define TOGGLE_TABLE_CHECKBOX(table, col, row) \
 	*(u8*)&table.columns[col][row] = *(u8*)&table.columns[col][row] == 2 ? 1 : 2
 
+#define TABLE_CHECKBOX_CHECKED(table, col, row) \
+	(*(u8*)&table.columns[col][row] == 2)
+
 enum Column_Type {
 	ColumnNone = 0,
 	ColumnString,

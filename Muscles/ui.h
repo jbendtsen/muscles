@@ -111,6 +111,7 @@ struct Data_View : UI_Element {
 	int hl_row = -1;
 	int hl_col = -1;
 	int sel_row = -1;
+	int condition_col = -1;
 
 	float item_height = 0;
 	float header_height = 25;

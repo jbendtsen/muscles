@@ -388,8 +388,15 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 				if (n < top)
 					continue;
 
+				bool skip_draw = false;
+				if (condition_col >= 0) {
+					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, idx))
+						continue;
+					skip_draw = condition_col == i;
+				}
+
 				auto thing = data.columns[i][idx];
-				if (thing)
+				if (thing && !skip_draw)
 					draw_cell(thing, type, x, y);
 
 				y += line_h;
@@ -397,8 +404,15 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		}
 		else {
 			for (int j = top; j < n_rows && y < y_max; j++) {
+				bool skip_draw = false;
+				if (condition_col >= 0) {
+					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, j))
+						continue;
+					skip_draw = condition_col == i;
+				}
+
 				auto thing = data.columns[i][j];
-				if (thing)
+				if (thing && !skip_draw)
 					draw_cell(thing, type, x, y);
 
 				y += line_h;

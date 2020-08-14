@@ -165,6 +165,8 @@ void select_view_type(View_Object *ui, bool all) {
 	ui->all_btn->inactive_theme = *theme_all;
 	ui->sel_btn->active_theme = *theme_sel;
 	ui->sel_btn->inactive_theme = *theme_sel;
+
+	ui->view->condition_col = ui->all ? -1 : 0;
 }
 
 void struct_edit_refresh(Edit_Box *edit, Input& input) {
