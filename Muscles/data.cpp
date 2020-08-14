@@ -1,11 +1,17 @@
 #include <numeric>
 #include "muscles.h"
 
+Arena default_arena;
+
+Arena *get_default_arena() {
+	return &default_arena;
+}
+
 void *Arena::allocate(int size) {
 	if (size <= 0 || size > pool_size)
 		return nullptr;
 
-	if (idx + size > pool_size)
+	if (idx + size > pool_size || pools.size() == 0)
 		add_pool();
 
 	void *ptr = (void*)&pools.back()[idx];
@@ -29,10 +35,25 @@ char *Arena::alloc_string(char *str) {
 	return p;
 }
 
-Arena arena;
+void Arena::rewind() {
+	if (rewind_pool < 0 || rewind_idx < 0)
+		return;
 
-Arena *get_arena() {
-	return &arena;
+	int last = pools.size() - 1;
+	if (last < 0)
+		return;
+
+	if (rewind_pool != last) {
+		rewind_pool = last;
+		rewind_idx = 0;
+	}
+
+	int delta = idx - rewind_idx;
+	if (delta <= 0)
+		return;
+
+	idx = rewind_idx;
+	memset(&pools.back()[idx], 0, delta);
 }
 
 Table::Table(const Table& t) :
@@ -57,7 +78,9 @@ Table::Table(Table&& t) :
 {}
 
 void Table::resize(int n_rows) {
+	Arena *arena = use_default_arena ? get_default_arena() : &this->arena;
 	int n_cols = column_count();
+
 	for (int i = 0; i < n_cols; i++) {
 		columns[i].resize(n_rows, nullptr);
 
@@ -66,7 +89,7 @@ void Table::resize(int n_rows) {
 				if (columns[i][j])
 					continue;
 
-				columns[i][j] = arena.allocate(headers[i].count_per_cell);
+				columns[i][j] = arena->allocate(headers[i].count_per_cell);
 				((char*)(columns[i][j]))[0] = 0;
 			}
 		}

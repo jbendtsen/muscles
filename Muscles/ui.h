@@ -1,18 +1,18 @@
 #pragma once
 
 enum Element_Type {
-	TypeNone = 0,
-	TypeImage,
-	TypeLabel,
-	TypeButton,
-	TypeDivider,
-	TypeDataView,
-	TypeScroll,
-	TypeEditBox,
-	TypeDropDown,
-	TypeCheckbox,
-	TypeHexView,
-	TypeTextEditor
+	ElemNone = 0,
+	ElemImage,
+	ElemLabel,
+	ElemButton,
+	ElemDivider,
+	ElemDataView,
+	ElemScroll,
+	ElemEditBox,
+	ElemDropDown,
+	ElemCheckbox,
+	ElemHexView,
+	ElemTextEditor
 };
 
 struct Box;
@@ -44,7 +44,7 @@ struct UI_Element {
 
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
 	virtual void deselect() {}
-	virtual bool disengage(bool try_select) { return false; }
+	virtual bool disengage(Input& input, bool try_select) { return false; }
 	virtual void release() {}
 
 	UI_Element() = default;
@@ -57,7 +57,7 @@ void (*get_delete_box(void))(UI_Element*, bool);
 struct Scroll;
 
 struct Button : UI_Element {
-	Button() : UI_Element(TypeButton) {}
+	Button() : UI_Element(ElemButton) {}
 
 	struct Theme {
 		RGBA back;
@@ -88,7 +88,7 @@ struct Button : UI_Element {
 };
 
 struct Checkbox : UI_Element {
-	Checkbox() : UI_Element(TypeCheckbox) {}
+	Checkbox() : UI_Element(ElemCheckbox) {}
 
 	bool checked = false;
 	std::string text;
@@ -101,7 +101,7 @@ struct Checkbox : UI_Element {
 };
 
 struct Data_View : UI_Element {
-	Data_View() : UI_Element(TypeDataView) {}
+	Data_View() : UI_Element(ElemDataView) {}
 
 	Table data = {};
 
@@ -139,7 +139,7 @@ struct Data_View : UI_Element {
 };
 
 struct Divider : UI_Element {
-	Divider() : UI_Element(TypeDivider) {}
+	Divider() : UI_Element(ElemDivider) {}
 
 	bool vertical = false;
 	bool moveable = false;
@@ -166,7 +166,7 @@ struct Divider : UI_Element {
 };
 
 struct Drop_Down : UI_Element {
-	Drop_Down() : UI_Element(TypeDropDown) {}
+	Drop_Down() : UI_Element(ElemDropDown) {}
 
 	bool dropped = false;
 	int sel = -1;
@@ -198,7 +198,7 @@ struct Drop_Down : UI_Element {
 };
 
 struct Edit_Box : UI_Element {
-	Edit_Box() : UI_Element(TypeEditBox, CursorEdit) {
+	Edit_Box() : UI_Element(ElemEditBox, CursorEdit) {
 		action = get_set_active_edit();
 	}
 
@@ -240,14 +240,14 @@ struct Edit_Box : UI_Element {
 
 	void update_icon(Icon_Type type, float height, float scale);
 
-	bool disengage(bool try_select) override;
+	bool disengage(Input& input, bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Hex_View : UI_Element {
-	Hex_View() : UI_Element(TypeHexView) {}
+	Hex_View() : UI_Element(ElemHexView) {}
 
 	bool alive = false;
 	int offset = 0;
@@ -289,14 +289,14 @@ struct Hex_View : UI_Element {
 };
 
 struct Image : UI_Element {
-	Image() : UI_Element(TypeImage) {}
+	Image() : UI_Element(ElemImage) {}
 
 	Texture img = nullptr;
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Label : UI_Element {
-	Label() : UI_Element(TypeLabel) {}
+	Label() : UI_Element(ElemLabel) {}
 
 	std::string text;
 	float x = 0;
@@ -315,7 +315,7 @@ struct Label : UI_Element {
 };
 
 struct Scroll : UI_Element {
-	Scroll() : UI_Element(TypeScroll) {}
+	Scroll() : UI_Element(ElemScroll) {}
 
 	bool vertical = true;
 
@@ -348,7 +348,7 @@ struct Scroll : UI_Element {
 };
 
 struct Text_Editor : UI_Element {
-	Text_Editor() : UI_Element(TypeTextEditor, CursorEdit) {}
+	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {}
 
 	bool selected = false;
 	bool mouse_held = false;
@@ -396,15 +396,16 @@ struct Text_Editor : UI_Element {
 };
 
 enum BoxType {
-	NoBoxType = 0,
-	TypeMain,
-	TypeStructs
+	BoxDefault = 0,
+	BoxMain,
+	BoxStructs,
+	BoxObject
 };
 
 struct Workspace;
 
 struct Box {
-	BoxType type = NoBoxType;
+	BoxType type = BoxDefault;
 	bool visible = false;
 	bool moving = false;
 	bool ui_held = false;

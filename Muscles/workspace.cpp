@@ -154,22 +154,22 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 }
 
 void Workspace::refresh_sources() {
-	Arena* arena = get_arena();
+	Arena* arena = get_default_arena();
 	auto& sources = (std::vector<Source*>&)this->sources;
 	for (auto& s : sources) {
 		s->region_refreshed = false;
 		if (!s->block_region_refresh && s->timer % s->refresh_region_rate == 0) {
-			if (s->type == TypeFile)
+			if (s->type == SourceFile)
 				refresh_file_region(*s, *arena);
-			else if (s->type == TypeProcess)
+			else if (s->type == SourceProcess)
 				refresh_process_regions(*s, *arena);
 
 			s->region_refreshed = true;
 		}
 		if (s->timer % s->refresh_span_rate == 0) {
-			if (s->type == TypeFile)
+			if (s->type == SourceFile)
 				refresh_file_spans(*s, *arena);
-			else if (s->type == TypeProcess)
+			else if (s->type == SourceProcess)
 				refresh_process_spans(*s, *arena);
 		}
 		s->timer++;
@@ -361,7 +361,7 @@ void Box::set_dropdown(Drop_Down *dd) {
 void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	if (input.lclick) {
 		if (active_edit) {
-			if (active_edit->disengage(true))
+			if (active_edit->disengage(input, true))
 				input.lclick = false;
 		}
 		active_edit = nullptr;

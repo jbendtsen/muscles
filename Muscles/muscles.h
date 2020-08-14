@@ -129,6 +129,39 @@ Texture make_vertical_divider_icon(RGBA& color, int height, double squish, doubl
 Texture make_goto_icon(RGBA& color, int length);
 Texture make_glass_icon(RGBA& color, int length);
 
+struct Arena {
+	std::vector<char*> pools;
+	int pool_size = 1024 * 1024;
+	int idx = 0;
+
+	int rewind_pool = -1;
+	int rewind_idx = -1;
+
+	void set_rewind_point() {
+		rewind_pool = pools.size() - 1;
+		if (rewind_pool < 0) rewind_pool = 0;
+		rewind_idx = idx;
+	}
+
+	void add_pool() {
+		pools.push_back(new char[pool_size]);
+		idx = 0;
+	}
+
+	Arena() = default;
+	~Arena() {
+		for (auto& p : pools)
+			delete[] p;
+	}
+
+	void *allocate(int size);
+	char *alloc_string(char *str);
+
+	void rewind();
+};
+
+Arena *get_default_arena();
+
 #define MAX_FNAME 112
 
 struct File_Entry {
@@ -137,11 +170,11 @@ struct File_Entry {
 	char name[MAX_FNAME];
 };
 
-#define SET_TABLE_CHECKBOX(table, row, col, state) \
-	*(u8*)&table.columns[row][col] = state ? 2 : 1
+#define SET_TABLE_CHECKBOX(table, col, row, state) \
+	*(u8*)&table.columns[col][row] = state ? 2 : 1
 
-#define TOGGLE_TABLE_CHECKBOX(table, row, col) \
-	*(u8*)&table.columns[row][col] = *(u8*)&table.columns[row][col] == 2 ? 1 : 2;
+#define TOGGLE_TABLE_CHECKBOX(table, col, row) \
+	*(u8*)&table.columns[col][row] = *(u8*)&table.columns[col][row] == 2 ? 1 : 2
 
 enum Column_Type {
 	ColumnNone = 0,
@@ -161,10 +194,12 @@ struct Column {
 };
 
 struct Table {
+	Arena arena;
 	std::vector<Column> headers;
 	std::unique_ptr<std::vector<void*>[]> columns;
 	std::set<int> list;
 	int filtered = -1;
+	bool use_default_arena = true;
 
 	Table() = default;
 	Table(const Table& t);
@@ -193,30 +228,6 @@ struct Table {
 
 	void release();
 };
-
-struct Arena {
-	std::vector<char*> pools;
-	int pool_size = 1024 * 1024;
-	int idx = 0;
-
-	void add_pool() {
-		pools.push_back(new char[pool_size]);
-		idx = 0;
-	}
-
-	Arena() {
-		add_pool();
-	}
-	~Arena() {
-		for (auto& p : pools)
-			delete[] p;
-	}
-
-	void *allocate(int size);
-	char *alloc_string(char *str);
-};
-
-Arena *get_arena();
 
 #define CLIP_TOP     1
 #define CLIP_BOTTOM  2
@@ -396,13 +407,13 @@ struct Region {
 };
 
 enum Source_Type {
-	TypeNoSource = 0,
-	TypeFile,
-	TypeProcess
+	SourceNone = 0,
+	SourceFile,
+	SourceProcess
 };
 
 struct Source {
-	Source_Type type = TypeNoSource;
+	Source_Type type = SourceNone;
 	std::string name;
 
 	int pid = 0;

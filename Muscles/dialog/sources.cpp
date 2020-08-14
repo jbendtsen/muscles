@@ -155,19 +155,19 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto& sources = (std::vector<Source*>&)elem->parent->parent->sources;
 
 	for (auto& s : sources) {
-		if (s->type == TypeProcess && s->pid == pid)
+		if (s->type == SourceProcess && s->pid == pid)
 			return;
 	}
 
 	Source *s = new Source();
-	s->type = TypeProcess;
+	s->type = SourceProcess;
 	s->pid = pid;
 	s->name = name_ptr+1;
 	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
 
-	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(TypeMain)->markup;
+	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(BoxMain)->markup;
 	main_ui->table->sel_row = sources.size() - 1;
 }
 
@@ -209,19 +209,19 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	auto& sources = (std::vector<Source*>&)elem->parent->parent->sources;
 
 	for (auto& s : sources) {
-		if (s->type == TypeFile && path == (const char*)s->identifier)
+		if (s->type == SourceFile && path == (const char*)s->identifier)
 			return;
 	}
 
 	Source *s = new Source();
-	s->type = TypeFile;
-	s->identifier = (void*)get_arena()->alloc_string((char*)path.c_str());
+	s->type = SourceFile;
+	s->identifier = (void*)get_default_arena()->alloc_string((char*)path.c_str());
 	s->name = file->name;
 	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
 
-	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(TypeMain)->markup;
+	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(BoxMain)->markup;
 	main_ui->table->sel_row = sources.size() - 1;
 }
 
@@ -252,7 +252,7 @@ void refresh_file_menu(Box& b, Point& cursor) {
 		return;
 
 	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
-	enumerate_files((char*)ui->path->placeholder.c_str(), files, *get_arena());
+	enumerate_files((char*)ui->path->placeholder.c_str(), files, *get_default_arena());
 
 	if (files.size() > 0) {
 		ui->table->data.columns[0].resize(files.size(), nullptr);

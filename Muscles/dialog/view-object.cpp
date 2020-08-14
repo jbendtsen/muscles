@@ -167,9 +167,17 @@ void select_view_type(View_Object *ui, bool all) {
 	ui->sel_btn->inactive_theme = *theme_sel;
 }
 
+void struct_edit_refresh(Edit_Box *edit, Input& input) {
+	Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
+	if (structs_box) {
+		auto ui = (View_Object*)edit->parent->markup;
+		populate_object_table(ui, ((Edit_Structs*)structs_box->markup)->structs);
+	}
+}
+
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Object*)b.markup;
-	Box *structs_box = b.parent->first_box_of_type(TypeStructs);
+	Box *structs_box = b.parent->first_box_of_type(BoxStructs);
 	ui->struct_dd->external = structs_box ? &((Edit_Structs*)structs_box->markup)->struct_names : nullptr;
 }
 
@@ -240,7 +248,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->addr_label->padding = 0;
 	b.ui.push_back(ui->addr_label);
 
-	auto mm = (Main_Menu*)ws.first_box_of_type(TypeMain)->markup;
+	auto mm = (Main_Menu*)ws.first_box_of_type(BoxMain)->markup;
 	RGBA icon_color = ws.text_color;
 	icon_color.a = 0.7;
 
@@ -285,6 +293,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->struct_edit->icon_color = icon_color;
 	ui->struct_edit->icon_right = true;
 	ui->struct_edit->dropdown = ui->struct_dd;
+	ui->struct_edit->key_action = struct_edit_refresh;
 	b.ui.push_back(ui->struct_edit);
 
 	ui->hscroll = new Scroll();
@@ -313,13 +322,12 @@ void make_view_object(Workspace& ws, Box& b) {
 	Column cols[] = {
 		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
 		{ColumnString, 0, 0.5, 0, 0, "Name"},
-		{ColumnString, 20, 0.5, 0, 0, "Value"}
+		{ColumnString, 20, 0.45, 0, 0, "Value"}
 	};
-	ui->view->data.init(cols, 3, 1);
+	ui->view->data.init(cols, 3, 0);
 
-	SET_TABLE_CHECKBOX(ui->view->data, 0, 0, true);
-	ui->view->data.columns[1][0] = (void*)"thing";
-	strcpy((char*)ui->view->data.columns[2][0], "number");
+	ui->view->data.use_default_arena = false;
+	ui->view->data.arena.set_rewind_point();
 
 	b.ui.push_back(ui->view);
 
@@ -354,6 +362,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->sel_btn->action = [](UI_Element *elem, bool dbl_click) { select_view_type((View_Object*)elem->parent->markup, false); };
 	b.ui.push_back(ui->sel_btn);
 
+	b.type = BoxObject;
 	b.markup = ui;
 	b.update_handler = update_view_object;
 	b.scale_change_handler = scale_change_handler;
@@ -364,4 +373,33 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.min_width = 300;
 	b.min_height = 200;
 	b.visible = true;
+}
+
+void populate_object_table(View_Object *ui, std::vector<Struct*>& structs) {
+	ui->view->data.clear_data();
+	ui->view->data.arena.rewind();
+
+	if (!ui->struct_edit->line.size())
+		return;
+
+	const char *name_str = ui->struct_edit->line.c_str();
+	Struct *record = nullptr;
+
+	for (auto& s : structs) {
+		if (s && !strcmp(s->name, name_str)) {
+			record = s;
+			break;
+		}
+	}
+
+	if (!record || (record->flags & FLAG_UNUSABLE) != 0 || record->fields.n_fields <= 0)
+		return;
+
+	int n_rows = record->fields.n_fields;
+	ui->view->data.resize(n_rows);
+
+	for (int i = 0; i < n_rows; i++) {
+		SET_TABLE_CHECKBOX(ui->view->data, 0, i, false);
+		ui->view->data.columns[1][i] = (void*)record->fields.data[i].field_name;
+	}
 }

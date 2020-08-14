@@ -77,6 +77,12 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	for (auto& s : ui->structs)
 		ui->struct_names.push_back(s->name);
 
+	Workspace& ws = *edit->parent->parent;
+	for (auto& b : ws.boxes) {
+		if (b->type == BoxObject)
+			populate_object_table((View_Object*)b->markup, ui->structs);
+	}
+
 	ui->first_run = false;
 }
 
@@ -124,7 +130,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->vscroll->sel_color = ws.scroll_sel_color;
 	b.ui.push_back(ui->vscroll);
 
-	b.type = TypeStructs;
+	b.type = BoxStructs;
 	b.markup = ui;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
@@ -138,7 +144,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 }
 
 void open_edit_structs(Workspace& ws) {
-	Box *box = ws.first_box_of_type(TypeStructs);
+	Box *box = ws.first_box_of_type(BoxStructs);
 	if (!box) {
 		Box *box = new Box();
 		make_struct_box(ws, *box);

@@ -64,16 +64,16 @@ void refresh_main_menu(Box& b, Point& cursor) {
 	auto& pids = (std::vector<char*>&)ui->table->data.columns[1];
 	auto& names = (std::vector<char*>&)ui->table->data.columns[2];
 
-	Arena *arena = get_arena();
+	Arena *arena = get_default_arena();
 	for (int i = 0; i < n_sources; i++) {
 		if (!pids[i])
 			pids[i] = (char*)arena->allocate(8);
 
-		if (sources[i]->type == TypeProcess) {
+		if (sources[i]->type == SourceProcess) {
 			icons[i] = ui->process_icon;
 			snprintf(pids[i], 7, "%d", sources[i]->pid);
 		}
-		else if (sources[i]->type == TypeFile) {
+		else if (sources[i]->type == SourceFile) {
 			icons[i] = ui->file_icon;
 			strcpy(pids[i], "---");
 		}
@@ -184,9 +184,9 @@ void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];
 	for (int i = 0; i < n_rows; i++) {
 		Source_Type type = ((Source*)ws.sources[i])->type;
-		if (type == TypeFile)
+		if (type == SourceFile)
 			icons[i] = ui->file_icon;
-		else if (type == TypeProcess)
+		else if (type == SourceProcess)
 			icons[i] = ui->process_icon;
 	}
 }
@@ -286,7 +286,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->table);
 	b.ui.push_back(ui->button);
 
-	b.type = TypeMain;
+	b.type = BoxMain;
 	b.visible = true;
 	b.markup = ui;
 	b.update_handler = update_main_menu;

@@ -420,7 +420,7 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 				scroll->scroll(1);
 		}
 		if (input.lclick && hl_row >= 0 && hl_col >= 0 && data.headers[hl_col].type == ColumnCheckbox)
-			TOGGLE_TABLE_CHECKBOX(data, hl_row, hl_col);
+			TOGGLE_TABLE_CHECKBOX(data, hl_col, hl_row);
 	}
 }
 
@@ -630,7 +630,7 @@ void Edit_Box::clear() {
 	offset = 0;
 }
 
-bool Edit_Box::disengage(bool try_select) {
+bool Edit_Box::disengage(Input& input, bool try_select) {
 	float cancel_lclick = false;
 	if (dropdown) {
 		if (try_select && dropdown->sel >= 0) {
@@ -638,6 +638,9 @@ bool Edit_Box::disengage(bool try_select) {
 			cursor = 0;
 			offset = 0;
 			cancel_lclick = true;
+
+			if (key_action)
+				key_action(this, input);
 		}
 		dropdown->dropped = false;
 	}
@@ -658,7 +661,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		update = remove(false);
 	else if (input.strike(input.esc)) {
 		clear();
-		disengage(false);
+		disengage(input, false);
 		parent->active_edit = nullptr;
 		update = true;
 	}
