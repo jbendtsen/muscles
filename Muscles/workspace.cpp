@@ -382,7 +382,7 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover,
 		if (!input.lmouse)
 			select_edge(view, inside);
 
-		CursorType ct = CursorDefault;
+		Cursor_Type ct = CursorDefault;
 		if (edge == 5 || edge == 10)
 			ct = CursorResizeNWSE;
 		else if (edge == 6 || edge == 9)

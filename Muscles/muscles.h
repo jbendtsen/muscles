@@ -70,7 +70,7 @@ struct Rect_Fixed {
 struct Input;
 struct Camera;
 
-enum CursorType {
+enum Cursor_Type {
 	CursorDefault = 0,
 	CursorClick,
 	CursorEdit,
@@ -81,7 +81,7 @@ enum CursorType {
 	CursorResizeNWSE
 };
 
-void sdl_set_cursor(CursorType type);
+void sdl_set_cursor(Cursor_Type type);
 void sdl_get_dpi(int& w, int& h);
 
 void sdl_log_string(const char *msg);
@@ -111,7 +111,7 @@ void *sdl_lock_texture(Texture tex);
 void sdl_unlock_texture(Texture tex);
 void sdl_destroy_texture(Texture *tex);
 
-enum IconType {
+enum Icon_Type {
 	IconNone = 0,
 	IconGoto,
 	IconGlass,
@@ -137,20 +137,27 @@ struct File_Entry {
 	char name[MAX_FNAME];
 };
 
-enum Type {
-	None = 0,
-	String,
-	Tex,
-	File
+#define SET_TABLE_CHECKBOX(table, row, col, state) \
+	*(u8*)&table.columns[row][col] = state ? 2 : 1
+
+#define TOGGLE_TABLE_CHECKBOX(table, row, col) \
+	*(u8*)&table.columns[row][col] = *(u8*)&table.columns[row][col] == 2 ? 1 : 2;
+
+enum Column_Type {
+	ColumnNone = 0,
+	ColumnString,
+	ColumnImage,
+	ColumnFile,
+	ColumnCheckbox
 };
 
 struct Column {
-	Type type;
-	int count_per_cell;
-	float width;
-	float min_size;
+	Column_Type type;
+	int count_per_cell;  // Number of elements (eg. chars) to allocate per cell
+	float width;         // Fraction of the width of the whole table
+	float min_size;      // Minimum column width in font height units (ie. 1.0 == the height of the current font in pixels)
 	float max_size;
-	const char *name;
+	const char *name;    // Used as the column header text
 };
 
 struct Table {
@@ -388,14 +395,14 @@ struct Region {
 	char *name = nullptr;
 };
 
-enum SourceType {
+enum Source_Type {
 	TypeNoSource = 0,
 	TypeFile,
 	TypeProcess
 };
 
 struct Source {
-	SourceType type = TypeNoSource;
+	Source_Type type = TypeNoSource;
 	std::string name;
 
 	int pid = 0;

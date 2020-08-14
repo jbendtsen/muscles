@@ -183,7 +183,7 @@ void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	int n_rows = ui->table->data.row_count();
 	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];
 	for (int i = 0; i < n_rows; i++) {
-		SourceType type = ((Source*)ws.sources[i])->type;
+		Source_Type type = ((Source*)ws.sources[i])->type;
 		if (type == TypeFile)
 			icons[i] = ui->file_icon;
 		else if (type == TypeProcess)
@@ -251,9 +251,9 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->table->sel_color = ws.light_color;
 
 	Column sources_cols[] = {
-		{Tex, 0, 0.1, 0, 1.2, ""},
-		{String, 0, 0.2, 0, 3, "PID"},
-		{String, 0, 0.7, 0, 0, "Name"},
+		{ColumnImage, 0, 0.1, 0, 1.2, ""},
+		{ColumnString, 0, 0.2, 0, 3, "PID"},
+		{ColumnString, 0, 0.7, 0, 0, "Name"},
 	};
 	ui->table->data.init(sources_cols, 3, 0);
 
@@ -342,7 +342,7 @@ void make_opening_menu(Workspace& ws, Box& b) {
 	table->hl_color = ws.hl_color;
 	table->default_color = ws.back_color;
 
-	Column menu_column = { String, 0, 1, 0, 0, "" };
+	Column menu_column = { ColumnString, 0, 1, 0, 0, "" };
 	table->data.init(&menu_column, 1, 2);
 	table->data.columns[0][0] = (void*)"New";
 	table->data.columns[0][1] = (void*)"Open Workspace";

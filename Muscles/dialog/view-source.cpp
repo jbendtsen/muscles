@@ -422,9 +422,9 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		float size_w = 8 * digit_units;
 
 		Column cols[] = {
-			{String, 0, 0, 0, 0, "Name"},
-			{String, 20, 0.2, addr_w, 0, "Address"},
-			{String, 20, 0.1, size_w, 0, "Size"}
+			{ColumnString, 0, 0, 0, 0, "Name"},
+			{ColumnString, 20, 0.2, addr_w, 0, "Address"},
+			{ColumnString, 20, 0.1, size_w, 0, "Size"}
 		};
 
 		ui->reg_table->data.init(cols, 3, 0);

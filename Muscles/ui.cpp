@@ -145,7 +145,7 @@ void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 bool Data_View::highlight(Camera& view, Point& inside) {
 	if (!font) {
-		hl_row = -1;
+		hl_row = hl_col = -1;
 		return false;
 	}
 
@@ -162,18 +162,31 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 
 	int n_rows = data.filtered >= 0 ? data.filtered : data.row_count();
 	int n_cols = data.column_count();
-	float total_width = table.w - font_units * ((n_cols - 1) * column_spacing);
 
 	float space = font->line_spacing * font_units;
 
 	float y = 0;
 	float item_w = table.w - 4;
 
-	hl_row = -1;
+	hl_row = hl_col = -1;
+
 	for (int i = top; i < n_rows && y < table.h; i++) {
 		float h = y > table.h - item_height ? table.h - y : item_height;
 		if (inside.x >= table.x && inside.x < table.x + table.w && inside.y >= table.y + y && inside.y < table.y + y + h) {
 			hl_row = i;
+
+			float x = table.x;
+			for (int j = 0; j < n_cols; j++) {
+				float w = column_width(pos.w, scroll_total, font_height, view.scale, j) / view.scale;
+
+				if (inside.x >= x && inside.x < x + w) {
+					hl_col = j;
+					break;
+				}
+
+				x += w + column_spacing * font_units;
+			}
+
 			return true;
 		}
 		y += item_height;
@@ -251,8 +264,9 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	}
 
 	float scroll_x = 0;
-	float scroll_total = column_spacing;
 	float table_w = pos.w;
+
+	scroll_total = column_spacing;
 
 	if (hscroll) {
 		for (int i = 0; i < n_cols; i++)
@@ -291,21 +305,6 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	if (hl_row != sel_row && (box_hovered || focussed))
 		draw_item_backing(hl_color, back, view.scale, hl_row);
 
-	auto draw_tex = [this](Texture t, Rect_Fixed& dst, Rect_Fixed& src, float x, float tex_y, float y_max) {
-		sdl_get_texture_size(t, &src.w, &src.h);
-
-		dst.x = x;
-		dst.y = tex_y;
-
-		if (tex_y + dst.h > y_max) {
-			int h = y_max - tex_y;
-			src.h = (float)(src.h * h) / (float)dst.h;
-			dst.h = h;
-		}
-
-		sdl_apply_texture(t, dst, &src);
-	};
-
 	float pad = padding * view.scale;
 	float x = back.x + col_space - scroll_x;
 	float y = back.y;
@@ -322,13 +321,63 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	clip.x_lower = x + scroll_x;
 	clip.y_upper = y_max;
 
+	auto draw_cell = [this, &dst, &src, y_max, line_off, sp_half, font_height](void *cell, Column_Type type, float x, float y) {
+		if (type == ColumnString)
+			font->render.draw_text((const char*)cell, x, y - line_off, clip);
+		else if (type == ColumnFile) {
+			auto name = (const char*)((File_Entry*)cell)->name;
+			font->render.draw_text(name, x, y - line_off, clip);
+		}
+		else if (type == ColumnImage) {
+			sdl_get_texture_size(cell, &src.w, &src.h);
+			dst.x = x;
+			dst.y = y + sp_half;
+
+			if (dst.y + dst.h > y_max) {
+				int h = y_max - dst.y;
+				src.h = (float)(src.h * h) / (float)dst.h;
+				dst.h = h;
+			}
+
+			sdl_apply_texture(cell, dst, &src);
+		}
+		else if (type == ColumnCheckbox) {
+			float indent = font_height * 0.1;
+			dst.x = x + 0.5 + indent;
+			dst.y = y + sp_half + 0.5 + indent;
+			dst.w = 0.5 + font_height - 2*indent;
+			dst.h = dst.w;
+
+			if (dst.y + dst.h > y_max)
+				dst.h = y_max - dst.y;
+
+			sdl_draw_rect(dst, parent->parent->table_cb_back);
+
+			if (*(u8*)&cell == 2) {
+				indent = font_height * 0.15;
+				src.x = dst.x + 0.5 + indent;
+				src.y = dst.y + 0.5 + indent;
+				src.w = 0.5 + dst.w - 2*indent;
+				src.h = src.w;
+
+				if (src.y + src.h > y_max)
+					src.h = y_max - src.y;
+
+				sdl_draw_rect(src, parent->parent->cb_color);
+				src.x = src.y = 0;
+			}
+
+			dst.w = dst.h = font_height;
+		}
+	};
+
 	float table_off_y = y;
 
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 		clip.x_upper = x+w < x_max ? x+w : x_max;
 
-		Type type = data.headers[i].type;
+		Column_Type type = data.headers[i].type;
 
 		if (data.filtered >= 0) {
 			int n = -1;
@@ -340,16 +389,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 					continue;
 
 				auto thing = data.columns[i][idx];
-				if (thing) {
-					if (type == String)
-						font->render.draw_text((const char*)thing, x, y - line_off, clip);
-					else if (type == File) {
-						auto name = (const char*)((File_Entry*)thing)->name;
-						font->render.draw_text(name, x, y - line_off, clip);
-					}
-					else if (type == Tex)
-						draw_tex(thing, dst, src, x, y + sp_half, y_max);
-				}
+				if (thing)
+					draw_cell(thing, type, x, y);
 
 				y += line_h;
 			}
@@ -357,16 +398,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		else {
 			for (int j = top; j < n_rows && y < y_max; j++) {
 				auto thing = data.columns[i][j];
-				if (thing) {
-					if (type == String)
-						font->render.draw_text((const char*)thing, x, y - line_off, clip);
-					else if (type == File) {
-						auto name = (const char*)((File_Entry*)thing)->name;
-						font->render.draw_text(name, x, y - line_off, clip);
-					}
-					else if (type == Tex)
-						draw_tex(thing, dst, src, x, y + sp_half, y_max);
-				}
+				if (thing)
+					draw_cell(thing, type, x, y);
 
 				y += line_h;
 			}
@@ -386,11 +419,13 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 			if (scroll && input.scroll_y < 0)
 				scroll->scroll(1);
 		}
+		if (input.lclick && hl_row >= 0 && hl_col >= 0 && data.headers[hl_col].type == ColumnCheckbox)
+			TOGGLE_TABLE_CHECKBOX(data, hl_row, hl_col);
 	}
 }
 
 void Data_View::deselect() {
-	hl_row = -1;
+	hl_row = hl_col = -1;
 }
 
 void Data_View::release() {
@@ -682,7 +717,7 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 	}
 }
 
-void Edit_Box::update_icon(IconType type, float height, float scale) {
+void Edit_Box::update_icon(Icon_Type type, float height, float scale) {
 	pos.h = height;
 	icon_length = 0.5 + height * scale - 2 * text_off_y * font->render.text_height();
 

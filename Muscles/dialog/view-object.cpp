@@ -305,8 +305,22 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->view = new Data_View();
 	ui->view->font = ws.default_font;
 	ui->view->default_color = ws.dark_color;
-	ui->view->hl_color = ws.hl_color;
+	ui->view->hl_color = ws.dark_color;
 	ui->view->consume_box_scroll = true;
+	ui->view->hscroll = ui->hscroll;
+	ui->view->vscroll = ui->vscroll;
+
+	Column cols[] = {
+		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
+		{ColumnString, 0, 0.5, 0, 0, "Name"},
+		{ColumnString, 20, 0.5, 0, 0, "Value"}
+	};
+	ui->view->data.init(cols, 3, 1);
+
+	SET_TABLE_CHECKBOX(ui->view->data, 0, 0, true);
+	ui->view->data.columns[1][0] = (void*)"thing";
+	strcpy((char*)ui->view->data.columns[2][0], "number");
+
 	b.ui.push_back(ui->view);
 
 	ui->theme_on = {

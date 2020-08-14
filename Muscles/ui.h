@@ -1,6 +1,6 @@
 #pragma once
 
-enum ElementType {
+enum Element_Type {
 	TypeNone = 0,
 	TypeImage,
 	TypeLabel,
@@ -22,8 +22,8 @@ struct UI_Element {
 	bool active = true;
 	bool use_default_cursor = false;
 
-	enum ElementType type;
-	enum CursorType cursor_type = CursorDefault;
+	enum Element_Type type;
+	enum Cursor_Type cursor_type = CursorDefault;
 
 	Box *parent = nullptr;
 
@@ -48,7 +48,7 @@ struct UI_Element {
 	virtual void release() {}
 
 	UI_Element() = default;
-	UI_Element(ElementType t, CursorType ct = CursorDefault) : type(t), cursor_type(ct) {}
+	UI_Element(Element_Type t, Cursor_Type ct = CursorDefault) : type(t), cursor_type(ct) {}
 };
 
 void (*get_set_active_edit(void))(UI_Element*, bool);
@@ -109,12 +109,14 @@ struct Data_View : UI_Element {
 	Scroll *vscroll = nullptr;
 
 	int hl_row = -1;
+	int hl_col = -1;
 	int sel_row = -1;
 
 	float item_height = 0;
 	float header_height = 25;
-	float column_spacing = 0.2;
 	float padding = 2;
+	float column_spacing = 0.2;
+	float scroll_total = 0.2;
 
 	bool show_column_names = false;
 	bool consume_box_scroll = false;
@@ -236,7 +238,7 @@ struct Edit_Box : UI_Element {
 	void move_cursor(int delta);
 	void clear();
 
-	void update_icon(IconType type, float height, float scale);
+	void update_icon(Icon_Type type, float height, float scale);
 
 	bool disengage(bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
@@ -465,7 +467,7 @@ struct Workspace {
 	RGBA dark_color = { 0.05, 0.2, 0.5, 1.0 };
 	RGBA light_color = { 0.15, 0.35, 0.85, 1.0 };
 	RGBA light_hl_color = { 0.2, 0.5, 1.0, 1.0 };
-	RGBA default_color = {};
+	RGBA table_cb_back = { 0, 0.05, 0.2, 1.0 };
 	RGBA hl_color = { 0.2, 0.4, 0.7, 1.0 };
 	RGBA active_color = { 0.1, 0.25, 0.8, 1.0 };
 	RGBA inactive_color = { 0.2, 0.3, 0.5, 1.0 };

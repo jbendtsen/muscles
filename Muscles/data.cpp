@@ -61,7 +61,7 @@ void Table::resize(int n_rows) {
 	for (int i = 0; i < n_cols; i++) {
 		columns[i].resize(n_rows, nullptr);
 
-		if (headers[i].type == String && headers[i].count_per_cell > 0) {
+		if (headers[i].type == ColumnString && headers[i].count_per_cell > 0) {
 			for (int j = 0; j < n_rows; j++) {
 				if (columns[i][j])
 					continue;
@@ -117,10 +117,10 @@ void Table::update_filter(std::string& filter) {
 
 	filtered = 0;
 	for (int i = 0; i < n_cols; i++) {
-		Type type = headers[i].type;
-		if (headers[i].type == String || headers[i].type == File) {
+		Column_Type type = headers[i].type;
+		if (headers[i].type == ColumnString || headers[i].type == ColumnFile) {
 			for (int j = 0; j < n_rows; j++) {
-				char *name = type == File ? ((File_Entry*)columns[i][j])->name : (char*)columns[i][j];
+				char *name = type == ColumnFile ? ((File_Entry*)columns[i][j])->name : (char*)columns[i][j];
 				if (!name)
 					continue;
 
@@ -139,7 +139,7 @@ void Table::update_filter(std::string& filter) {
 void Table::release() {
 	int n_cols = column_count();
 	for (int i = 0; i < n_cols; i++) {
-		if (headers[i].type != Tex)
+		if (headers[i].type != ColumnImage)
 			continue;
 
 		for (auto& t : columns[i])

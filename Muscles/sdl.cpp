@@ -8,13 +8,13 @@ int main(int argc, char **argv) {
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
-std::unordered_map<CursorType, SDL_Cursor*> cursors;
-CursorType cursor = CursorDefault;
+std::unordered_map<Cursor_Type, SDL_Cursor*> cursors;
+Cursor_Type cursor = CursorDefault;
 
 bool capture = false;
 int dpi_w = 0, dpi_h = 0;
 
-void sdl_set_cursor(CursorType type) {
+void sdl_set_cursor(Cursor_Type type) {
 	if (type == cursor)
 		return;
 
