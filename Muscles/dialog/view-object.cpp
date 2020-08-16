@@ -173,7 +173,8 @@ void struct_edit_refresh(Edit_Box *edit, Input& input) {
 	Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
 	if (structs_box) {
 		auto ui = (View_Object*)edit->parent->markup;
-		populate_object_table(ui, ((Edit_Structs*)structs_box->markup)->structs);
+		auto es = (Edit_Structs*)structs_box->markup;
+		populate_object_table(ui, es->structs, es->name_vector.pool);
 	}
 }
 
@@ -210,6 +211,8 @@ static void refresh_handler(Box& b, Point& cursor) {
 	if (!es || !ui->record || !ui->source)
 		return;
 
+	char *name_pool = es->name_vector.pool;
+
 	u64 address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
 	int size = (ui->record->total_size + 7) / 8;
 
@@ -223,7 +226,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 	for (auto& row : ui->view->data.columns[1]) {
 		auto name = (const char*)row;
 		for (int i = 0; i < ui->record->fields.n_fields; i++) {
-			if (strcmp(ui->record->fields.data[i].field_name, name))
+			if (strcmp(&name_pool[ui->record->fields.data[i].field_name_idx], name))
 				continue;
 
 			Field& field = ui->record->fields.data[i];
@@ -451,7 +454,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.visible = true;
 }
 
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs) {
+void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char *name_pool) {
 	ui->view->data.clear_data();
 	ui->view->data.arena.rewind();
 
@@ -463,7 +466,7 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs) {
 	const char *name_str = ui->struct_edit->line.c_str();
 
 	for (auto& s : structs) {
-		if (s && !strcmp(s->name, name_str)) {
+		if (s && !strcmp(&name_pool[s->name_idx], name_str)) {
 			ui->record = s;
 			break;
 		}
@@ -477,6 +480,6 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs) {
 
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view->data, 0, i, false);
-		ui->view->data.columns[1][i] = (void*)ui->record->fields.data[i].field_name;
+		ui->view->data.columns[1][i] = (void*)&name_pool[ui->record->fields.data[i].field_name_idx];
 	}
 }

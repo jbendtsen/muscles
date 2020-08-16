@@ -68,8 +68,8 @@ struct Edit_Structs {
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
 
-	std::vector<char> tokens;
-	char *name_pool = nullptr;
+	String_Vector tokens;
+	String_Vector name_vector;
 	std::vector<Struct*> structs;
 	std::vector<char*> struct_names;
 	bool first_run = true;
@@ -113,4 +113,4 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b);
 void make_view_object(Workspace& ws, Box& b);
 void open_edit_structs(Workspace& ws);
 
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs);
+void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char *name_pool);

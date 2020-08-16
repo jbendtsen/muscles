@@ -25,6 +25,7 @@ void destroy_font_face(Font_Face face);
 
 int run();
 
+int next_power_of_2(int num);
 int count_digits(u64 num);
 void print_hex(const char *hex, char *out, u64 n, int n_digits);
 
@@ -161,6 +162,20 @@ struct Arena {
 };
 
 Arena *get_default_arena();
+
+struct String_Vector {
+	char *pool = nullptr;
+	int pool_size = 32;
+	int head = 0;
+
+	void try_expand(int new_size = 0);
+
+	int add_string(const char *str);
+	int add_buffer(const char *buf, int size);
+
+	char *allocate(int size);
+	void append_extra_zero();
+};
 
 #define MAX_FNAME 112
 
@@ -476,8 +491,8 @@ void close_source(Source& source);
 struct Struct;
 
 struct Field {
-	char *field_name;
-	char *type_name;
+	int field_name_idx;
+	int type_name_idx;
 	Struct *st;
 	int bit_offset;
 	int bit_size;
@@ -498,15 +513,15 @@ struct Field_Vector {
 	void expand();
 
 	Field& back();
-	Field& add(Field&& f);
 	Field& add(Field& f);
+	Field& add_blank();
 
 	void cancel_latest();
 	void zero_out();
 };
 
 struct Struct {
-	char *name;
+	int name_idx;
 	int offset;
 	int total_size;
 	int longest_primitive;
@@ -515,10 +530,10 @@ struct Struct {
 };
 
 struct Primitive {
-	const char *name;
+	std::string name;
 	int bit_size;
 	int flags;
 };
 
-void tokenize(std::vector<char>& tokens, const char *text, int sz);
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, char **name_buf, Struct *st = nullptr);
+void tokenize(String_Vector& tokens, const char *text, int sz);
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Struct *st = nullptr);

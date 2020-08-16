@@ -7,6 +7,118 @@ Arena *get_default_arena() {
 	return &default_arena;
 }
 
+Field_Vector::Field_Vector() {
+	data = new Field[pool_size];
+}
+Field_Vector::~Field_Vector() {
+	delete[] data;
+}
+
+Field& Field_Vector::back() {
+	return data[n_fields-1];
+}
+
+// increase pool size by a power of two each time a pool expansion is necessary
+void Field_Vector::expand() {
+	int old_size = pool_size;
+	pool_size *= 2;
+	Field *next = new Field[pool_size];
+	memcpy(next, data, old_size * sizeof(Field));
+	delete[] data;
+	data = next;
+}
+
+Field& Field_Vector::add(Field& f) {
+	if (n_fields >= pool_size)
+		expand();
+	data[n_fields++] = f;
+	return back();
+}
+
+Field& Field_Vector::add_blank() {
+	if (n_fields >= pool_size)
+		expand();
+
+	Field& f = data[n_fields];
+	f.field_name_idx = f.type_name_idx = -1;
+	n_fields++;
+	return f;
+}
+
+void Field_Vector::cancel_latest() {
+	if (n_fields <= 0)
+		return;
+
+	data[n_fields] = {0};
+	n_fields--;
+}
+
+void Field_Vector::zero_out() {
+	memset(data, 0, pool_size * sizeof(Field));
+	n_fields = 0;
+}
+
+void String_Vector::try_expand(int new_size) {
+	if (!new_size)
+		new_size = pool_size * 2;
+	else {
+		if (new_size <= pool_size)
+			return;
+
+		new_size = next_power_of_2(new_size);
+	}
+
+	char *new_pool = new char[new_size];
+
+	if (pool) {
+		memcpy(new_pool, pool, pool_size);
+		delete[] pool;
+	}
+
+	pool = new_pool;
+	pool_size = new_size;
+}
+
+int String_Vector::add_string(const char *str) {
+	if (!str)
+		return -1;
+
+	int cur = head;
+	int len = strlen(str);
+	if (len > 0) {
+		head += len + 1;
+		try_expand(head);
+		strcpy(&pool[cur], str);
+	}
+	return cur;
+}
+
+int String_Vector::add_buffer(const char *buf, int size) {
+	if (!buf)
+		return -1;
+
+	int cur = head;
+	if (size > 0) {
+		head += size + 1;
+		try_expand(head);
+		memcpy(&pool[cur], buf, size);
+		pool[cur+size] = 0;
+	}
+	return cur;
+}
+
+char *String_Vector::allocate(int size) {
+	int cur = head;
+	head += size + 1;
+	try_expand(head);
+	return &pool[cur];
+}
+
+void String_Vector::append_extra_zero() {
+	try_expand(++head);
+	pool[head-1] = 0;
+}
+
 void *Arena::allocate(int size) {
 	if (size <= 0 || size > pool_size)
 		return nullptr;

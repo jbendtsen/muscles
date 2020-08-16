@@ -55,10 +55,15 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent->markup;
 
-	if (ui->first_run)
-		ui->tokens.reserve(edit->text.size());
+	if (ui->first_run) {
+		int reserve = edit->text.size() + 2;
+		ui->tokens.try_expand(reserve);
+		ui->name_vector.try_expand(reserve);
+		ui->first_run = false;
+	}
 	else {
-		ui->tokens.clear();
+		ui->tokens.head = 0;
+		ui->name_vector.head = 0;
 		ui->struct_names.clear();
 
 		for (auto& s : ui->structs)
@@ -67,25 +72,18 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 
 	tokenize(ui->tokens, edit->text.c_str(), edit->text.size());
 
-	if (ui->name_pool)
-		delete[] ui->name_pool;
+	char *tokens_alias = ui->tokens.pool;
+	parse_c_struct(ui->structs, &tokens_alias, ui->name_vector);
 
-	ui->name_pool = new char[ui->tokens.size()];
-
-	char *tokens = ui->tokens.data();
-	char *pool_alias = ui->name_pool;
-	parse_c_struct(ui->structs, &tokens, &pool_alias);
-
-	for (auto& s : ui->structs)
-		ui->struct_names.push_back(s->name);
+	for (auto& s : ui->structs) {
+		ui->struct_names.push_back(&ui->name_vector.pool[s->name_idx]);
+	}
 
 	Workspace& ws = *edit->parent->parent;
 	for (auto& b : ws.boxes) {
 		if (b->type == BoxObject)
-			populate_object_table((View_Object*)b->markup, ui->structs);
+			populate_object_table((View_Object*)b->markup, ui->structs, ui->name_vector.pool);
 	}
-
-	ui->first_run = false;
 }
 
 static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {

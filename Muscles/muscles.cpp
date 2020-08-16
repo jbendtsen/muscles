@@ -82,6 +82,15 @@ int run() {
 	return 0;
 }
 
+int next_power_of_2(int num) {
+	int power = 2;
+	num--;
+	while (power < num)
+		power *= 2;
+
+	return power;
+}
+
 int count_digits(u64 num) {
 	if (num == 0)
 		return 1;
