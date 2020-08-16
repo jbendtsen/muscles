@@ -71,9 +71,9 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 			label_h
 		};
 
-		ui->struct_label->update_position(view);
-		ui->source_label->update_position(view);
-		ui->addr_label->update_position(view);
+		ui->struct_label->update_position(view.scale);
+		ui->source_label->update_position(view.scale);
+		ui->addr_label->update_position(view.scale);
 
 		y = edit_y;
 		ui->struct_edit->pos = {

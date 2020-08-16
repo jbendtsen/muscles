@@ -84,7 +84,6 @@ int run() {
 
 int next_power_of_2(int num) {
 	int power = 2;
-	num--;
 	while (power < num)
 		power *= 2;
 

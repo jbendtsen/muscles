@@ -392,6 +392,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 				if (condition_col >= 0) {
 					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, idx))
 						continue;
+
 					skip_draw = condition_col == i;
 				}
 
@@ -408,6 +409,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 				if (condition_col >= 0) {
 					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, j))
 						continue;
+
 					skip_draw = condition_col == i;
 				}
 
@@ -1057,13 +1059,13 @@ void Image::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hov
 	sdl_apply_texture(img, box);
 }
 
-void Label::update_position(Camera& view) {
+void Label::update_position(float scale) {
 	float font_height = font->render.text_height();
 	float pad = padding * font_height;
 
-	x = pos.x * view.scale + pad;
-	y = pos.y * view.scale - pad;
-	width = pos.w * view.scale - pad;
+	x = pos.x * scale + pad;
+	y = pos.y * scale - pad;
+	width = pos.w * scale - pad;
 }
 
 void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {

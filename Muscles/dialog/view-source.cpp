@@ -23,7 +23,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 		w,
 		ui->title->font->render.text_height() * 1.1f / view.scale
 	};
-	ui->title->update_position(view);
+	ui->title->update_position(view.scale);
 
 	float scroll_w = 14;
 
@@ -72,7 +72,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 			ui->div->pos.x - b.border - pad,
 			ui->reg_title->font->render.text_height() * 1.1f / view.scale
 		};
-		ui->reg_title->update_position(view);
+		ui->reg_title->update_position(view.scale);
 
 		y += ui->reg_title->pos.h;
 
@@ -111,7 +111,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 		b.box.w - data_x - b.border,
 		ui->hex_title->font->render.text_height() * 1.1f / view.scale
 	};
-	ui->hex_title->update_position(view);
+	ui->hex_title->update_position(view.scale);
 
 	float data_w = ui->hex_scroll->pos.x - ui->hex_title->pos.x - b.border;
 
@@ -135,7 +135,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 		size_w,
 		size_h
 	};
-	ui->size_label->update_position(view);
+	ui->size_label->update_position(view.scale);
 
 	if (ui->multiple_regions) {
 		ui->reg_name->pos = {
@@ -144,7 +144,7 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 			data_w - size_w,
 			ui->hex_title->pos.h
 		};
-		ui->reg_name->update_position(view);
+		ui->reg_name->update_position(view.scale);
 	}
 
 	data_y += ui->hex_title->pos.h;
@@ -375,14 +375,13 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 
 	if (ui->multiple_regions) {
 		ui->div = new Divider();
-		ui->div->default_color = {0.5, 0.6, 0.8, 1.0};
+		ui->div->default_color = ws.div_color;
 		ui->div->breadth = 2;
 		ui->div->vertical = true;
 		ui->div->moveable = true;
 		ui->div->minimum = 8 * ui->title->font->render.text_height();
 		ui->div->position = ui->div->minimum + 100;
 		ui->div->cursor_type = CursorResizeWestEast;
-		ui->div->make_icon(ws.temp_scale);
 		b.ui.push_back(ui->div);
 
 		ui->reg_title = new Label();

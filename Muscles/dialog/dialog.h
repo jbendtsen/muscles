@@ -65,8 +65,15 @@ struct Edit_Structs {
 	Image *cross = nullptr;
 	Label *title = nullptr;
 	Text_Editor *edit = nullptr;
-	Scroll *hscroll = nullptr;
-	Scroll *vscroll = nullptr;
+	Scroll *edit_hscroll = nullptr;
+	Scroll *edit_vscroll = nullptr;
+	Checkbox *show_cb = nullptr;
+	Divider *div = nullptr;
+	Data_View *output = nullptr;
+	Scroll *out_hscroll = nullptr;
+	Scroll *out_vscroll = nullptr;
+
+	float min_width = 200;
 
 	String_Vector tokens;
 	String_Vector name_vector;

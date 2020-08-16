@@ -105,6 +105,15 @@ struct Data_View : UI_Element {
 
 	Table data = {};
 
+	struct Branch {
+		int row_idx;
+		int level;
+		int name_idx;
+		int flags;
+	};
+	std::vector<Branch> branches;
+	String_Vector branch_name_vector;
+
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
 
@@ -311,7 +320,7 @@ struct Label : UI_Element {
 
 	float padding = 0.2;
 
-	void update_position(Camera& view);
+	void update_position(float scale);
 	void draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -479,6 +488,7 @@ struct Workspace {
 	RGBA scroll_color = {0.4, 0.45, 0.55, 1.0};
 	RGBA scroll_hl_color = {0.6, 0.63, 0.7, 1.0};
 	RGBA scroll_sel_color = {0.8, 0.8, 0.8, 1.0};
+	RGBA div_color = {0.5, 0.6, 0.8, 1.0};
 	RGBA caret_color = {0.9, 0.9, 0.9, 1.0};
 	RGBA cb_color = {0.55, 0.7, 0.9, 1.0};
 	RGBA sel_color = {0.45, 0.5, 0.6, 1.0};
