@@ -101,6 +101,32 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
+static void refresh_handler(Box& b, Point& cursor) {
+	auto ui = (Edit_Structs*)b.markup;
+	char *name_pool = ui->name_vector.pool;
+	if (!name_pool || !ui->structs.size())
+		return;
+
+	int n_rows = 0;
+	for (auto& s : ui->structs)
+		n_rows += s->fields.n_fields;
+
+	ui->output->data.resize(n_rows);
+
+	int idx = 0;
+	for (auto& s : ui->structs) {
+		if (s->flags & FLAG_AVAILABLE)
+			continue;
+
+		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
+			auto& f = s->fields.data[i];
+			auto& cols = ui->output->data.columns;
+			cols[0][idx] = (void*)&name_pool[f.field_name_idx];
+			cols[1][idx] = (void*)&name_pool[f.type_name_idx];
+		}
+	}
+}
+
 void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent->markup;
 
@@ -205,7 +231,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->edit_vscroll);
 
 	ui->show_cb = new Checkbox();
-	ui->show_cb->font = ws.make_font(11, ws.text_color);
+	ui->show_cb->font = ws.make_font(10, ws.text_color);
 	ui->show_cb->text = "Show Output";
 	ui->show_cb->default_color = ws.scroll_back;
 	ui->show_cb->hl_color = ws.light_color;
@@ -216,6 +242,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->show_cb);
 
 	ui->div = new Divider();
+	ui->div->visible = false;
 	ui->div->default_color = ws.div_color;
 	ui->div->breadth = 2;
 	ui->div->vertical = true;
@@ -226,6 +253,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->div);
 
 	ui->out_hscroll = new Scroll();
+	ui->out_hscroll->visible = false;
 	ui->out_hscroll->back = ws.scroll_back;
 	ui->out_hscroll->default_color = ws.scroll_color;
 	ui->out_hscroll->hl_color = ws.scroll_hl_color;
@@ -234,6 +262,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->out_hscroll);
 
 	ui->out_vscroll = new Scroll();
+	ui->out_vscroll->visible = false;
 	ui->out_vscroll->back = ws.scroll_back;
 	ui->out_vscroll->default_color = ws.scroll_color;
 	ui->out_vscroll->hl_color = ws.scroll_hl_color;
@@ -241,9 +270,11 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.ui.push_back(ui->out_vscroll);
 
 	ui->output = new Data_View();
+	ui->output->visible = false;
+	ui->output->show_column_names = true;
 	ui->output->font = ui->edit->font;
 	ui->output->default_color = ws.dark_color;
-	ui->output->hl_color = ws.dark_color;
+	ui->output->hl_color = ws.hl_color;
 	ui->output->consume_box_scroll = true;
 	ui->output->hscroll = ui->out_hscroll;
 	ui->output->vscroll = ui->out_vscroll;
@@ -259,7 +290,8 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.markup = ui;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
-	//b.refresh_handler = refresh_handler;
+	b.refresh_handler = refresh_handler;
+	b.refresh_every = 1;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-200, -225, 400, 450};

@@ -286,9 +286,10 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float col_space = column_spacing * font_height;
 
 	Rect back = make_ui_box(rect, table, view.scale);
+	float x_start = back.x + col_space - scroll_x;
 
 	if (show_column_names) {
-		float x = back.x;
+		float x = x_start;
 		float y = back.y - (header_height * view.scale + font->line_offset * font_height);
 
 		for (int i = 0; i < n_cols; i++) {
@@ -306,7 +307,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		draw_item_backing(hl_color, back, view.scale, hl_row);
 
 	float pad = padding * view.scale;
-	float x = back.x + col_space - scroll_x;
+	float x = x_start;
 	float y = back.y;
 	float x_max = back.x + back.w - col_space;
 	float y_max = y + table.h * view.scale;
@@ -1456,8 +1457,31 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		parent->active_edit = nullptr;
 	else if (input.strike(input.enter))
 		ch = '\n';
-	else if (input.strike(input.tab))
-		ch = '\t';
+	else if (input.strike(input.tab)) {
+		if (secondary.cursor != primary.cursor) {
+			Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
+			Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
+			Cursor cur = *first;
+
+			for (int i = first->line; i <= second->line; i++) {
+				set_column(cur, 0);
+
+				if (shift) {
+					if (text[cur.cursor] == '\t')
+						text.erase(cur.cursor, 1);
+				}
+				else
+					text.insert(text.begin() + cur.cursor, '\t');
+
+				set_line(cur, i+1);
+			}
+
+			end_selection = false;
+			update = true;
+		}
+		else
+			ch = '\t';
+	}
 	else if (input.strike(input.home)) {
 		if (ctrl)
 			set_line(primary, 0);

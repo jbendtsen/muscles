@@ -250,6 +250,18 @@ Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char 
 	return record;
 }
 
+void finalize_struct(Struct *st, Field *f, int longest_field) {
+	// Pad the struct to the next appropriate boundary
+	if (st->flags & FLAG_UNION)
+		st->total_size = longest_field + PADDING(longest_field, st->longest_primitive);
+	else
+		st->total_size = st->offset + PADDING(st->offset, st->longest_primitive);
+
+	// Cancel any remaining half-processed field
+	if (f)
+		st->fields.cancel_latest();
+}
+
 Struct *find_new_struct(std::vector<Struct*>& structs) {
 	Struct *new_st = nullptr;
 	if (structs.size() > 0) {
@@ -258,7 +270,7 @@ Struct *find_new_struct(std::vector<Struct*>& structs) {
 				s->name_idx = -1;
 				s->offset = 0;
 				s->total_size = 0;
-				s->longest_primitive = 0;
+				s->longest_primitive = 8;
 				s->flags = 0;
 				s->fields.zero_out();
 
@@ -270,6 +282,7 @@ Struct *find_new_struct(std::vector<Struct*>& structs) {
 	if (!new_st) {
 		new_st = new Struct();
 		new_st->name_idx = -1;
+		new_st->longest_primitive = 8;
 		structs.push_back(new_st);
 	}
 
@@ -287,6 +300,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		st = find_new_struct(structs);
 		top_level = true;
 	}
+	bool outside_struct = top_level;
 
 	Field *f = nullptr;
 	int field_flags = 0;
@@ -299,7 +313,6 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 	// The longest primitive in a struct/union is used to determine its byte alignment.
 	// The longest field in a union is the size of the union.
-	st->longest_primitive = 8;
 	int longest_field = 8;
 
 	while (*t) {
@@ -315,7 +328,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		// Inline struct/union declaration
 		if (*t == '{' && type.size() > 0) {
 			char *name = named_field ? prev : nullptr;
-			if (!top_level) {
+			if (!outside_struct) {
 				bool is_union = !strcmp(type.c_str(), "union");
 
 				Struct *new_st = find_new_struct(structs);
@@ -332,7 +345,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			}
 			else {
 				st->name_idx = name_vector.add_string(name);
-				top_level = false;
+				outside_struct = false;
 			}
 
 			held_type = -1;
@@ -497,19 +510,18 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		prev = t;
 		t = next;
 
-		if (*prev == '}')
-			break;
+		if (*prev == '}') {
+			if (top_level) {
+				outside_struct = true;
+				finalize_struct(st, f, longest_field);
+				f = nullptr;
+				st = find_new_struct(structs);
+			}
+			else
+				break;
+		}
 	}
 
-	// Pad the struct to the next appropriate boundary
-	if (st->flags & FLAG_UNION)
-		st->total_size = longest_field + PADDING(longest_field, st->longest_primitive);
-	else
-		st->total_size = st->offset + PADDING(st->offset, st->longest_primitive);
-
-	// Cancel any remaining half-processed field
-	if (f)
-		st->fields.cancel_latest();
-
+	finalize_struct(st, f, longest_field);
 	*tokens = t;
 }

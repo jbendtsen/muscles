@@ -446,6 +446,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.update_handler = update_view_object;
 	b.scale_change_handler = scale_change_handler;
 	b.refresh_handler = refresh_handler;
+	b.refresh_every = 1;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;
 	b.box = {-200, -225, 400, 450};
@@ -464,17 +465,18 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char 
 		return;
 
 	const char *name_str = ui->struct_edit->line.c_str();
-
+	Struct *record = nullptr;
 	for (auto& s : structs) {
 		if (s && !strcmp(&name_pool[s->name_idx], name_str)) {
-			ui->record = s;
+			record = s;
 			break;
 		}
 	}
 
-	if (!ui->record || (ui->record->flags & FLAG_UNUSABLE) != 0 || ui->record->fields.n_fields <= 0)
+	if (!record || (record->flags & (FLAG_UNUSABLE | FLAG_AVAILABLE)) != 0 || record->fields.n_fields <= 0)
 		return;
 
+	ui->record = record;
 	int n_rows = ui->record->fields.n_fields;
 	ui->view->data.resize(n_rows);
 
