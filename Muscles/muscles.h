@@ -96,6 +96,9 @@ void sdl_update_camera(Camera& camera);
 void sdl_acquire_mouse();
 void sdl_release_mouse();
 
+void sdl_copy(std::string& string);
+int sdl_paste_into(std::string& string, int offset);
+
 void sdl_apply_texture(Texture tex, Rect_Fixed& dst, Rect_Fixed *src = nullptr);
 void sdl_apply_texture(Texture tex, Rect& dst, Rect_Fixed *src = nullptr);
 
@@ -398,10 +401,11 @@ struct Input {
 	int right = 0;
 	int up = 0;
 
+	int last_key = 0;
 	char ch = 0;
 
 	bool strike(int t) {
-		return t == 1 || (t >= 20 /* && (t % 10 == 0)*/);
+		return t == 1 || (t >= 20 && (t % 10 == 0));
 	}
 };
 

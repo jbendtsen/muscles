@@ -1395,6 +1395,19 @@ int next_word(std::string& text, int cur, bool selecting) {
 	return cur;
 }
 
+std::pair<int, int> get_text_span(int a, int b) {
+	std::pair<int, int> span;
+	if (a < b) {
+		span.first = a;
+		span.second = b - a;
+	}
+	else {
+		span.first = b;
+		span.second = a - b;
+	}
+	return span;
+}
+
 void Text_Editor::key_handler(Camera& view, Input& input) {
 	if (this != parent->active_edit)
 		return;
@@ -1404,6 +1417,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	bool shift = input.lshift || input.rshift;
 	bool end_selection = true;
 	bool erased = false;
+	bool paste = false;
 	bool update = false;
 
 	if (input.strike(input.back)) {
@@ -1461,8 +1475,10 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	}
 	else if (input.strike(input.esc))
 		parent->active_edit = nullptr;
+
 	else if (input.strike(input.enter))
 		ch = '\n';
+
 	else if (input.strike(input.tab)) {
 		if (secondary.cursor != primary.cursor) {
 			Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
@@ -1520,29 +1536,42 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	else if (input.strike(input.down) && !ctrl) {
 		set_line(primary, primary.line + 1);
 	}
-	else if (input.ch && !ctrl)
-		ch = input.ch;
+	else if (input.ch || input.last_key) {
+		if (ctrl) {
+			if (selected && secondary.cursor != primary.cursor && (input.last_key == 'x' || input.last_key == 'c')) {
+				auto span = get_text_span(primary.cursor, secondary.cursor);
+				std::string clip(text, span.first, span.second);
+				sdl_copy(clip);
+				erased = input.last_key == 'x';
+			}
+			else if (input.last_key == 'v') {
+				paste = true;
+			}
+			else
+				end_selection = false;
+		}
+		else if (input.ch)
+			ch = input.ch;
+	}
 	else
 		end_selection = false;
 
 	if (end_selection) {
 		bool expunge = selected && (erased || ch);
 		if (expunge && secondary.cursor != primary.cursor) {
-			int start, len;
-			if (primary.cursor < secondary.cursor) {
-				start = primary.cursor;
-				len = secondary.cursor - primary.cursor;
-			}
-			else {
-				start = secondary.cursor;
-				len = primary.cursor - secondary.cursor;
+			auto span = get_text_span(primary.cursor, secondary.cursor);
+			if (primary.cursor > secondary.cursor)
 				primary = secondary;
-			}
 
-			text.erase(start, len);
+			text.erase(span.first, span.second);
 		}
 		selected = false;
 		ticks = 0;
+	}
+
+	if (paste) {
+		int advance = sdl_paste_into(text, primary.cursor);
+		set_cursor(primary, primary.cursor + advance);
 	}
 
 	if (ch) {

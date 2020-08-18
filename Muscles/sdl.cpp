@@ -73,6 +73,7 @@ bool sdl_init(const char *title, int width, int height) {
 
 bool sdl_poll_input(Input& input) {
 	input.ch = 0;
+	input.last_key = 0;
 	input.action = false;
 	input.lclick = false;
 	input.rclick = false;
@@ -115,6 +116,8 @@ bool sdl_poll_input(Input& input) {
 			case SDL_KEYDOWN:
 			{
 				auto key = event.key.keysym.sym;
+				input.last_key = key;
+
 				if (key == SDLK_LCTRL) input.lctrl = true;
 				if (key == SDLK_RCTRL) input.rctrl = true;
 				if (key == SDLK_LSHIFT) input.lshift = true;
@@ -267,6 +270,22 @@ void sdl_release_mouse() {
 		SDL_CaptureMouse((SDL_bool)false);
 		capture = false;
 	}
+}
+
+void sdl_copy(std::string& string) {
+	SDL_SetClipboardText(string.c_str());
+}
+
+int sdl_paste_into(std::string& string, int offset) {
+	if (!SDL_HasClipboardText())
+		return 0;
+
+	char *text = SDL_GetClipboardText();
+	string.insert(offset, text);
+	int len = strlen(text);
+	SDL_free(text);
+
+	return len;
 }
 
 Texture sdl_create_texture(u32 *data, int w, int h) {
