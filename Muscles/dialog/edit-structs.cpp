@@ -112,6 +112,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 		n_rows += s->fields.n_fields;
 
 	ui->output->data.resize(n_rows);
+	ui->type_vector.head = 0;
 
 	int idx = 0;
 	for (auto& s : ui->structs) {
@@ -122,7 +123,22 @@ static void refresh_handler(Box& b, Point& cursor) {
 			auto& f = s->fields.data[i];
 			auto& cols = ui->output->data.columns;
 			cols[0][idx] = (void*)&name_pool[f.field_name_idx];
-			cols[1][idx] = (void*)&name_pool[f.type_name_idx];
+
+			char *type_name = &name_pool[f.type_name_idx];
+			int name_len = strlen(type_name);
+			int len = name_len + 25;
+			cols[1][idx] = ui->type_vector.allocate(len);
+
+			char *p = (char*)cols[1][idx];
+			for (int j = 0; j < f.pointer_levels; j++)
+				*p++ = '*';
+
+			strcpy(p, type_name);
+
+			if (f.array_len > 0) {
+				p += strlen(type_name);
+				snprintf(p, 25 - f.pointer_levels - 1, "[%d]", f.array_len);
+			}
 		}
 	}
 }
@@ -141,8 +157,10 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 		ui->name_vector.head = 0;
 		ui->struct_names.clear();
 
-		for (auto& s : ui->structs)
+		for (auto& s : ui->structs) {
 			s->flags |= FLAG_AVAILABLE;
+			s->fields.zero_out();
+		}
 	}
 
 	tokenize(ui->tokens, edit->text.c_str(), edit->text.size());

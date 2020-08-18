@@ -167,10 +167,7 @@ void Workspace::refresh_sources() {
 			s->region_refreshed = true;
 		}
 		if (s->timer % s->refresh_span_rate == 0) {
-			if (s->type == SourceFile)
-				refresh_file_spans(*s, *arena);
-			else if (s->type == SourceProcess)
-				refresh_process_spans(*s, *arena);
+			s->gather_data(*arena);
 		}
 		s->timer++;
 	}

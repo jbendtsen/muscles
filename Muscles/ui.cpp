@@ -842,8 +842,14 @@ void Hex_View::update(float scale) {
 
 	addr_digits = count_digits(region_address + region_size - 1);
 
-	if (alive)
-		span_idx = source->reset_span(span_idx, region_address + offset, rows * columns);
+	if (alive) {
+		if (span_idx < 0)
+			span_idx = source->request_span();
+
+		Span& s = source->spans[span_idx];
+		s.address = region_address + offset;
+		s.size = rows * columns;
+	}
 }
 
 float Hex_View::print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float pad) {
@@ -864,7 +870,7 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 		const Glyph *gl = nullptr;
 		int digit = 0;
 		if (i < span.retrieved * 2) {
-			digit = span.cache[idx + i/2];
+			digit = span.data[idx + i/2];
 			if (i % 2 == 0)
 				digit >>= 4;
 			digit &= 0xf;
@@ -907,7 +913,7 @@ void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Cli
 	for (int i = 0; i < columns; i++) {
 		char c = '?';
 		if (idx+i < span.retrieved) {
-			c = (char)span.cache[idx+i];
+			c = (char)span.data[idx+i];
 			if (c < ' ' || c > '~')
 				c = '.';
 		}

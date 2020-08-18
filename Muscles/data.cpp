@@ -46,23 +46,24 @@ Field& Field_Vector::add_blank() {
 }
 
 void Field_Vector::cancel_latest() {
-	if (n_fields <= 0)
-		return;
-
-	data[n_fields] = {0};
-	n_fields--;
+	if (n_fields > 0) {
+		data[n_fields-1] = {0};
+		n_fields--;
+	}
 }
 
 void Field_Vector::zero_out() {
-	memset(data, 0, pool_size * sizeof(Field));
-	n_fields = 0;
+	if (n_fields > 0) {
+		memset(data, 0, pool_size * sizeof(Field));
+		n_fields = 0;
+	}
 }
 
 void String_Vector::try_expand(int new_size) {
 	if (!new_size)
 		new_size = pool_size * 2;
 	else {
-		if (new_size <= pool_size)
+		if (pool && new_size <= pool_size)
 			return;
 
 		new_size = next_power_of_2(new_size);

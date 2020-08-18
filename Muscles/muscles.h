@@ -410,11 +410,12 @@ struct Input {
 #define REG_PM_READ   2
 
 struct Span {
-	u64 offset = 0;
+	u64 address = 0;
 	int size = 0;
 	int retrieved = 0;
-	int clients = 0;
-	u8 *cache = nullptr;
+	int offset = 0;
+	int flags = 0;
+	u8 *data = nullptr;
 };
 
 struct Region {
@@ -438,6 +439,9 @@ struct Source {
 	void *identifier = nullptr;
 	void *handle = nullptr;
 
+	u8 *buffer = nullptr;
+	int buf_size = 0;
+
 	std::vector<Region> regions;
 	std::vector<Span> spans;
 
@@ -451,9 +455,9 @@ struct Source {
 	int refresh_span_rate = 60;
 	int timer = 0;
 
-	int reset_span(int old_idx, u64 offset, int size);
-	int set_offset(int idx, u64 offset);
-	void delete_span(int idx);
+	int request_span();
+	void deactivate_span(int idx);
+	void gather_data(Arena& arena);
 };
 
 void get_process_id_list(std::vector<int>& list);
@@ -468,8 +472,8 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena);
 void refresh_file_region(Source& source, Arena& arena);
 void refresh_process_regions(Source& source, Arena& arena);
 
-void refresh_file_spans(Source& source, Arena& arena);
-void refresh_process_spans(Source& source, Arena& arena);
+void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena);
+void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena);
 
 void close_source(Source& source);
 

@@ -227,23 +227,20 @@ void refresh_file_region(Source& source, Arena& arena) {
 	reg.name = (char*)source.name.c_str();
 }
 
-void refresh_file_spans(Source& source, Arena& arena) {
+void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena) {
 	if (!source.handle)
 		source.handle = open_file((LPCSTR)source.identifier);
 
 	LARGE_INTEGER offset;
-	for (auto& s : source.spans) {
+	for (auto& s : input) {
 		if (s.size <= 0)
 			continue;
 
-		offset.QuadPart = (LONGLONG)s.offset;
+		offset.QuadPart = (LONGLONG)s.address;
 		SetFilePointerEx(source.handle, offset, nullptr, FILE_BEGIN);
 
-		if (!s.cache)
-			s.cache = new u8[s.size];
-
 		DWORD retrieved = 0;
-		ReadFile(source.handle, s.cache, s.size, &retrieved, nullptr);
+		ReadFile(source.handle, &source.buffer[s.offset], s.size, &retrieved, nullptr);
 		auto error = GetLastError();
 		s.retrieved = retrieved;
 	}
@@ -394,17 +391,14 @@ void refresh_process_regions(Source& source, Arena& arena) {
 	}
 }
 
-void refresh_process_spans(Source& source, Arena& arena) {
+void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena) {
 	auto& proc = (HANDLE&)source.handle;
 	if (!proc)
 		proc = OpenProcess(PROCESS_ALL_ACCESS, false, source.pid);
 
-	for (auto& s : source.spans) {
-		if (!s.cache)
-			s.cache = new u8[s.size];
-
+	for (auto& s : input) {
 		SIZE_T retrieved = 0;
-		ReadProcessMemory(proc, (LPCVOID)s.offset, (LPVOID)s.cache, s.size, &retrieved);
+		ReadProcessMemory(proc, (LPCVOID)s.address, (LPVOID)&source.buffer[s.offset], s.size, &retrieved);
 		s.retrieved = retrieved;
 	}
 }

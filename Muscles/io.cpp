@@ -1,64 +1,115 @@
+#include <algorithm>
+#include <numeric>
 #include "muscles.h"
 
-int Source::reset_span(int old_idx, u64 offset, int size) {
-	if (old_idx >= 0 && spans[old_idx].offset == offset && spans[old_idx].size == size)
-		return old_idx;
-
+int Source::request_span(void) {
 	int idx = -1;
 	for (int i = 0; i < spans.size(); i++) {
-		if (spans[i].offset != offset)
-			continue;
-
-		if (spans[i].cache && spans[i].size < size) {
-			u8 *cache = new u8[size]();
-			memcpy(cache, spans[i].cache, spans[i].size);
-			delete[] spans[i].cache;
-			spans[i].cache = cache;
+		if (spans[i].flags & FLAG_AVAILABLE) {
+			spans[i] = {0};
+			idx = i;
+			break;
 		}
-
-		idx = i;
-		break;
 	}
+
 	if (idx < 0) {
 		idx = spans.size();
-		spans.push_back({});
+		spans.push_back({0});
 	}
-
-	if (!spans[idx].cache && size > 0)
-		spans[idx].cache = new u8[size]();
-
-	spans[idx].offset = offset;
-	spans[idx].size = size;
-	if (idx != old_idx)
-		spans[idx].clients++;
 
 	return idx;
 }
 
-int Source::set_offset(int idx, u64 offset) {
-	if (spans[idx].clients <= 1) {
-		spans[idx].offset = offset;
-		return idx;
+void Source::deactivate_span(int idx) {
+	if (idx >= 0 && idx < spans.size()) {
+		spans[idx].flags |= FLAG_AVAILABLE;
+		spans[idx].size = 0;
 	}
-
-	spans[idx].clients--;
-	int size = spans[idx].size;
-
-	idx = spans.size();
-	spans.push_back({});
-
-	spans[idx].offset = offset;
-	spans[idx].size = size;
-	spans[idx].clients = 1;
-	spans[idx].cache = new u8[size]();
-
-	return idx;
 }
 
-void Source::delete_span(int idx) {
-	spans[idx].clients--;
-	if (spans[idx].clients <= 0) {
-		delete[] spans[idx].cache;
-		spans[idx].cache = nullptr;
+void Source::gather_data(Arena& arena) {
+	if (spans.size() < 1)
+		return;
+
+	std::vector<int> index(spans.size());
+	std::iota(index.begin(), index.end(), 0);
+	std::sort(index.begin(), index.end(), [this](int a, int b) {
+		return this->spans[a].address < this->spans[b].address;
+	});
+
+	std::vector<Span> io = {{0}};
+	io[0].address = spans[index[0]].address;
+	io[0].size = spans[index[0]].size;
+	spans[index[0]].offset = 0;
+
+	for (int i = 1; i < spans.size(); i++) {
+		Span& virt = spans[index[i]];
+		if ((virt.flags & FLAG_AVAILABLE) || virt.size <= 0)
+			continue;
+
+		Span& real = io.back();
+
+		if (virt.address <= real.address + (u64)real.size) {
+			virt.offset = virt.address - real.address;
+			int size = virt.offset + virt.size;
+			real.size = size > real.size ? size : real.size;
+		}
+		else {
+			int offset = real.offset + real.size;
+			virt.offset = offset;
+
+			io.push_back({
+				virt.address,
+				virt.size,
+				0,
+				virt.offset,
+				0,
+				nullptr
+			});
+		}
+	}
+
+	auto& end = io.back();
+	int size = end.offset + end.size;
+
+	if (!size) {
+		if (buffer)
+			delete[] buffer;
+
+		buffer = nullptr;
+		buf_size = 0;
+		return;
+	}
+	else if (size != buf_size) {
+		if (!buffer)
+			buffer = new u8[size];
+		else if (size > buf_size) {
+			if (buffer)
+				delete[] buffer;
+
+			buffer = new u8[size];
+		}
+	}
+
+	buf_size = size;
+
+	if (type == SourceFile)
+		refresh_file_spans(*this, io, arena);
+	else if (type == SourceProcess)
+		refresh_process_spans(*this, io, arena);
+
+	int real_idx = 0;
+	int n_spans = io.size();
+	for (auto& idx : index) {
+		auto& s = spans[idx];
+		s.data = &buffer[s.offset];
+
+		while (real_idx < n_spans && !(s.offset >= io[real_idx].offset && s.offset < io[real_idx].offset + io[real_idx].size))
+			real_idx++;
+		if (real_idx >= n_spans)
+			real_idx = n_spans-1;
+
+		s.retrieved = io[real_idx].retrieved - s.offset;
+		if (s.retrieved < 0) s.retrieved = 0;
 	}
 }

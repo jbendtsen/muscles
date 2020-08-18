@@ -195,10 +195,10 @@ void source_edit_refresh(Edit_Box *edit, Input& input) {
 
 	if (src != ui->source || !src) {
 		if (ui->source && ui->span_idx >= 0)
-			ui->source->delete_span(ui->span_idx);
+			ui->source->deactivate_span(ui->span_idx);
 
 		ui->source = src;
-		ui->span_idx = -1;
+		ui->span_idx = src->request_span();
 	}
 }
 
@@ -212,12 +212,10 @@ static void refresh_handler(Box& b, Point& cursor) {
 		return;
 
 	char *name_pool = es->name_vector.pool;
-
-	u64 address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
-	int size = (ui->record->total_size + 7) / 8;
-
-	ui->span_idx = ui->source->reset_span(ui->span_idx, address, size);
 	Span& span = ui->source->spans[ui->span_idx];
+
+	span.address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
+	span.size = (ui->record->total_size + 7) / 8;
 
 	char hex[16];
 	memcpy(hex, "0123456789abcdef", 16);
@@ -245,7 +243,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 			int off = field.bit_offset;
 			int out_pos = field.bit_size - 1;
 			for (int j = 0; j < field.bit_size; j++, off++, out_pos--) {
-				u8 byte = span.cache[off / 8];
+				u8 byte = span.data[off / 8];
 				int bit = 7 - (off % 8);
 				n |= (u64)((byte >> bit) & 1) << out_pos;
 			}
