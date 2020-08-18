@@ -174,7 +174,7 @@ void struct_edit_refresh(Edit_Box *edit, Input& input) {
 	if (structs_box) {
 		auto ui = (View_Object*)edit->parent->markup;
 		auto es = (Edit_Structs*)structs_box->markup;
-		populate_object_table(ui, es->structs, es->name_vector.pool);
+		populate_object_table(ui, es->structs, es->name_vector);
 	}
 }
 
@@ -211,7 +211,6 @@ static void refresh_handler(Box& b, Point& cursor) {
 	if (!es || !ui->record || !ui->source)
 		return;
 
-	char *name_pool = es->name_vector.pool;
 	Span& span = ui->source->spans[ui->span_idx];
 
 	span.address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
@@ -224,12 +223,14 @@ static void refresh_handler(Box& b, Point& cursor) {
 	for (auto& row : ui->view->data.columns[1]) {
 		auto name = (const char*)row;
 		for (int i = 0; i < ui->record->fields.n_fields; i++) {
-			if (strcmp(&name_pool[ui->record->fields.data[i].field_name_idx], name))
+			Field& field = ui->record->fields.data[i];
+			char *field_name = es->name_vector.at(field.field_name_idx);
+
+			if (!field_name || strcmp(field_name, name))
 				continue;
 
-			Field& field = ui->record->fields.data[i];
 			if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
-				continue;
+				break;
 
 			auto& cell = (char*&)ui->view->data.columns[2][idx];
 
@@ -252,6 +253,8 @@ static void refresh_handler(Box& b, Point& cursor) {
 
 			int digits = count_digits(n);
 			print_hex(hex, &cell[2], n, digits);
+
+			break;
 		}
 		idx++;
 	}
@@ -305,6 +308,41 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->hide_meta->default_color = ws.text_color;
 	ui->hide_meta->default_color.a = 0.8;
 	b.ui.push_back(ui->hide_meta);
+
+	ui->hscroll = new Scroll();
+	ui->hscroll->back = ws.scroll_back;
+	ui->hscroll->default_color = ws.scroll_color;
+	ui->hscroll->hl_color = ws.scroll_hl_color;
+	ui->hscroll->sel_color = ws.scroll_sel_color;
+	ui->hscroll->vertical = false;
+	b.ui.push_back(ui->hscroll);
+
+	ui->vscroll = new Scroll();
+	ui->vscroll->back = ws.scroll_back;
+	ui->vscroll->default_color = ws.scroll_color;
+	ui->vscroll->hl_color = ws.scroll_hl_color;
+	ui->vscroll->sel_color = ws.scroll_sel_color;
+	b.ui.push_back(ui->vscroll);
+
+	ui->view = new Data_View();
+	ui->view->font = ws.default_font;
+	ui->view->default_color = ws.dark_color;
+	ui->view->hl_color = ws.dark_color;
+	ui->view->consume_box_scroll = true;
+	ui->view->hscroll = ui->hscroll;
+	ui->view->vscroll = ui->vscroll;
+
+	Column cols[] = {
+		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
+		{ColumnString, 0, 0.5, 0, 0, "Name"},
+		{ColumnString, 20, 0.45, 0, 0, "Value"}
+	};
+	ui->view->data.init(cols, 3, 0);
+
+	ui->view->data.use_default_arena = false;
+	ui->view->data.arena.set_rewind_point();
+
+	b.ui.push_back(ui->view);
 
 	ui->struct_label = new Label();
 	ui->struct_label->font = ws.make_font(11, ws.text_color);
@@ -373,41 +411,6 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->struct_edit->key_action = struct_edit_refresh;
 	b.ui.push_back(ui->struct_edit);
 
-	ui->hscroll = new Scroll();
-	ui->hscroll->back = ws.scroll_back;
-	ui->hscroll->default_color = ws.scroll_color;
-	ui->hscroll->hl_color = ws.scroll_hl_color;
-	ui->hscroll->sel_color = ws.scroll_sel_color;
-	ui->hscroll->vertical = false;
-	b.ui.push_back(ui->hscroll);
-
-	ui->vscroll = new Scroll();
-	ui->vscroll->back = ws.scroll_back;
-	ui->vscroll->default_color = ws.scroll_color;
-	ui->vscroll->hl_color = ws.scroll_hl_color;
-	ui->vscroll->sel_color = ws.scroll_sel_color;
-	b.ui.push_back(ui->vscroll);
-
-	ui->view = new Data_View();
-	ui->view->font = ws.default_font;
-	ui->view->default_color = ws.dark_color;
-	ui->view->hl_color = ws.dark_color;
-	ui->view->consume_box_scroll = true;
-	ui->view->hscroll = ui->hscroll;
-	ui->view->vscroll = ui->vscroll;
-
-	Column cols[] = {
-		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
-		{ColumnString, 0, 0.5, 0, 0, "Name"},
-		{ColumnString, 20, 0.45, 0, 0, "Value"}
-	};
-	ui->view->data.init(cols, 3, 0);
-
-	ui->view->data.use_default_arena = false;
-	ui->view->data.arena.set_rewind_point();
-
-	b.ui.push_back(ui->view);
-
 	ui->theme_on = {
 		ws.dark_color,
 		ws.light_color,
@@ -453,7 +456,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.visible = true;
 }
 
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char *name_pool) {
+void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
 	ui->view->data.clear_data();
 	ui->view->data.arena.rewind();
 
@@ -465,7 +468,11 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char 
 	const char *name_str = ui->struct_edit->line.c_str();
 	Struct *record = nullptr;
 	for (auto& s : structs) {
-		if (s && !strcmp(&name_pool[s->name_idx], name_str)) {
+		if (!s)
+			continue;
+
+		char *name = name_vector.at(s->name_idx);
+		if (name && !strcmp(name, name_str)) {
 			record = s;
 			break;
 		}
@@ -480,6 +487,6 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char 
 
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view->data, 0, i, false);
-		ui->view->data.columns[1][i] = (void*)&name_pool[ui->record->fields.data[i].field_name_idx];
+		ui->view->data.columns[1][i] = (void*)name_vector.at(ui->record->fields.data[i].field_name_idx);
 	}
 }

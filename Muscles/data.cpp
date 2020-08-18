@@ -59,6 +59,10 @@ void Field_Vector::zero_out() {
 	}
 }
 
+char *String_Vector::at(int idx) {
+	return idx < 0 || idx >= pool_size ? nullptr : &pool[idx];
+}
+
 void String_Vector::try_expand(int new_size) {
 	if (!new_size)
 		new_size = pool_size * 2;

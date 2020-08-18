@@ -121,4 +121,4 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b);
 void make_view_object(Workspace& ws, Box& b);
 void open_edit_structs(Workspace& ws);
 
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, char *name_pool);
+void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

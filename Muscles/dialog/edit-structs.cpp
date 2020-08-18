@@ -103,8 +103,7 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (Edit_Structs*)b.markup;
-	char *name_pool = ui->name_vector.pool;
-	if (!name_pool || !ui->structs.size())
+	if (!ui->name_vector.pool || !ui->structs.size())
 		return;
 
 	int n_rows = 0;
@@ -122,9 +121,12 @@ static void refresh_handler(Box& b, Point& cursor) {
 		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
 			auto& f = s->fields.data[i];
 			auto& cols = ui->output->data.columns;
-			cols[0][idx] = (void*)&name_pool[f.field_name_idx];
+			cols[0][idx] = (void*)ui->name_vector.at(f.field_name_idx);
+			if (!cols[0][idx]) cols[0][idx] = (void*)"???";
 
-			char *type_name = &name_pool[f.type_name_idx];
+			char *type_name = ui->name_vector.at(f.type_name_idx);
+			if (!type_name) type_name = (char*)"???";
+
 			int name_len = strlen(type_name);
 			int len = name_len + 25;
 			cols[1][idx] = ui->type_vector.allocate(len);
@@ -169,13 +171,15 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	parse_c_struct(ui->structs, &tokens_alias, ui->name_vector);
 
 	for (auto& s : ui->structs) {
-		ui->struct_names.push_back(&ui->name_vector.pool[s->name_idx]);
+		char *name = ui->name_vector.at(s->name_idx);
+		if (name)
+			ui->struct_names.push_back(name);
 	}
 
 	Workspace& ws = *edit->parent->parent;
 	for (auto& b : ws.boxes) {
 		if (b->type == BoxObject)
-			populate_object_table((View_Object*)b->markup, ui->structs, ui->name_vector.pool);
+			populate_object_table((View_Object*)b->markup, ui->structs, ui->name_vector);
 	}
 }
 

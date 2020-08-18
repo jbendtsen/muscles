@@ -171,6 +171,8 @@ struct String_Vector {
 	int pool_size = 32;
 	int head = 0;
 
+	char *at(int idx);
+
 	void try_expand(int new_size = 0);
 
 	int add_string(const char *str);

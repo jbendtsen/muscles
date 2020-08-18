@@ -147,6 +147,39 @@ u64 evaluate_number(char *token) {
 	return strtoull(token, nullptr, 0);
 }
 
+Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char *name_pool, char *str) {
+	if (!strcmp(str, "void") || !strcmp(str, "struct") || !strcmp(str, "union"))
+		return nullptr;
+
+	Struct *record = nullptr;
+	for (auto& c : structs) {
+		if (c->name_idx < 0 || strcmp(&name_pool[c->name_idx], str))
+			continue;
+
+		record = c;
+		break;
+	}
+
+	if (!record) {
+		f->flags |= FLAG_UNRECOGNISED;
+		return nullptr;
+	}
+
+	// If the requested struct/union is the same as the current one, that would make it grow infinitely, so we do not allow that.
+	if (!strcmp(&name_pool[record->name_idx], &name_pool[st->name_idx])) {
+		f->flags |= FLAG_UNUSABLE;
+		st->flags |= FLAG_UNUSABLE;
+	}
+
+	if (record->flags & FLAG_UNUSABLE)
+		f->flags |= FLAG_UNUSABLE;
+
+	if (f->flags & FLAG_UNUSABLE)
+		return nullptr;
+
+	return record;
+}
+
 void embed_struct(Struct *master, Struct *embed) {
 	Field& group = master->fields.back();
 
@@ -179,75 +212,55 @@ void embed_struct(Struct *master, Struct *embed) {
 void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, String_Vector& name_vector) {
 	Field *f = &current_st->fields.back();
 	char *t = *tokens;
+	char *name = nullptr;
 	bool first = true;
 
 	while (*t) {
-		if (!first && *t == ';')
-			break;
-		first = false;
+		char *next = t + strlen(t) + 1;
 
-		if (is_symbol(*t) && *t != ';') {
-			if (*t == '*')
-				f->flags |= FLAG_POINTER;
+		if (!is_symbol(*t))
+			name = t;
 
-			t += strlen(t) + 1;
-			continue;
+		else if (*t == '*') {
+			f->flags |= FLAG_POINTER;
+			f->pointer_levels = strlen(t);
 		}
+		else if (*t == '[') {
+			t = next;
+			next += strlen(next) + 1;
 
-		f->flags |= FLAG_COMPOSITE;
-		f->st = nullptr;
+			int n = (int)evaluate_number(t);
+			if (n > 0) {
+				if (f->array_len > 0)
+					f->array_len *= n;
+				else
+					f->array_len = n;
+			}
+		}
+		else if (*t == ',' || *t == ';') {
+			f->flags |= FLAG_COMPOSITE;
+			f->st = nullptr;
 
-		f->type_name_idx = embed->name_idx;
-		if (f->type_name_idx < 0)
-			f->st = embed;
+			f->type_name_idx = embed->name_idx;
+			if (f->type_name_idx < 0)
+				f->st = embed;
 
-		if (*t == ';') {
+			if (name)
+				f->field_name_idx = name_vector.add_string(name);
+
 			embed_struct(current_st, embed);
-			current_st->fields.add_blank();
-			break;
+
+			f = &current_st->fields.add_blank();
+			name = nullptr;
 		}
 
-		f->field_name_idx = name_vector.add_string(t);
-		embed_struct(current_st, embed);
+		if (*t == ';')
+			break;
 
-		f = &current_st->fields.add_blank();
-		t += strlen(t) + 1;
+		t = next;
 	}
 
 	*tokens = t;
-}
-
-Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char *name_pool, char *str) {
-	if (!strcmp(str, "void") || !strcmp(str, "struct") || !strcmp(str, "union"))
-		return nullptr;
-
-	Struct *record = nullptr;
-	for (auto& c : structs) {
-		if (c->name_idx < 0 || strcmp(&name_pool[c->name_idx], str))
-			continue;
-
-		record = c;
-		break;
-	}
-
-	if (!record) {
-		f->flags |= FLAG_UNRECOGNISED;
-		return nullptr;
-	}
-
-	// If the requested struct/union is the same as the current one, that would make it grow infinitely, so we do not allow that.
-	if (!strcmp(&name_pool[record->name_idx], &name_pool[st->name_idx])) {
-		f->flags |= FLAG_UNUSABLE;
-		st->flags |= FLAG_UNUSABLE;
-	}
-
-	if (record->flags & FLAG_UNUSABLE)
-		f->flags |= FLAG_UNUSABLE;
-
-	if (f->flags & FLAG_UNUSABLE)
-		return nullptr;
-
-	return record;
 }
 
 void finalize_struct(Struct *st, Field *f, int longest_field) {
@@ -352,7 +365,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			was_symbol = true;
 			type = "";
 		}
-		else if (is_symbol(*t) && *t != '*') {
+		else if (is_symbol(*t)) {
 			// Bitfield
 			if (!strcmp(t, ":")) { // the bitfield symbol ':' must have a length of 1
 				int n = (int)evaluate_number(next);
@@ -389,6 +402,11 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				}
 			}
 
+			if (*t == '*') {
+				f->flags |= FLAG_POINTER;
+				f->pointer_levels = strlen(t);
+			}
+
 			// End of the current field
 			if (*t == ';' || *t == ',') {
 				if (f->flags & FLAG_POINTER) {
@@ -413,7 +431,6 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				if (f->bit_size > longest_field)
 					longest_field = f->bit_size;
 
-				// A handy definition of the C union
 				f->bit_offset = st->offset;
 				if ((st->flags & FLAG_UNION) == 0)
 					st->offset += f->bit_size;
@@ -432,17 +449,10 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				type = "";
 			}
 
-			was_symbol = true;
+			was_symbol = *t != '*';
 		}
 		else {
-			if (*t == '*') {
-				f->flags |= FLAG_POINTER;
-				f->pointer_levels = strlen(t);
-			}
-			else if (held_type >= 0) {
-				named_field = true;
-			}
-			else {
+			if (held_type < 0) {
 				// Determine if this field has a name (unnamed fields can be legal, eg. zero-width bitfields)
 				if (type_over) {
 					named_field = true;
@@ -464,12 +474,14 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 					type += t;
 				}
 			}
+			else
+				named_field = true;
 
 			was_symbol = false;
 		}
 
 		if (held_type >= 0)
-			type = &name_vector.pool[held_type];
+			type = name_vector.at(held_type);
 
 		// Determine the type of the current field.
 		// This code may run multiple times per field,
