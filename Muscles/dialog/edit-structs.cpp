@@ -111,7 +111,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 		n_rows += s->fields.n_fields;
 
 	ui->output->data.resize(n_rows);
-	ui->type_vector.head = 0;
+	ui->output->data.arena.rewind();
 
 	int idx = 0;
 	for (auto& s : ui->structs) {
@@ -121,26 +121,9 @@ static void refresh_handler(Box& b, Point& cursor) {
 		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
 			auto& f = s->fields.data[i];
 			auto& cols = ui->output->data.columns;
-			cols[0][idx] = (void*)ui->name_vector.at(f.field_name_idx);
-			if (!cols[0][idx]) cols[0][idx] = (void*)"???";
 
-			char *type_name = ui->name_vector.at(f.type_name_idx);
-			if (!type_name) type_name = (char*)"???";
-
-			int name_len = strlen(type_name);
-			int len = name_len + 25;
-			cols[1][idx] = ui->type_vector.allocate(len);
-
-			char *p = (char*)cols[1][idx];
-			for (int j = 0; j < f.pointer_levels; j++)
-				*p++ = '*';
-
-			strcpy(p, type_name);
-
-			if (f.array_len > 0) {
-				p += strlen(type_name);
-				snprintf(p, 25 - f.pointer_levels - 1, "[%d]", f.array_len);
-			}
+			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, *s, f);
+			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
 		}
 	}
 }
@@ -305,6 +288,9 @@ void make_struct_box(Workspace& ws, Box& b) {
 		{ColumnString, 0, 0.5, 0, 0, "Name"},
 		{ColumnString, 0, 0.5, 0, 0, "Type"}
 	};
+
+	ui->output->data.use_default_arena = false;
+	ui->output->data.arena.set_rewind_point();
 	ui->output->data.init(cols, 2, 0);
 	b.ui.push_back(ui->output);
 

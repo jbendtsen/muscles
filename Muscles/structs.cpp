@@ -28,19 +28,6 @@ bool is_symbol(char c) {
 		c != '_';
 }
 
-/*
-void store_word(char **pool, char *word, char **ptr) {
-	if (word) {
-		int len = strlen(word);
-		if (len) {
-			strcpy(*pool, word);
-			*ptr = *pool;
-			*pool += len + 1;
-		}
-	}
-}
-*/
-
 void tokenize(String_Vector& tokens, const char *text, int sz) {
 	const char *in = text;
 	const char *word = text;
@@ -180,31 +167,35 @@ Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char 
 	return record;
 }
 
-void embed_struct(Struct *master, Struct *embed) {
+void embed_struct(Struct *master, int field_idx, Struct *embed) {
 	Field& group = master->fields.back();
+	int count = group.array_len > 0 ? group.array_len : 1;
 
 	if (group.flags & FLAG_POINTER) {
 		master->offset += PADDING(master->offset, pointer_size);
 
 		group.bit_offset = master->offset;
-		group.bit_size = pointer_size;
+		group.bit_size = count * pointer_size;
 
 		master->offset += group.bit_size;
 		return;
 	}
 
 	group.bit_offset = master->offset;
-	group.bit_size = embed->total_size;
+	group.bit_size = count * embed->total_size;
 
 	int align = embed->longest_primitive;
 	master->offset += PADDING(master->offset, align);
 
-	for (int i = 0; i < embed->fields.n_fields; i++) {
-		Field *f = &master->fields.add(embed->fields.data[i]);
-		f->bit_offset += master->offset;
+	for (int i = 0; i < count; i++) {
+		for (int j = 0; j < embed->fields.n_fields; j++) {
+			Field *f = &master->fields.add(embed->fields.data[j]);
+			f->parent_field = field_idx;
+			f->parent_idx = i;
+			f->bit_offset += master->offset;
+		}
+		master->offset += embed->total_size;
 	}
-
-	master->offset += embed->total_size;
 }
 
 // When either a struct/union is defined or referenced inside another struct, a declaration list may follow.
@@ -248,7 +239,8 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 			if (name)
 				f->field_name_idx = name_vector.add_string(name);
 
-			embed_struct(current_st, embed);
+			int parent_field = current_st->fields.n_fields - 1;
+			embed_struct(current_st, parent_field, embed);
 
 			f = &current_st->fields.add_blank();
 			name = nullptr;
@@ -371,7 +363,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				int n = (int)evaluate_number(next);
 				if (n >= 0) {
 					if (n == 0) {
-						f->type_name_idx = f->field_name_idx = -1;
+						f->reset();
 						was_zero_width = true;
 					}
 					f->bit_size = n;

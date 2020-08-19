@@ -40,7 +40,7 @@ Field& Field_Vector::add_blank() {
 		expand();
 
 	Field& f = data[n_fields];
-	f.field_name_idx = f.type_name_idx = -1;
+	f.reset();
 	n_fields++;
 	return f;
 }

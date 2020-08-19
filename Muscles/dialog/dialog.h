@@ -74,7 +74,6 @@ struct Edit_Structs {
 	Scroll *out_vscroll = nullptr;
 
 	float min_width = 200;
-	String_Vector type_vector;
 
 	String_Vector tokens;
 	String_Vector name_vector;

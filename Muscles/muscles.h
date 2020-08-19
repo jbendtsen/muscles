@@ -501,15 +501,23 @@ void close_source(Source& source);
 struct Struct;
 
 struct Field {
+	char *tag;
 	int field_name_idx;
 	int type_name_idx;
 	Struct *st;
+	int parent_field;
+	int parent_idx;
 	int bit_offset;
 	int bit_size;
 	int default_bit_size;
 	int array_len;
 	int pointer_levels;
 	int flags;
+
+	void reset() {
+		memset(this, 0, sizeof(Field));
+		field_name_idx = type_name_idx = parent_field = -1;
+	}
 };
 
 struct Field_Vector {
@@ -547,3 +555,6 @@ struct Primitive {
 
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Struct *st = nullptr);
+
+char *format_field_name(Arena& arena, String_Vector& in_vec, Struct& st, Field& field);
+char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);

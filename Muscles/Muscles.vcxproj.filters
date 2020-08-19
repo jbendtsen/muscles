@@ -36,9 +36,6 @@
     <ClCompile Include="ui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dialog\sources.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dialog\main-menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -58,6 +55,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="structs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dialog\open-source.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="format.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
