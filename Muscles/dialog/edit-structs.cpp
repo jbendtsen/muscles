@@ -122,7 +122,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 			auto& f = s->fields.data[i];
 			auto& cols = ui->output->data.columns;
 
-			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, *s, f);
+			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, f);
 			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
 		}
 	}

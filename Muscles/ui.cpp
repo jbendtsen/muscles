@@ -1557,13 +1557,14 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 		end_selection = false;
 
 	if (end_selection) {
-		bool expunge = selected && (erased || ch);
+		bool expunge = selected && (erased || paste || ch);
 		if (expunge && secondary.cursor != primary.cursor) {
 			auto span = get_text_span(primary.cursor, secondary.cursor);
 			if (primary.cursor > secondary.cursor)
 				primary = secondary;
 
 			text.erase(span.first, span.second);
+			update = true;
 		}
 		selected = false;
 		ticks = 0;
@@ -1572,6 +1573,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	if (paste) {
 		int advance = sdl_paste_into(text, primary.cursor);
 		set_cursor(primary, primary.cursor + advance);
+		update = true;
 	}
 
 	if (ch) {

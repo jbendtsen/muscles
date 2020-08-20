@@ -187,12 +187,25 @@ void embed_struct(Struct *master, int field_idx, Struct *embed) {
 	int align = embed->longest_primitive;
 	master->offset += PADDING(master->offset, align);
 
+	int idx = 0;
 	for (int i = 0; i < count; i++) {
 		for (int j = 0; j < embed->fields.n_fields; j++) {
 			Field *f = &master->fields.add(embed->fields.data[j]);
-			f->parent_field = field_idx;
-			f->parent_idx = i;
+
+			// These variables are empty-checked since we don't want their values to change in the case that they are embedded more than once
+			if (!f->this_st)
+				f->this_st = embed;
+			if (f->paste_array_idx < 0)
+				f->paste_array_idx = i;
+			if (f->index < 0)
+				f->index = idx;
+
+			// These variables DO change every time, as we want them to be relative to the struct that 'embed' is being pasted into
+			f->paste_st = master;
+			f->paste_field = field_idx + idx - f->index;
 			f->bit_offset += master->offset;
+
+			idx++;
 		}
 		master->offset += embed->total_size;
 	}
@@ -230,11 +243,8 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 		}
 		else if (*t == ',' || *t == ';') {
 			f->flags |= FLAG_COMPOSITE;
-			f->st = nullptr;
-
+			f->st = embed;
 			f->type_name_idx = embed->name_idx;
-			if (f->type_name_idx < 0)
-				f->st = embed;
 
 			if (name)
 				f->field_name_idx = name_vector.add_string(name);

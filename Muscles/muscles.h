@@ -501,12 +501,15 @@ void close_source(Source& source);
 struct Struct;
 
 struct Field {
-	char *tag;
-	int field_name_idx;
+	int field_name_idx;  // These would be strings, except that they point into a String_Vector
 	int type_name_idx;
-	Struct *st;
-	int parent_field;
-	int parent_idx;
+	Struct *st;          // The struct/union that the field refers to, if it's a composite field
+	Struct *this_st;     // The struct that the field originally belongs to
+	Struct *paste_st;    // The struct that this field currently lives in
+	char *parent_tag;    // Used for the accumulated name of the struct that owns this field
+	int paste_array_idx; // In case this field is embedded inside an array of structs, this keeps track of the struct index
+	int paste_field;     // Refers to the field where the this field's original struct has been embedded/instantiated/pasted
+	int index;           // The index of this field within its original struct
 	int bit_offset;
 	int bit_size;
 	int default_bit_size;
@@ -516,7 +519,7 @@ struct Field {
 
 	void reset() {
 		memset(this, 0, sizeof(Field));
-		field_name_idx = type_name_idx = parent_field = -1;
+		field_name_idx = type_name_idx = paste_field = paste_array_idx = index = -1;
 	}
 };
 
@@ -556,5 +559,5 @@ struct Primitive {
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Struct *st = nullptr);
 
-char *format_field_name(Arena& arena, String_Vector& in_vec, Struct& st, Field& field);
+char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);

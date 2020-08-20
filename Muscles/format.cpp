@@ -1,40 +1,41 @@
 #include "muscles.h"
 
-char *format_field_name(Arena& arena, String_Vector& in_vec, Struct& st, Field& field) {
+char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field) {
 	char *fname = in_vec.at(field.field_name_idx);
 	if (!fname) fname = (char*)"???";
 
-	if (field.parent_field < 0)
+	if (field.paste_field < 0) {
+		field.parent_tag = nullptr;
 		return fname;
+	}
 
-	Field& parent = st.fields.data[field.parent_field];
+	Field *current = &field.paste_st->fields.data[field.paste_field];
 	int len = strlen(fname);
 
-	char *opening = parent.tag;
-	int opening_len = 0;
-	if (opening) {
-		opening_len = strlen(opening);
-		len += opening_len + 1;
+	int ptag_len = 0;
+	if (current->parent_tag) {
+		ptag_len = strlen(current->parent_tag);
+		len += ptag_len + 1;
 	}
 
 	int array_idx = -1;
-	if (parent.array_len > 1) {
+	if (current->array_len > 1) {
 		len += 12;
-		array_idx = field.parent_idx;
+		array_idx = field.paste_array_idx;
 	}
 
-	char *pname = in_vec.at(parent.field_name_idx);
+	char *pname = in_vec.at(current->field_name_idx);
 	if (!pname) pname = (char*)"???";
 
 	int pn_len = strlen(pname);
-	len += pn_len + 2;
+	len += pn_len + 1;
 
 	char *name = (char*)arena.allocate(len + 1);
 	char *p = name;
 
-	if (opening) {
-		strcpy(p, opening);
-		p += opening_len;
+	if (ptag_len) {
+		strcpy(p, current->parent_tag);
+		p += ptag_len;
 		*p++ = '.';
 	}
 
@@ -43,6 +44,8 @@ char *format_field_name(Arena& arena, String_Vector& in_vec, Struct& st, Field& 
 
 	if (array_idx >= 0)
 		p += snprintf(p, 12, "[%d]", array_idx);
+
+	field.parent_tag = arena.alloc_string(name);
 
 	*p++ = '.';
 	strcpy(p, fname);
