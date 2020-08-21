@@ -111,8 +111,9 @@ struct Data_View : UI_Element {
 		int name_idx;
 		bool closed;
 	};
-	std::vector<Branch> branches;
 	String_Vector branch_name_vector;
+	std::vector<Branch> branches;
+	std::vector<int> tree;
 	Texture icon_plus = nullptr;
 	Texture icon_minus = nullptr;
 
@@ -137,6 +138,9 @@ struct Data_View : UI_Element {
 		CLIP_LEFT | CLIP_RIGHT | CLIP_BOTTOM,
 		0, 0, 0, 0
 	};
+
+	void update_tree(std::vector<Branch> *new_branches = nullptr);
+	int get_table_index(int view_idx);
 
 	float column_width(float total_width, float min_width, float font_height, float scale, int idx);
 	void draw_item_backing(RGBA& color, Rect& back, float scale, int idx);

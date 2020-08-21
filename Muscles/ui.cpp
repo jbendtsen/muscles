@@ -143,6 +143,50 @@ void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	font->render.draw_text_simple(text.c_str(), text_x, text_y);
 }
 
+void Data_View::update_tree(std::vector<Branch> *new_branches) {
+	if (new_branches) {
+		branches.resize(new_branches->size());
+		std::copy(new_branches->begin(), new_branches->end(), branches.begin());
+	}
+
+	int n_rows = data.row_count();
+	int n_branches = branches.size();
+	tree.clear();
+	tree.reserve(n_rows);
+
+	int b = 0;
+	for (int i = 0; i < n_rows; i++) {
+		if (b < n_branches && branches[b].row_idx == i) {
+			if (branches[b].closed)
+				i = branches[b].row_idx + branches[b].length;
+
+			tree.push_back(-b - 1);
+			b++;
+			i--;
+			continue;
+		}
+
+		tree.push_back(i);
+	}
+}
+
+int Data_View::get_table_index(int view_idx) {
+	if (view_idx < 0)
+		return view_idx;
+
+	int idx = -1;
+	int tree_size = tree.size();
+
+	if (tree_size > 0) {
+		if (view_idx < tree_size)
+			idx = tree[view_idx];
+	}
+	else if (view_idx < data.row_count())
+		idx = view_idx;
+
+	return idx;
+}
+
 bool Data_View::highlight(Camera& view, Point& inside) {
 	if (!font) {
 		hl_row = hl_col = -1;
@@ -160,7 +204,8 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
-	int n_rows = data.filtered >= 0 ? data.filtered : data.row_count();
+	int n_rows = tree.size() > 0 ? tree.size() : data.row_count();
+	n_rows = data.filtered >= 0 ? data.filtered : n_rows;
 	int n_cols = data.column_count();
 
 	float space = font->line_spacing * font_units;
@@ -239,6 +284,7 @@ void Data_View::draw_item_backing(RGBA& color, Rect& back, float scale, int idx)
 void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	int n_rows = data.row_count();
 	int n_cols = data.column_count();
+	int tree_size = tree.size();
 
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
@@ -256,7 +302,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 	int n_items = data.filtered;
 	if (n_items < 0)
-		n_items = n_rows;
+		n_items = tree_size > 0 ? tree_size : n_rows;
 
 	if (vscroll) {
 		top = vscroll->position;
@@ -373,8 +419,6 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	};
 
 	float table_off_y = y;
-	int n_branches = branches.size();
-	int branch = 0, branch_start = 0;
 
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
@@ -407,52 +451,38 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 			}
 		}
 		else {
-			if (i == 0 && n_branches > 0) {
-				int j = 0;
-				bool was_branch = false;
-				while (j < top && branch_start < n_branches) {
-					if (was_branch)
-						branch_start++;
-
-					was_branch = j == branches[branch_start].row_idx;
-					j++;
+			for (int j = top; y < y_max; j++) {
+				int idx = j;
+				if (tree_size) {
+					if (j >= tree_size)
+						break;
+					idx = tree[j];
 				}
-				if (was_branch)
-					branch_start++;
-			}
-			branch = branch_start;
+				else if (j >= n_rows)
+					break;
 
-			for (int j = top; j < n_rows && y < y_max; j++) {
-				if (branch < n_branches && j == branches[branch].row_idx) {
-					if (i == 0) {
-						Texture icon = branches[branch].closed ? icon_plus : icon_minus;
-						draw_cell(icon, ColumnImage, x, y + font_height * 0.025);
+				if (idx < 0 && i == 0) {
+					int branch = -idx - 1;
+					Texture icon = branches[branch].closed ? icon_plus : icon_minus;
+					draw_cell(icon, ColumnImage, x, y + font_height * 0.025);
 
-						int name_idx = branches[branch].name_idx;
-						if (name_idx >= 0)
-							font->render.draw_text(branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
+					int name_idx = branches[branch].name_idx;
+					if (name_idx >= 0)
+						font->render.draw_text(branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
+				}
+				else if (idx >= 0) {
+					bool skip_draw = false;
+					if (condition_col >= 0) {
+						if (!TABLE_CHECKBOX_CHECKED(data, condition_col, idx))
+							continue;
+
+						skip_draw = condition_col == i;
 					}
-					y += line_h;
 
-					if (branches[branch].closed)
-						j = branches[branch].row_idx + branches[branch].length;
-
-					j--;
-					branch++;
-					continue;
+					auto thing = data.columns[i][idx];
+					if (thing && !skip_draw)
+						draw_cell(thing, type, x, y);
 				}
-
-				bool skip_draw = false;
-				if (condition_col >= 0) {
-					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, j))
-						continue;
-
-					skip_draw = condition_col == i;
-				}
-
-				auto thing = data.columns[i][j];
-				if (thing && !skip_draw)
-					draw_cell(thing, type, x, y);
 
 				y += line_h;
 			}
@@ -472,16 +502,14 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 			if (scroll && input.scroll_y < 0)
 				scroll->scroll(1);
 		}
-		if (input.lclick && hl_row >= 0) {
-			if (hl_col >= 0 && data.headers[hl_col].type == ColumnCheckbox)
-				TOGGLE_TABLE_CHECKBOX(data, hl_col, hl_row);
-			else {
-				for (auto &b : branches) {
-					if (b.row_idx == hl_row) {
-						b.closed = !b.closed;
-						break;
-					}
-				}
+		int row = get_table_index(hl_row);
+		if (input.lclick) {
+			if (hl_col >= 0 && row >= 0 && data.headers[hl_col].type == ColumnCheckbox)
+				TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+			else if (hl_row >= 0 && row < 0 && tree.size() > 0) {
+				int b = -row - 1;
+				branches[b].closed = !branches[b].closed;
+				update_tree();
 			}
 		}
 	}

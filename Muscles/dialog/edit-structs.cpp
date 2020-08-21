@@ -171,6 +171,8 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
 		}
 	}
+
+	ui->output->update_tree();
 }
 
 void show_cb_handler(UI_Element *elem, bool dbl_click) {
