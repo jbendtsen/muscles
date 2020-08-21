@@ -18,6 +18,13 @@ static inline float clamp(float f, float min, float max) {
 		return max;
 	return f;
 }
+static inline double clamp(double f, double min, double max) {
+	if (f < min)
+		return min;
+	if (f > max)
+		return max;
+	return f;
+}
 
 Texture make_circle(RGBA& color, int diameter) {
 	auto pixels = std::make_unique<u32[]>(diameter * diameter);
@@ -422,6 +429,46 @@ Texture make_glass_icon(RGBA& color, int length) {
 
 			shade.a = color.a * clamp(lum, 0.0, 1.0);
 			pixels[i*length+j] = lum > 0.0 ? rgba_to_u32(shade) : 0;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), length, length);
+}
+
+Texture make_plus_minus_icon(RGBA& color, int length, bool plus) {
+	auto pixels = std::make_unique<u32[]>(length * length);
+	RGBA shade = color;
+
+	const double indent_lum = 0.2;
+	const double sharpness = 25.0;
+	const double squareness = 6.1;
+	const double radius = 0.4;
+	const double max_threshold = 0.6;
+	const double thicc = 0.09;
+	const double end = 0.3;
+
+	double len = (double)length;
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			double x = ((double)j + 0.5) / len - 0.5;
+			double y = ((double)i + 0.5) / len - 0.5;
+
+			double dist = sqrt(x * x + y * y);
+			double curve = abs(x*y);
+			curve *= curve;
+			double thres = radius + squareness * curve;
+
+			double lum = 0.0;
+			if (dist < thres && thres < max_threshold)
+				lum = clamp(sharpness * (thres - dist) / thres, 0.0, 1.0);
+
+			if (x >= -end && x < end && y >= -end && y < end) {
+				if ((plus && x >= -thicc && x < thicc) || (y >= -thicc && y < thicc))
+					lum = indent_lum;
+			}
+
+			shade.a = color.a * lum;
+			pixels[i*length+j] = rgba_to_u32(shade);
 		}
 	}
 

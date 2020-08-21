@@ -101,33 +101,6 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 	b.post_update_elements(view, input, inside, hover, focussed);
 }
 
-static void refresh_handler(Box& b, Point& cursor) {
-	auto ui = (Edit_Structs*)b.markup;
-	if (!ui->name_vector.pool || !ui->structs.size())
-		return;
-
-	int n_rows = 0;
-	for (auto& s : ui->structs)
-		n_rows += s->fields.n_fields;
-
-	ui->output->data.resize(n_rows);
-	ui->output->data.arena.rewind();
-
-	int idx = 0;
-	for (auto& s : ui->structs) {
-		if (s->flags & FLAG_AVAILABLE)
-			continue;
-
-		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
-			auto& f = s->fields.data[i];
-			auto& cols = ui->output->data.columns;
-
-			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, f);
-			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
-		}
-	}
-}
-
 void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent->markup;
 
@@ -164,6 +137,40 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 		if (b->type == BoxObject)
 			populate_object_table((View_Object*)b->markup, ui->structs, ui->name_vector);
 	}
+
+	int n_rows = 0;
+	for (auto& s : ui->structs)
+		n_rows += s->fields.n_fields;
+
+	ui->output->branches.clear();
+	ui->output->branch_name_vector.head = 0;
+
+	ui->output->data.resize(n_rows);
+	ui->output->data.arena.rewind();
+
+	int idx = 0;
+	for (auto& s : ui->structs) {
+		if (s->flags & FLAG_AVAILABLE)
+			continue;
+
+		int name_idx = -1;
+		if (s->name_idx >= 0) {
+			char *str = ui->name_vector.at(s->name_idx);
+			name_idx = ui->output->branch_name_vector.add_string(str);
+
+			ui->output->branches.push_back({
+				idx, s->fields.n_fields, name_idx, false
+			});
+		}
+
+		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
+			auto& f = s->fields.data[i];
+			auto& cols = ui->output->data.columns;
+
+			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, f);
+			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
+		}
+	}
 }
 
 void show_cb_handler(UI_Element *elem, bool dbl_click) {
@@ -194,6 +201,14 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	ui->cross->img = ws.cross;
 
 	ui->div->make_icon(new_scale);
+
+	sdl_destroy_texture(&ui->output->icon_plus);
+	sdl_destroy_texture(&ui->output->icon_minus);
+
+	int len = ui->output->font->render.text_height() + 0.5;
+	RGBA color = {1, 1, 1, 0.8};
+	ui->output->icon_plus = make_plus_minus_icon(color, len, true);
+	ui->output->icon_minus = make_plus_minus_icon(color, len, false);
 }
 
 void make_struct_box(Workspace& ws, Box& b) {
@@ -298,7 +313,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	b.markup = ui;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
-	b.refresh_handler = refresh_handler;
+	//b.refresh_handler = refresh_handler;
 	b.refresh_every = 1;
 	b.back = ws.back_color;
 	b.edge_color = ws.dark_color;

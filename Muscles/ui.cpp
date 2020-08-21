@@ -373,6 +373,8 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	};
 
 	float table_off_y = y;
+	int n_branches = branches.size();
+	int branch = 0, branch_start = 0;
 
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
@@ -405,7 +407,41 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 			}
 		}
 		else {
+			if (i == 0 && n_branches > 0) {
+				int j = 0;
+				bool was_branch = false;
+				while (j < top && branch_start < n_branches) {
+					if (was_branch)
+						branch_start++;
+
+					was_branch = j == branches[branch_start].row_idx;
+					j++;
+				}
+				if (was_branch)
+					branch_start++;
+			}
+			branch = branch_start;
+
 			for (int j = top; j < n_rows && y < y_max; j++) {
+				if (branch < n_branches && j == branches[branch].row_idx) {
+					if (i == 0) {
+						Texture icon = branches[branch].closed ? icon_plus : icon_minus;
+						draw_cell(icon, ColumnImage, x, y + font_height * 0.025);
+
+						int name_idx = branches[branch].name_idx;
+						if (name_idx >= 0)
+							font->render.draw_text(branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
+					}
+					y += line_h;
+
+					if (branches[branch].closed)
+						j = branches[branch].row_idx + branches[branch].length;
+
+					j--;
+					branch++;
+					continue;
+				}
+
 				bool skip_draw = false;
 				if (condition_col >= 0) {
 					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, j))
@@ -436,8 +472,18 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 			if (scroll && input.scroll_y < 0)
 				scroll->scroll(1);
 		}
-		if (input.lclick && hl_row >= 0 && hl_col >= 0 && data.headers[hl_col].type == ColumnCheckbox)
-			TOGGLE_TABLE_CHECKBOX(data, hl_col, hl_row);
+		if (input.lclick && hl_row >= 0) {
+			if (hl_col >= 0 && data.headers[hl_col].type == ColumnCheckbox)
+				TOGGLE_TABLE_CHECKBOX(data, hl_col, hl_row);
+			else {
+				for (auto &b : branches) {
+					if (b.row_idx == hl_row) {
+						b.closed = !b.closed;
+						break;
+					}
+				}
+			}
+		}
 	}
 }
 

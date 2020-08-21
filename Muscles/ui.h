@@ -107,12 +107,14 @@ struct Data_View : UI_Element {
 
 	struct Branch {
 		int row_idx;
-		int level;
+		int length;
 		int name_idx;
-		int flags;
+		bool closed;
 	};
 	std::vector<Branch> branches;
 	String_Vector branch_name_vector;
+	Texture icon_plus = nullptr;
+	Texture icon_minus = nullptr;
 
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
