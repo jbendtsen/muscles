@@ -9,12 +9,12 @@ static inline float clamp(float f, float min, float max) {
 	return f;
 }
 
-Rect make_ui_box(Rect_Fixed& box, Rect& elem, float scale) {
+Rect_Int make_int_ui_box(Rect_Int& box, Rect& elem, float scale) {
 	return {
-		.x = (float)box.x + elem.x * scale,
-		.y = (float)box.y + elem.y * scale,
-		.w = elem.w * scale,
-		.h = elem.h * scale
+		.x = (int)(0.5 + (float)box.x + elem.x * scale),
+		.y = (int)(0.5 + (float)box.y + elem.y * scale),
+		.w = (int)(0.5 + elem.w * scale),
+		.h = (int)(0.5 + elem.h * scale)
 	};
 }
 
@@ -47,6 +47,111 @@ void (*get_delete_box(void))(UI_Element*, bool) {
 	return delete_box;
 }
 
+Rect UI_Element::make_ui_box(Rect_Int& box, Rect& elem, float scale) {
+	if (soft_draw) {
+		return {
+			.x = (elem.x - pos.x) * scale,
+			.y = (elem.y - pos.y) * scale,
+			.w = elem.w * scale,
+			.h = elem.h * scale
+		};
+	}
+
+	return {
+		.x = (float)box.x + elem.x * scale,
+		.y = (float)box.y + elem.y * scale,
+		.w = elem.w * scale,
+		.h = elem.h * scale
+	};
+}
+
+void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	switch (elem_type) {
+		case ElemDropDown:
+			dynamic_cast<Drop_Down*>(this)->draw_dropdown(nullptr, view, rect, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemImage:
+			dynamic_cast<Image*>(this)->draw_image(nullptr, view, rect, elem_hovered, box_hovered, focussed);
+			return;
+		case ElemLabel:
+			dynamic_cast<Label*>(this)->draw_label(nullptr, view, rect, elem_hovered, box_hovered, focussed);
+			return;
+	}
+
+	int w = 0.5 + pos.w * view.scale;
+	int h = 0.5 + pos.h * view.scale;
+
+	Renderer renderer = nullptr;
+	Renderer hw = sdl_get_hw_renderer();
+	soft_draw = false;
+
+	if (needs_redraw || w != old_width || h != old_height) {
+		reify_timer = 0;
+		needs_redraw = false;
+		old_width = w;
+		old_height = h;
+
+		if (tex_cache)
+			sdl_destroy_texture(&tex_cache);
+
+		renderer = hw;
+	}
+	else {
+		reify_timer++;
+		if (reify_timer < 10)
+			renderer = hw;
+
+		else if (!tex_cache) {
+			renderer = sdl_acquire_sw_renderer(w, h);
+			soft_draw = true;
+		}
+		else {
+			// this means that we don't need to render a new frame and can simply use the existing surface instead
+			Rect_Int back = make_int_ui_box(rect, pos, view.scale);
+			sdl_apply_texture(tex_cache, back, nullptr, nullptr);
+			return;
+		}
+	}
+
+	Rect_Int space = rect;
+	if (soft_draw)
+		space = {0, 0, w, h};
+
+	switch (elem_type) {
+		case ElemButton:
+			dynamic_cast<Button*>(this)->draw_button(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemCheckbox:
+			dynamic_cast<Checkbox*>(this)->draw_checkbox(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemDataView:
+			dynamic_cast<Data_View*>(this)->draw_dataview(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemDivider:
+			dynamic_cast<Divider*>(this)->draw_divider(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemEditBox:
+			dynamic_cast<Edit_Box*>(this)->draw_editbox(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemHexView:
+			dynamic_cast<Hex_View*>(this)->draw_hexview(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemScroll:
+			dynamic_cast<Scroll*>(this)->draw_scroll(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+		case ElemTextEditor:
+			dynamic_cast<Text_Editor*>(this)->draw_texteditor(renderer, view, space, elem_hovered, box_hovered, focussed);
+			break;
+	}
+
+	if (soft_draw) {
+		tex_cache = sdl_bake_sw_render();
+		Rect_Int back = make_int_ui_box(rect, pos, view.scale);
+		sdl_apply_texture(tex_cache, back, nullptr, nullptr);
+		sdl_log_last_error();
+	}
+}
+
 void Button::update_size(float scale) {
 	Theme *theme = active ? &active_theme : &inactive_theme;
 
@@ -62,10 +167,12 @@ void Button::update_size(float scale) {
 }
 
 void Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	bool was_held = held;
 	held = input.lmouse && pos.contains(cursor);
+	needs_redraw = was_held != held;
 }
 
-void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Button::draw_button(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect r = make_ui_box(rect, pos, view.scale);
 
 	float pad = padding * view.scale;
@@ -82,11 +189,11 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	else if (elem_hovered)
 		color = &theme->hover;
 
-	sdl_draw_rect(r, *color);
+	sdl_draw_rect(r, *color, renderer);
 
 	if (!theme->font) {
 		if (icon)
-			sdl_apply_texture(icon, r);
+			sdl_apply_texture(icon, r, nullptr, renderer);
 		return;
 	}
 
@@ -105,21 +212,21 @@ void Button::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 			x += font_height * 1.2f;
 		}
 
-		sdl_apply_texture(icon, box);
+		sdl_apply_texture(icon, box, nullptr, renderer);
 	}
 
-	theme->font->render.draw_text_simple(text.c_str(), r.x + x, r.y + y_offset * font_height);
+	theme->font->render.draw_text_simple(renderer, text.c_str(), r.x + x, r.y + y_offset * font_height);
 }
 
-void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Checkbox::draw_checkbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	if (elem_hovered) {
 		Rect back = make_ui_box(rect, pos, view.scale);
-		sdl_draw_rect(back, hl_color);
+		sdl_draw_rect(back, hl_color, renderer);
 	}
 
 	Rect box = make_ui_box(rect, pos, view.scale);
 	box.w = box.h;
-	sdl_draw_rect(box, default_color);
+	sdl_draw_rect(box, default_color, renderer);
 
 	if (checked) {
 		int w = 0.5 + box.w * border_frac;
@@ -130,7 +237,7 @@ void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 			box.w - 2*w,
 			box.h - 2*h
 		};
-		sdl_draw_rect(check, sel_color);
+		sdl_draw_rect(check, sel_color, renderer);
 	}
 
 	float font_height = font->render.text_height();
@@ -140,7 +247,7 @@ void Checkbox::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	float text_x = box.x + box.w + gap_x;
 	float text_y = box.y + gap_y;
 
-	font->render.draw_text_simple(text.c_str(), text_x, text_y);
+	font->render.draw_text_simple(renderer, text.c_str(), text_x, text_y);
 }
 
 void Data_View::update_tree(std::vector<Branch> *new_branches) {
@@ -213,7 +320,10 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float y = 0;
 	float item_w = table.w - 4;
 
+	int old_hl_row = hl_row;
+	int old_hl_col = hl_col;
 	hl_row = hl_col = -1;
+	bool hl = false;
 
 	for (int i = top; i < n_rows && y < table.h; i++) {
 		float h = y > table.h - item_height ? table.h - y : item_height;
@@ -232,12 +342,14 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 				x += w + column_spacing * font_units;
 			}
 
-			return true;
+			hl = true;
+			break;
 		}
 		y += item_height;
 	}
 
-	return false;
+	needs_redraw = hl_row != old_hl_row || hl_col != old_hl_col;
+	return hl;
 }
 
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
@@ -260,7 +372,7 @@ float Data_View::column_width(float total_width, float min_width, float font_hei
 	return w;
 }
 
-void Data_View::draw_item_backing(RGBA& color, Rect& back, float scale, int idx) {
+void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect& back, float scale, int idx) {
 	int top = vscroll ? vscroll->position : 0;
 	if (idx < 0 || idx < top)
 		return;
@@ -271,17 +383,17 @@ void Data_View::draw_item_backing(RGBA& color, Rect& back, float scale, int idx)
 		h = back.h - y;
 
 	if (h > 0) {
-		Rect_Fixed r = {
+		Rect_Int r = {
 			back.x,
 			back.y + y,
 			back.w,
 			h
 		};
-		sdl_draw_rect(r, color);
+		sdl_draw_rect(r, color, renderer);
 	}
 }
 
-void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	int n_rows = data.row_count();
 	int n_cols = data.column_count();
 	int tree_size = tree.size();
@@ -339,18 +451,18 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 		float y = back.y - (header_height * view.scale + font->line_offset * font_height);
 
 		for (int i = 0; i < n_cols; i++) {
-			font->render.draw_text_simple(data.headers[i].name, x, y);
+			font->render.draw_text_simple(renderer, data.headers[i].name, x, y);
 
 			float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 			x += w + column_spacing * font_height;
 		}
 	}
 
-	sdl_draw_rect(back, default_color);
+	sdl_draw_rect(back, default_color, renderer);
 
-	draw_item_backing(sel_color, back, view.scale, sel_row);
+	draw_item_backing(renderer, sel_color, back, view.scale, sel_row);
 	if (hl_row != sel_row && (box_hovered || focussed))
-		draw_item_backing(hl_color, back, view.scale, hl_row);
+		draw_item_backing(renderer, hl_color, back, view.scale, hl_row);
 
 	float pad = padding * view.scale;
 	float x = x_start;
@@ -362,18 +474,20 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float line_h = font_height + (font->line_spacing * font_height);
 	float sp_half = font->line_spacing * font_height / 2;
 
-	Rect_Fixed dst = {0, 0, font_height, font_height};
-	Rect_Fixed src = {0};
+	Rect_Int dst = {0, 0, font_height, font_height};
+	Rect_Int src = {0};
 
 	clip.x_lower = x + scroll_x;
 	clip.y_upper = y_max;
 
-	auto draw_cell = [this, &dst, &src, y_max, line_off, sp_half, font_height](void *cell, Column_Type type, float x, float y) {
+	auto draw_cell =
+	[this, &renderer, &dst, &src, y_max, line_off, sp_half, font_height]
+	(void *cell, Column_Type type, float x, float y) {
 		if (type == ColumnString)
-			font->render.draw_text((const char*)cell, x, y - line_off, clip);
+			font->render.draw_text(renderer, (const char*)cell, x, y - line_off, clip);
 		else if (type == ColumnFile) {
 			auto name = (const char*)((File_Entry*)cell)->name;
-			font->render.draw_text(name, x, y - line_off, clip);
+			font->render.draw_text(renderer, name, x, y - line_off, clip);
 		}
 		else if (type == ColumnImage) {
 			sdl_get_texture_size(cell, &src.w, &src.h);
@@ -386,7 +500,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 				dst.h = h;
 			}
 
-			sdl_apply_texture(cell, dst, &src);
+			sdl_apply_texture(cell, dst, &src, renderer);
 		}
 		else if (type == ColumnCheckbox) {
 			float indent = font_height * 0.1;
@@ -398,7 +512,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 			if (dst.y + dst.h > y_max)
 				dst.h = y_max - dst.y;
 
-			sdl_draw_rect(dst, parent->parent->table_cb_back);
+			sdl_draw_rect(dst, parent->parent->table_cb_back, renderer);
 
 			if (*(u8*)&cell == 2) {
 				indent = font_height * 0.15;
@@ -410,7 +524,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 				if (src.y + src.h > y_max)
 					src.h = y_max - src.y;
 
-				sdl_draw_rect(src, parent->parent->cb_color);
+				sdl_draw_rect(src, parent->parent->cb_color, renderer);
 				src.x = src.y = 0;
 			}
 
@@ -468,7 +582,7 @@ void Data_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 
 					int name_idx = branches[branch].name_idx;
 					if (name_idx >= 0)
-						font->render.draw_text(branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
+						font->render.draw_text(renderer, branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
 				}
 				else if (idx >= 0) {
 					bool skip_draw = false;
@@ -497,10 +611,14 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 	if (hovered) {
 		if (consume_box_scroll || pos.contains(cursor)) {
 			Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
-			if (scroll && input.scroll_y > 0)
+			if (scroll && input.scroll_y > 0) {
 				scroll->scroll(-1);
-			if (scroll && input.scroll_y < 0)
+				needs_redraw = true;
+			}
+			if (scroll && input.scroll_y < 0) {
 				scroll->scroll(1);
+				needs_redraw = true;
+			}
 		}
 		int row = get_table_index(hl_row);
 		if (input.lclick) {
@@ -511,6 +629,7 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 				branches[b].closed = !branches[b].closed;
 				update_tree();
 			}
+			needs_redraw = true;
 		}
 	}
 }
@@ -560,11 +679,14 @@ void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 		box.h += 2 * padding;
 	}
 
-	if (!held && !box.contains(cursor)) {
-		icon = icon_default;
+	bool use_default = !held && !box.contains(cursor);
+
+	Texture old_icon = icon;
+	icon = use_default ? icon_default : icon_hl;
+	needs_redraw = icon != old_icon;
+
+	if (use_default)
 		return;
-	}
-	icon = icon_hl;
 
 	sdl_set_cursor(cursor_type);
 	parent->parent->cursor_set = true;
@@ -584,11 +706,13 @@ void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 		float cur = vertical ? cursor.x : cursor.y;
 		position = clamp(cur - hold_pos, minimum, maximum);
 	}
+
+	needs_redraw = true;
 }
 
-void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Divider::draw_divider(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect r = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(r, default_color);
+	sdl_draw_rect(r, default_color, renderer);
 
 	if (icon) {
 		Rect box = {
@@ -597,7 +721,7 @@ void Divider::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_h
 			icon_w,
 			icon_h
 		};
-		sdl_apply_texture(icon, box);
+		sdl_apply_texture(icon, box, nullptr, renderer);
 	}
 }
 
@@ -639,7 +763,7 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	return false;
 }
 
-void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
+void Drop_Down::draw_menu(Renderer renderer, Camera& view, Rect_Int& rect) {
 	float font_height = font->render.text_height();
 	auto lines = get_content();
 
@@ -652,13 +776,13 @@ void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 	Rect box = make_ui_box(rect, box_wsp, view.scale);
 	box.h = (title_off_y + line_height * lines->size()) * font_height;
 
-	sdl_draw_rect(box, hl_color);
+	sdl_draw_rect(box, hl_color, renderer);
 
 	if (sel >= 0) {
 		Rect hl = box;
 		hl.y += line_height * sel * font_height;
 		hl.h = (title_off_y + line_height) * font_height + 1;
-		sdl_draw_rect(hl, sel_color);
+		sdl_draw_rect(hl, sel_color, renderer);
 	}
 
 	float hack = 3;
@@ -670,19 +794,19 @@ void Drop_Down::draw_menu(Camera& view, Rect_Fixed& rect) {
 
 	for (auto& l : *lines) {
 		if (l)
-			font->render.draw_text(l, box.x + item_x, box.y + y, item_clip);
+			font->render.draw_text(renderer, l, box.x + item_x, box.y + y, item_clip);
 
 		y += font_height * line_height;
 	}
 }
 
-void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Drop_Down::draw_dropdown(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
 	if (elem_hovered || dropped)
-		sdl_draw_rect(box, hl_color);
+		sdl_draw_rect(box, hl_color, renderer);
 	else
-		sdl_draw_rect(box, default_color);
+		sdl_draw_rect(box, default_color, renderer);
 
 	float gap_y = title_off_y * font->render.text_height();
 
@@ -690,7 +814,7 @@ void Drop_Down::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box
 	float text_x = pos.x * view.scale + (pos.w * view.scale - text_w) / 2;
 	float text_y = pos.y * view.scale + gap_y;
 
-	font->render.draw_text_simple(title, rect.x + text_x, rect.y + text_y);
+	font->render.draw_text_simple(renderer, title, rect.x + text_x, rect.y + text_y);
 }
 
 bool Edit_Box::remove(bool is_back) {
@@ -793,6 +917,8 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		if (offset < 0)
 			offset = 0;
 	}
+
+	needs_redraw = update || delta;
 }
 
 void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -826,11 +952,13 @@ void Edit_Box::update_icon(Icon_Type type, float height, float scale) {
 			icon = make_triangle(icon_color, icon_length, icon_length);
 			break;
 	}
+
+	needs_redraw = true;
 }
 
-void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Edit_Box::draw_editbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect back = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(back, default_color);
+	sdl_draw_rect(back, default_color, renderer);
 
 	const char *str = nullptr;
 	Font *fnt = font;
@@ -860,7 +988,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		else {
 			x += icon_length;
 		}
-		sdl_apply_texture(icon, dst);
+		sdl_apply_texture(icon, dst, nullptr, renderer);
 	}
 
 	float text_x = pos.x * view.scale + x;
@@ -869,20 +997,20 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 	clip.x_lower = rect.x + text_x;
 	clip.x_upper = clip.x_lower + window_w;
-	fnt->render.draw_text(str, rect.x + text_x - offset, rect.y + text_y, clip);
+	fnt->render.draw_text(renderer, str, rect.x + text_x - offset, rect.y + text_y, clip);
 
 	if (this == parent->active_edit) {
 		float caret_y = (float)caret_off_y * height;
 		float caret_w = (float)caret_width * height;
 
-		Rect_Fixed r = {
+		Rect_Int r = {
 			rect.x + text_x + cur_x - offset,
 			rect.y + text_y + (int)caret_y + gap_y,
 			(int)caret_w,
 			(int)height
 		};
 
-		sdl_draw_rect(r, caret);
+		sdl_draw_rect(r, caret, renderer);
 	}
 
 	if (!dropdown)
@@ -890,7 +1018,7 @@ void Edit_Box::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 
 	dropdown->pos = pos;
 	if (dropdown->dropped)
-		dropdown->draw_menu(view, rect);
+		dropdown->draw_menu(renderer, view, rect);
 }
 
 void Hex_View::set_region(u64 address, u64 size) {
@@ -898,6 +1026,7 @@ void Hex_View::set_region(u64 address, u64 size) {
 	region_size = size;
 	sel = -1;
 	alive = true;
+	needs_redraw = true;
 }
 
 void Hex_View::update(float scale) {
@@ -926,19 +1055,19 @@ void Hex_View::update(float scale) {
 	}
 }
 
-float Hex_View::print_address(u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float pad) {
+float Hex_View::print_address(Renderer renderer, u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float pad) {
 	int n_digits = count_digits(address);
 	float text_x = x + (addr_digits - n_digits) * digit_w;
 
 	char buf[20];
 	print_hex("0123456789abcdef", buf, address, n_digits);
-	font->render.draw_text(buf, box.x + text_x, box.y + y, clip);
+	font->render.draw_text(renderer, buf, box.x + text_x, box.y + y, clip);
 
 	return x + addr_digits * digit_w + 2*pad;
 }
 
-float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, float pad) {
-	Rect_Fixed src, dst;
+float Hex_View::print_hex_row(Renderer renderer, Span& span, int idx, float x, float y, Rect& box, float pad) {
+	Rect_Int src, dst;
 
 	for (int i = 0; i < columns * 2; i++) {
 		const Glyph *gl = nullptr;
@@ -950,10 +1079,10 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 			digit &= 0xf;
 
 			char c = digit <= 9 ? '0' + digit : 'a' - 10 + digit;
-			gl = font->render.glyph_for(c);
+			gl = &font->render.glyphs[c - MIN_CHAR];
 		}
 		else
-			gl = font->render.glyph_for('?');
+			gl = &font->render.glyphs['?' - MIN_CHAR];
 
 		src.x = gl->atlas_x;
 		src.y = gl->atlas_y;
@@ -969,7 +1098,7 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(font->render.tex, dst, &src);
+		sdl_apply_texture(font->render.tex, dst, &src, renderer);
 
 		x += gl->box_w;
 		if (i % 2 == 1)
@@ -982,7 +1111,7 @@ float Hex_View::print_hex_row(Span& span, int idx, float x, float y, Rect& box, 
 	return x + pad;
 }
 
-void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box) {
+void Hex_View::print_ascii_row(Renderer renderer, Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box) {
 	char *ascii = (char*)alloca(columns + 1);
 	for (int i = 0; i < columns; i++) {
 		char c = '?';
@@ -995,10 +1124,10 @@ void Hex_View::print_ascii_row(Span& span, int idx, float x, float y, Render_Cli
 	}
 	ascii[columns] = 0;
 
-	font->render.draw_text(ascii, box.x + x, box.y + y, clip);
+	font->render.draw_text(renderer, ascii, box.x + x, box.y + y, clip);
 }
 
-void Hex_View::draw_cursors(int idx, Rect& back, float x_start, float pad, float scale) {
+void Hex_View::draw_cursors(Renderer renderer, int idx, Rect& back, float x_start, float pad, float scale) {
 	int row = idx / columns;
 	int col = idx % columns;
 
@@ -1023,7 +1152,7 @@ void Hex_View::draw_cursors(int idx, Rect& back, float x_start, float pad, float
 			cur_w,
 			row_height
 		};
-		sdl_draw_rect(cursor, caret);
+		sdl_draw_rect(cursor, caret, renderer);
 	}
 	if (show_ascii && ascii_x < x_max) {
 		Rect cursor = {
@@ -1032,19 +1161,19 @@ void Hex_View::draw_cursors(int idx, Rect& back, float x_start, float pad, float
 			cur_w,
 			row_height
 		};
-		sdl_draw_rect(cursor, caret);
+		sdl_draw_rect(cursor, caret, renderer);
 	}
 }
 
-void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Hex_View::draw_hexview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
 	if (!alive || span_idx < 0 || rows <= 0 || columns <= 0) {
-		sdl_draw_rect(box, default_color);
+		sdl_draw_rect(box, default_color, renderer);
 		return;
 	}
 
-	Rect_Fixed src, dst;
+	Rect_Int src, dst;
 
 	font_height = font->render.text_height();
 
@@ -1061,7 +1190,7 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		back.x += addr_w;
 		back.w -= addr_w;
 	}
-	sdl_draw_rect(back, default_color);
+	sdl_draw_rect(back, default_color, renderer);
 
 	Render_Clip addr_clip = {
 		CLIP_RIGHT, 0, 0, box.x + addr_w - pad, 0
@@ -1079,11 +1208,11 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 		int idx = span.size - left;
 
 		if (show_addrs)
-			x = print_address(region_address + offset + idx, x, y - font_height, digit_w, addr_clip, box, pad);
+			x = print_address(renderer, region_address + offset + idx, x, y - font_height, digit_w, addr_clip, box, pad);
 		if (show_hex && x < box.w)
-			x = print_hex_row(span, idx, x, y, box, pad);
+			x = print_hex_row(renderer, span, idx, x, y, box, pad);
 		if (show_ascii && x < box.w)
-			print_ascii_row(span, idx, x, y - font_height, ascii_clip, box);
+			print_ascii_row(renderer, span, idx, x, y - font_height, ascii_clip, box);
 
 		x = x_start;
 		y += row_height;
@@ -1091,7 +1220,7 @@ void Hex_View::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_
 	}
 
 	if (sel >= 0 && sel >= offset && sel < offset + span.size)
-		draw_cursors(sel - offset, back, x_start, pad, view.scale);
+		draw_cursors(renderer, sel - offset, back, x_start, pad, view.scale);
 }
 
 void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1103,10 +1232,14 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		if (input.lshift || input.rshift)
 			delta *= rows;
 
-		if (input.scroll_y > 0)
+		if (input.scroll_y > 0) {
 			scroll->scroll(-delta);
-		if (input.scroll_y < 0)
+			needs_redraw = true;
+		}
+		if (input.scroll_y < 0) {
 			scroll->scroll(delta);
+			needs_redraw = true;
+		}
 	}
 
 	if (input.lclick) {
@@ -1132,12 +1265,14 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 			int col = x / byte_w;
 			sel = offset + (row * columns) + col;
 		}
+
+		needs_redraw = true;
 	}
 }
 
-void Image::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Image::draw_image(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
-	sdl_apply_texture(img, box);
+	sdl_apply_texture(img, box, nullptr, renderer);
 }
 
 void Label::update_position(float scale) {
@@ -1149,9 +1284,9 @@ void Label::update_position(float scale) {
 	width = pos.w * scale - pad;
 }
 
-void Label::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Label::draw_label(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	clip.x_upper = rect.x + x + width;
-	font->render.draw_text(text.c_str(), rect.x + x, rect.y + y, clip);
+	font->render.draw_text(renderer, text.c_str(), rect.x + x, rect.y + y, clip);
 }
 
 void Scroll::set_maximum(double max, double span) {
@@ -1180,7 +1315,9 @@ void Scroll::engage(Point& p) {
 }
 
 void Scroll::scroll(double delta) {
+	int old_pos = position;
 	position = clamp(position + delta, 0, maximum - view_span);
+	needs_redraw = position != old_pos;
 }
 
 void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1203,20 +1340,22 @@ void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 
 		double span = (1 - thumb_frac) * length;
 		position = dist * (maximum - view_span) / span;
+
+		needs_redraw = true;
 	}
 
 	// apply bounds-checking
 	scroll(0);
 }
 
-void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Scroll::draw_scroll(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	if (vertical)
 		length = pos.h - 2*padding;
 	else
 		length = pos.w - 2*padding;
 
 	Rect bar = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(bar, back);
+	sdl_draw_rect(bar, back, renderer);
 
 	if (!show_thumb)
 		return;
@@ -1243,7 +1382,7 @@ void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 		h = bar.h - gap;
 	}
 
-	Rect_Fixed scroll_rect = {
+	Rect_Int scroll_rect = {
 		bar.x + (float)(x * view.scale + 0.5),
 		bar.y + (float)(y * view.scale + 0.5),
 		w,
@@ -1256,7 +1395,7 @@ void Scroll::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_ho
 	else if (hl)
 		color = &hl_color;
 
-	sdl_draw_rect(scroll_rect, *color);
+	sdl_draw_rect(scroll_rect, *color, renderer);
 }
 
 bool Scroll::highlight(Camera& view, Point& inside) {
@@ -1493,6 +1632,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 	bool erased = false;
 	bool paste = false;
 	bool update = false;
+	bool was_selected = selected;
 
 	if (input.strike(input.back)) {
 		if (selected && primary.cursor == secondary.cursor)
@@ -1663,6 +1803,8 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 
 	if (update && key_action)
 		key_action(this, input);
+
+	needs_redraw = update || selected != was_selected;
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1670,6 +1812,7 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 		parent->ui_held = true;
 		parent->active_edit = this;
 		mouse_held = true;
+		needs_redraw = true;
 	}
 	if (!input.lmouse)
 		mouse_held = false;
@@ -1695,7 +1838,7 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 	}
 }
 
-void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float font_h, float line_pad) {
+void Text_Editor::draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad) {
 	Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
 	Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
 
@@ -1706,7 +1849,7 @@ void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float fon
 		r.y = y + first->line * font_h;
 		r.w = (second->column - first->column) * digit_w;
 		r.h = font_h + 1;
-		sdl_draw_rect(r, sel_color);
+		sdl_draw_rect(r, sel_color, renderer);
 	}
 	else {
 		float line_w = clip.x_upper - clip.x_lower;
@@ -1716,7 +1859,7 @@ void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float fon
 		r.y = y + first->line * font_h;
 		r.w = line_w - x;
 		r.h = font_h + 1;
-		sdl_draw_rect(r, sel_color);
+		sdl_draw_rect(r, sel_color, renderer);
 
 		int gulf = second->line - first->line - 1;
 		if (gulf > 0) {
@@ -1724,7 +1867,7 @@ void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float fon
 			r.y += font_h;
 			r.w = line_w;
 			r.h = gulf * font_h + 1;
-			sdl_draw_rect(r, sel_color);
+			sdl_draw_rect(r, sel_color, renderer);
 		}
 
 		if (second->column > 0) {
@@ -1732,22 +1875,22 @@ void Text_Editor::draw_selection_box(Render_Clip& clip, float digit_w, float fon
 			r.y = y + second->line * font_h;
 			r.w = second->column * digit_w;
 			r.h = font_h + 1;
-			sdl_draw_rect(r, sel_color);
+			sdl_draw_rect(r, sel_color, renderer);
 		}
 	}
 }
 
-void Text_Editor::draw_cursor(Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale) {
+void Text_Editor::draw_cursor(Renderer renderer, Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale) {
 	float caret_x = back.x + edge + ((float)cursor.column * digit_w);
 	float caret_y = back.y + edge + line_pad + ((float)cursor.line * font_h) + (line_pad / 2);
 
 	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
-	sdl_draw_rect(caret, caret_color);
+	sdl_draw_rect(caret, caret_color, renderer);
 }
 
-void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Text_Editor::draw_texteditor(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect back = make_ui_box(rect, pos, view.scale);
-	sdl_draw_rect(back, default_color);
+	sdl_draw_rect(back, default_color, renderer);
 
 	float scroll_x = hscroll ? hscroll->position : 0;
 	float scroll_y = vscroll ? vscroll->position : 0;
@@ -1764,17 +1907,17 @@ void Text_Editor::draw(Camera& view, Rect_Fixed& rect, bool elem_hovered, bool b
 	float line_pad = font_h * 0.15f;
 
 	if (secondary.cursor != primary.cursor)
-		draw_selection_box(clip, digit_w, font_h, line_pad);
+		draw_selection_box(renderer, clip, digit_w, font_h, line_pad);
 
-	font->render.draw_text(text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, tab_width, true);
+	font->render.draw_text(renderer, text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, tab_width, true);
 
 	if (this != parent->active_edit)
 		return;
 
 	ticks++;
 	if (secondary.cursor != primary.cursor || ticks % (caret_on_time + caret_off_time) < caret_on_time) {
-		draw_cursor(primary, back, digit_w, font_h, line_pad, edge, view.scale);
+		draw_cursor(renderer, primary, back, digit_w, font_h, line_pad, edge, view.scale);
 		if (secondary.cursor != primary.cursor)
-			draw_cursor(secondary, back, digit_w, font_h, line_pad, edge, view.scale);
+			draw_cursor(renderer, secondary, back, digit_w, font_h, line_pad, edge, view.scale);
 	}
 }

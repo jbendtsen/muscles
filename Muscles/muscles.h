@@ -16,6 +16,8 @@ typedef unsigned int u32;
 typedef unsigned long long u64;
 
 typedef void* Texture;
+typedef void* Surface;
+typedef void* Renderer;
 typedef void* Font_Face;
 
 struct SDL;
@@ -63,7 +65,7 @@ struct Rect {
 	}
 };
 
-struct Rect_Fixed {
+struct Rect_Int {
 	int x, y;
 	int w, h;
 };
@@ -82,10 +84,15 @@ enum Cursor_Type {
 	CursorResizeNWSE
 };
 
+void *sdl_get_hw_renderer();
 void sdl_set_cursor(Cursor_Type type);
 void sdl_get_dpi(int& w, int& h);
 
 void sdl_log_string(const char *msg);
+void sdl_log_last_error();
+
+Renderer sdl_acquire_sw_renderer(int w, int h);
+Texture sdl_bake_sw_render();
 
 bool sdl_init(const char *title, int width, int height);
 void sdl_close();
@@ -99,15 +106,16 @@ void sdl_release_mouse();
 void sdl_copy(std::string& string);
 int sdl_paste_into(std::string& string, int offset);
 
-void sdl_apply_texture(Texture tex, Rect_Fixed& dst, Rect_Fixed *src = nullptr);
-void sdl_apply_texture(Texture tex, Rect& dst, Rect_Fixed *src = nullptr);
+void sdl_apply_texture(Texture tex, Rect_Int& dst, Rect_Int *src, Renderer rdr);
+void sdl_apply_texture(Texture tex, Rect& dst, Rect_Int *src, Renderer rdr);
 
-void sdl_draw_rect(Rect_Fixed& rect, RGBA& color);
-void sdl_draw_rect(Rect& rect, RGBA& color);
+void sdl_draw_rect(Rect_Int& rect, RGBA& color, Renderer rdr);
+void sdl_draw_rect(Rect& rect, RGBA& color, Renderer rdr);
 
 void sdl_clear();
 void sdl_render();
 
+Surface sdl_create_surface(u32 *data, int w, int h);
 Texture sdl_create_texture(u32 *data, int w, int h);
 void sdl_get_texture_size(Texture tex, int *w, int *h);
 
@@ -301,8 +309,8 @@ struct Font_Render {
 		return glyph_for('0')->box_w;
 	}
 
-	void draw_text_simple(const char *text, float x, float y);
-	void draw_text(const char *text, float x, float y, Render_Clip& clip, int tab_cols = 4, bool multiline = false);
+	void draw_text_simple(void *renderer, const char *text, float x, float y);
+	void draw_text(void *renderer, const char *text, float x, float y, Render_Clip& clip, int tab_cols = 4, bool multiline = false);
 
 	Font_Render() = default;
 	~Font_Render() {

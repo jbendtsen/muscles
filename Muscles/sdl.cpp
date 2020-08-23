@@ -5,14 +5,28 @@ int main(int argc, char **argv) {
 	return run();
 }
 
+#define SW_WIDTH   2048
+#define SW_HEIGHT  2048
+
+struct {
+	u8 r, g, b;
+} back_color;
+
 SDL_Window *window = nullptr;
-SDL_Renderer *renderer = nullptr;
+static SDL_Renderer *renderer = nullptr;
+
+static SDL_Surface *sf_cache = nullptr;
+static SDL_Renderer *soft_renderer = nullptr;
 
 std::unordered_map<Cursor_Type, SDL_Cursor*> cursors;
 Cursor_Type cursor = CursorDefault;
 
 bool capture = false;
 int dpi_w = 0, dpi_h = 0;
+
+void *sdl_get_hw_renderer() {
+	return renderer;
+}
 
 void sdl_set_cursor(Cursor_Type type) {
 	if (type == cursor)
@@ -29,6 +43,21 @@ void sdl_get_dpi(int& w, int& h) {
 
 void sdl_log_string(const char *msg) {
 	SDL_Log(msg);
+}
+
+void sdl_log_last_error() {
+	SDL_Log(SDL_GetError());
+}
+
+Renderer sdl_acquire_sw_renderer(int w, int h) {
+	sf_cache->w = w;
+	sf_cache->h = h;
+	sf_cache->pitch = w * 4;
+	return soft_renderer;
+}
+
+Texture sdl_bake_sw_render() {
+	return SDL_CreateTextureFromSurface(renderer, sf_cache);
 }
 
 bool sdl_init(const char *title, int width, int height) {
@@ -55,6 +84,9 @@ bool sdl_init(const char *title, int width, int height) {
 	cursors[CursorResizeNESW]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
 	cursors[CursorResizeNWSE]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
 
+	sf_cache = (SDL_Surface*)sdl_create_surface(nullptr, SW_WIDTH, SW_HEIGHT);
+	soft_renderer = SDL_CreateSoftwareRenderer(sf_cache);
+
 	float hdpi, vdpi;
 	SDL_GetDisplayDPI(SDL_GetWindowDisplayIndex(window), nullptr, &hdpi, &vdpi);
 
@@ -67,7 +99,8 @@ bool sdl_init(const char *title, int width, int height) {
 		return false;
 	}
 
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	back_color.r = back_color.g = back_color.b = 0;
+	SDL_SetRenderDrawColor(renderer, back_color.r, back_color.g, back_color.b, 255);
 	return true;
 }
 
@@ -288,17 +321,25 @@ int sdl_paste_into(std::string& string, int offset) {
 	return len;
 }
 
-Texture sdl_create_texture(u32 *data, int w, int h) {
-	SDL_Texture *tex = nullptr;
-	if (data) {
-		SDL_Surface *s = SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, 0xff000000, 0xff0000, 0xff00, 0xff);
-		tex = SDL_CreateTextureFromSurface(renderer, s);
-		SDL_FreeSurface(s);
-	}
-	else
-		tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+Surface sdl_create_surface(u32 *data, int w, int h) {
+	return (Surface)(data ?
+		SDL_CreateRGBSurfaceFrom(data, w, h, 32, w * 4, 0xff000000, 0xff0000, 0xff00, 0xff) :
+		SDL_CreateRGBSurface(0, w, h, 32, 0xff000000, 0xff0000, 0xff00, 0xff)
+	);
+}
 
+Texture sdl_create_texture(u32 *data, int w, int h) {
+	SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, w, h);
 	SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+	if (data) {
+		void *bits = nullptr;
+		int pitch;
+		SDL_LockTexture(tex, nullptr, &bits, &pitch);
+		memcpy(bits, data, w * h * 4);
+		SDL_UnlockTexture(tex);
+	}
+
 	return (Texture)tex;
 }
 
@@ -306,28 +347,102 @@ void sdl_get_texture_size(Texture tex, int *w, int *h) {
 	SDL_QueryTexture((SDL_Texture*)tex, nullptr, nullptr, w, h);
 }
 
-void sdl_apply_texture(Texture tex, Rect_Fixed& dst, Rect_Fixed *src) {
-	SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, (SDL_Rect*)&dst);
+// The 'renderer' parameter is ignored, it is there so that this function can be used as a drop-in replacement for SDL_RenderCopy() if necessary.
+void sdl_sw_apply_texture(SDL_Renderer *r, SDL_Texture *tex, SDL_Rect *src, SDL_Rect *dst) {
+	int canv_w = sf_cache->w;
+	int canv_h = sf_cache->h;
+	if (dst->x < 0 || dst->y < 0 || dst->w <= 0 || dst->h <= 0 || dst->x >= canv_w || dst->y >= canv_h)
+		return;
+
+	int in_w, in_h, pitch;
+	SDL_QueryTexture(tex, nullptr, nullptr, &in_w, &in_h);
+
+	int src_w, src_h;
+	if (src) {
+		src_w = src->w;
+		src_h = src->h;
+	}
+	else {
+		src_w = in_w;
+		src_h = in_h;
+	}
+
+	u32 *data = nullptr;
+	SDL_LockTexture(tex, src, (void**)&data, &pitch);
+
+	if (!data)
+		return;
+
+	int out_w = dst->w;
+	int out_h = dst->h;
+	if (dst->x + out_w > canv_w)
+		out_w = canv_w - dst->x;
+	if (dst->y + out_h > canv_h)
+		out_h = canv_h - dst->y;
+
+	if (src_w == dst->w && src_h == dst->h) {
+		int stride = 4 * canv_w;
+		int src_stride = 4 * (out_w < src_w ? out_w : src_w);
+
+		u8 *in = (u8*)data;
+		u8 *out = &((u8*)sf_cache->pixels)[dst->y * stride + dst->x * 4];
+
+		for (int i = 0; i < out_h; i++) {
+			memcpy(out, in, src_stride);
+			in += in_w * 4;
+			out += stride;
+		}
+	}
+	else {
+		double x_ratio = (double)dst->w / (double)src_w;
+		double y_ratio = (double)dst->h / (double)src_h;
+
+		u32 *out = &((u32*)sf_cache->pixels)[dst->y * canv_w + dst->x];
+		for (int i = 0; i < out_h; i++) {
+			for (int j = 0; j < out_w; j++) {
+				int x = 0.5 + ((double)j + 0.5) / x_ratio;
+				int y = 0.5 + ((double)i + 0.5) / y_ratio;
+				out[j] = data[y * in_w + x];
+			}
+			out += canv_w;
+		}
+	}
+
+	SDL_UnlockTexture(tex);
 }
 
-void sdl_apply_texture(Texture tex, Rect& dst, Rect_Fixed *src) {
+void sdl_apply_texture(Texture tex, Rect_Int& dst, Rect_Int *src, Renderer rdr) {
+	Renderer r = rdr ? (SDL_Renderer*)rdr : renderer;
+	if (r != renderer)
+		sdl_sw_apply_texture(nullptr, (SDL_Texture*)tex, (SDL_Rect*)src, (SDL_Rect*)&dst);
+	else
+		SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, (SDL_Rect*)&dst);
+}
+
+void sdl_apply_texture(Texture tex, Rect& dst, Rect_Int *src, Renderer rdr) {
 	SDL_Rect dst_fixed = {(int)(dst.x + 0.5), (int)(dst.y + 0.5), (int)(dst.w + 0.5), (int)(dst.h + 0.5)};
-	SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, &dst_fixed);
+	Renderer r = rdr ? (SDL_Renderer*)rdr : renderer;
+	if (r != renderer)
+		sdl_sw_apply_texture(nullptr, (SDL_Texture*)tex, (SDL_Rect*)src, &dst_fixed);
+	else
+		SDL_RenderCopy(renderer, (SDL_Texture*)tex, (SDL_Rect*)src, &dst_fixed);
 }
 
-void sdl_draw_rect(Rect_Fixed& rect, RGBA& color) {
-	SDL_SetRenderDrawColor(renderer, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
-	SDL_RenderFillRect(renderer, (SDL_Rect*)&rect);
+void sdl_draw_rect(Rect_Int& rect, RGBA& color, Renderer rdr) {
+	SDL_Renderer *r = rdr ? (SDL_Renderer*)rdr : renderer;
+	SDL_SetRenderDrawColor(r, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
+	SDL_RenderFillRect(r, (SDL_Rect*)&rect);
 }
 
-void sdl_draw_rect(Rect& rect, RGBA& color) {
+void sdl_draw_rect(Rect& rect, RGBA& color, Renderer rdr) {
 	SDL_Rect rect_fixed = {(int)(rect.x + 0.5), (int)(rect.y + 0.5), (int)(rect.w + 0.5), (int)(rect.h + 0.5)};
-	SDL_SetRenderDrawColor(renderer, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
-	SDL_RenderFillRect(renderer, &rect_fixed);
+	SDL_Renderer *r = rdr ? (SDL_Renderer*)rdr : renderer;
+	SDL_SetRenderDrawColor(r, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
+	SDL_RenderFillRect(r, &rect_fixed);
 }
 
 void sdl_clear() {
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(renderer, back_color.r, back_color.g, back_color.b, 255);
 	SDL_RenderClear(renderer);
 }
 

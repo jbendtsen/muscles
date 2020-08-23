@@ -112,15 +112,16 @@ void ft_quit() {
 	FT_Done_FreeType(library);
 }
 
-void Font_Render::draw_text_simple(const char *text, float x, float y) {
-	Rect_Fixed src, dst;
+void Font_Render::draw_text_simple(void *renderer, const char *text, float x, float y) {
+	Rect_Int src, dst;
 	y += text_height();
 
 	int len = strlen(text);
 	for (int i = 0; i < len; i++) {
-		const Glyph *gl = glyph_for(text[i]);
-		if (!gl)
+		if (text[i] < MIN_CHAR || text[i] > MAX_CHAR)
 			continue;
+
+		Glyph *gl = &glyphs[text[i] - MIN_CHAR];
 
 		src.x = gl->atlas_x;
 		src.y = gl->atlas_y;
@@ -132,13 +133,13 @@ void Font_Render::draw_text_simple(const char *text, float x, float y) {
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(tex, dst, &src);
+		sdl_apply_texture(tex, dst, &src, renderer);
 
 		x += gl->box_w;
 	}
 }
 
-void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& clip, int tab_cols, bool multiline) {
+void Font_Render::draw_text(void *renderer, const char *text, float x, float y, Render_Clip& clip, int tab_cols, bool multiline) {
 	bool clip_top = (clip.flags & CLIP_TOP) != 0;
 	bool clip_bottom = (clip.flags & CLIP_BOTTOM) != 0;
 	bool clip_left = (clip.flags & CLIP_LEFT) != 0;
@@ -148,7 +149,7 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 		return;
 
 	float x_start = x;
-	Rect_Fixed src, dst;
+	Rect_Int src, dst;
 
 	float height = text_height();
 	y += height;
@@ -176,12 +177,12 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 		if (!draw)
 			continue;
 
-		const Glyph *gl = glyph_for(text[i]);
-		if (!gl) {
+		if (text[i] < MIN_CHAR || text[i] > MAX_CHAR) {
 			col--;
 			continue;
 		}
 
+		Glyph *gl = &glyphs[text[i] - MIN_CHAR];
 		float advance = gl->box_w;
 
 		src.x = gl->atlas_x;
@@ -229,7 +230,7 @@ void Font_Render::draw_text(const char *text, float x, float y, Render_Clip& cli
 		dst.w = src.w;
 		dst.h = src.h;
 
-		sdl_apply_texture(tex, dst, &src);
+		sdl_apply_texture(tex, dst, &src, renderer);
 		//RGBA white = {1, 1, 1, 1};
 		//sdl_draw_rect(dst, white);
 

@@ -222,6 +222,11 @@ static void refresh_handler(Box& b, Point& cursor) {
 	int idx = 0;
 	for (auto& row : ui->view->data.columns[1]) {
 		auto name = (const char*)row;
+		if (!name) {
+			idx++;
+			continue;
+		}
+
 		for (int i = 0; i < ui->record->fields.n_fields; i++) {
 			Field& field = ui->record->fields.data[i];
 			char *field_name = es->name_vector.at(field.field_name_idx);

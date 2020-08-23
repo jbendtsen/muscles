@@ -264,12 +264,12 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	Rect edge_rect = {
 		p.x - brd, p.y - brd, w + 2*brd, h + 2*brd
 	};
-	sdl_draw_rect(edge_rect, edge_color);
+	sdl_draw_rect(edge_rect, edge_color, nullptr);
 
-	Rect_Fixed rect = {
+	Rect_Int rect = {
 		p.x, p.y, w, h
 	};
-	sdl_draw_rect(rect, back);
+	sdl_draw_rect(rect, back, nullptr);
 
 	for (auto& e : ui) {
 		if (e->visible)
@@ -277,7 +277,7 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	}
 
 	if (current_dd)
-		current_dd->draw_menu(view, rect);
+		current_dd->draw_menu(nullptr, view, rect);
 }
 
 void Box::select_edge(Camera& view, Point& p) {
