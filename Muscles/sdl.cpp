@@ -46,7 +46,9 @@ void sdl_log_string(const char *msg) {
 }
 
 void sdl_log_last_error() {
-	SDL_Log(SDL_GetError());
+	const char *msg = SDL_GetError();
+	if (msg && strlen(msg))
+		SDL_Log(msg);
 }
 
 Renderer sdl_acquire_sw_renderer(int w, int h) {
@@ -380,32 +382,25 @@ void sdl_sw_apply_texture(SDL_Renderer *r, SDL_Texture *tex, SDL_Rect *src, SDL_
 	if (dst->y + out_h > canv_h)
 		out_h = canv_h - dst->y;
 
-	if (src_w == dst->w && src_h == dst->h) {
-		int stride = 4 * canv_w;
-		int src_stride = 4 * (out_w < src_w ? out_w : src_w);
+	double x_ratio = (double)dst->w / (double)src_w;
+	double y_ratio = (double)dst->h / (double)src_h;
 
-		u8 *in = (u8*)data;
-		u8 *out = &((u8*)sf_cache->pixels)[dst->y * stride + dst->x * 4];
+	u8 *out = &((u8*)sf_cache->pixels)[4 * (dst->y * canv_w + dst->x)];
+	for (int i = 0; i < out_h; i++) {
+		u8 *temp = out;
+		for (int j = 0; j < out_w; j++, out += 4) {
+			int x = (double)j / x_ratio;
+			int y = (double)i / y_ratio;
+			u8 *in = &((u8*)data)[4 * (y * in_w + x)];
 
-		for (int i = 0; i < out_h; i++) {
-			memcpy(out, in, src_stride);
-			in += in_w * 4;
-			out += stride;
+			int a = in[0];
+			int b = 255 - a;
+			out[0] = (u8)((a * (int)in[0] + b * (int)out[0]) / 255);
+			out[1] = (u8)((a * (int)in[1] + b * (int)out[1]) / 255);
+			out[2] = (u8)((a * (int)in[2] + b * (int)out[2]) / 255);
+			out[3] = (u8)((a * (int)in[3] + b * (int)out[3]) / 255);
 		}
-	}
-	else {
-		double x_ratio = (double)dst->w / (double)src_w;
-		double y_ratio = (double)dst->h / (double)src_h;
-
-		u32 *out = &((u32*)sf_cache->pixels)[dst->y * canv_w + dst->x];
-		for (int i = 0; i < out_h; i++) {
-			for (int j = 0; j < out_w; j++) {
-				int x = 0.5 + ((double)j + 0.5) / x_ratio;
-				int y = 0.5 + ((double)i + 0.5) / y_ratio;
-				out[j] = data[y * in_w + x];
-			}
-			out += canv_w;
-		}
+		out = &temp[canv_w * 4];
 	}
 
 	SDL_UnlockTexture(tex);

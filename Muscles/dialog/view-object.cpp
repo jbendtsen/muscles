@@ -335,7 +335,9 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->view->hl_color = ws.dark_color;
 	ui->view->consume_box_scroll = true;
 	ui->view->hscroll = ui->hscroll;
+	ui->view->hscroll->content = ui->view;
 	ui->view->vscroll = ui->vscroll;
+	ui->view->vscroll->content = ui->view;
 
 	Column cols[] = {
 		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},

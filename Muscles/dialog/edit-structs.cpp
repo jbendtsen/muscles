@@ -180,7 +180,7 @@ void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	auto ui = (Edit_Structs*)b.markup;
 	auto cb = dynamic_cast<Checkbox*>(elem);
 
-	cb->checked = !cb->checked;
+	cb->toggle();
 
 	ui->div->visible = cb->checked;
 	ui->output->visible = cb->checked;
@@ -297,9 +297,12 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->output->font = ui->edit->font;
 	ui->output->default_color = ws.dark_color;
 	ui->output->hl_color = ws.hl_color;
+	ui->output->back_color = ws.back_color;
 	ui->output->consume_box_scroll = true;
 	ui->output->hscroll = ui->out_hscroll;
+	ui->output->hscroll->content = ui->output;
 	ui->output->vscroll = ui->out_vscroll;
+	ui->output->vscroll->content = ui->output;
 
 	Column cols[] = {
 		{ColumnString, 0, 0.5, 0, 0, "Name"},

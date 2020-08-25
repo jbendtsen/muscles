@@ -114,6 +114,7 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->table->font = ws.default_font;
 	ui->table->consume_box_scroll = true;
 	ui->table->vscroll = ui->scroll;
+	ui->table->vscroll->content = ui->table;
 
 	ui->search = new Edit_Box();
 	ui->search->caret = ws.caret_color;
@@ -137,6 +138,13 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	return ui;
 }
 
+void notify_main_box(Workspace *ws) {
+	Box *main_box = ws->first_box_of_type(BoxMain);
+	auto main_ui = (Main_Menu*)main_box->markup;
+	main_ui->table->sel_row = ws->sources.size() - 1;
+	main_box->require_redraw();
+}
+
 void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
 		return;
@@ -148,11 +156,12 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	int idx = table->data.index_from_filtered(table->hl_row);
 	char *process = (char*)table->data.columns[1][idx];
 
-	elem->parent->parent->delete_box(elem->parent);
+	Workspace *ws = elem->parent->parent;
+	ws->delete_box(elem->parent);
 
 	char *name_ptr = nullptr;
 	int pid = strtol(process, &name_ptr, 0);
-	auto& sources = (std::vector<Source*>&)elem->parent->parent->sources;
+	auto& sources = (std::vector<Source*>&)ws->sources;
 
 	for (auto& s : sources) {
 		if (s->type == SourceProcess && s->pid == pid)
@@ -166,9 +175,7 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
-
-	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(BoxMain)->markup;
-	main_ui->table->sel_row = sources.size() - 1;
+	notify_main_box(ws);
 }
 
 void refresh_file_menu(Box& b, Point& cursor);
@@ -200,13 +207,14 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		return;
 	}
 
-	elem->parent->parent->delete_box(elem->parent);
+	Workspace *ws = elem->parent->parent;
+	ws->delete_box(elem->parent);
 
 	std::string path = ui->path->placeholder;
 	path += get_folder_separator();
 	path += file->name;
 
-	auto& sources = (std::vector<Source*>&)elem->parent->parent->sources;
+	auto& sources = (std::vector<Source*>&)ws->sources;
 
 	for (auto& s : sources) {
 		if (s->type == SourceFile && path == (const char*)s->identifier)
@@ -220,9 +228,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
-
-	auto main_ui = (Main_Menu*)elem->parent->parent->first_box_of_type(BoxMain)->markup;
-	main_ui->table->sel_row = sources.size() - 1;
+	notify_main_box(ws);
 }
 
 void refresh_process_menu(Box& b, Point& cursor) {

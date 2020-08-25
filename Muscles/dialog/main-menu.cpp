@@ -5,11 +5,11 @@
 void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	Main_Menu *ui = (Main_Menu*)b.markup;
 	if (ui->table->sel_row >= 0) {
-		ui->button->active = true;
+		ui->button->set_active(true);
 		ui->view->content[0] = (char*)ui->table->data.columns[2][ui->table->sel_row];
 	}
 	else {
-		ui->button->active = false;
+		ui->button->set_active(false);
 		ui->view->content[0] = (char*)"<source>";
 	}
 
@@ -249,6 +249,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->table->default_color = ws.dark_color;
 	ui->table->hl_color = ws.hl_color;
 	ui->table->sel_color = ws.light_color;
+	ui->table->back_color = ws.back_color;
 
 	Column sources_cols[] = {
 		{ColumnImage, 0, 0.1, 0, 1.2, ""},

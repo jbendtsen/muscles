@@ -33,6 +33,7 @@ struct UI_Element {
 
 	Texture tex_cache = nullptr;
 	int reify_timer = 0;
+	int hw_draw_timeout = 15;
 	bool soft_draw = false;
 	bool needs_redraw = true;
 
@@ -48,6 +49,10 @@ struct UI_Element {
 	Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);
 
 	void draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void set_active(bool state);
+
+	virtual void update() {}
+	virtual void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {}
 
 	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
 	virtual void key_handler(Camera& view, Input& input) {}
@@ -107,11 +112,14 @@ struct Checkbox : UI_Element {
 	float text_off_x = 0.3;
 	float text_off_y = -0.15;
 
+	void toggle();
 	void draw_checkbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
 };
 
 struct Data_View : UI_Element {
 	Data_View() : UI_Element(ElemDataView) {}
+
+	RGBA back_color = {};
 
 	Table data = {};
 
@@ -287,6 +295,7 @@ struct Hex_View : UI_Element {
 	bool show_ascii = false;
 
 	RGBA caret = {};
+	RGBA back_color = {};
 
 	u64 region_address = 0;
 	u64 region_size = 0;
@@ -357,6 +366,8 @@ struct Scroll : UI_Element {
 	double position = 0;
 	double maximum = 0;
 
+	UI_Element *content = nullptr;
+
 	bool show_thumb = true;
 	bool hl = false;
 	bool held = false;
@@ -378,6 +389,7 @@ struct Text_Editor : UI_Element {
 
 	bool selected = false;
 	bool mouse_held = false;
+	bool show_caret = false;
 
 	int tab_width = 4;
 	float border = 4;
@@ -415,10 +427,12 @@ struct Text_Editor : UI_Element {
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void update() override;
 
 	void draw_cursor(Renderer renderer, Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
 	void draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad);
 	void draw_texteditor(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 enum BoxType {
@@ -470,6 +484,7 @@ struct Box {
 	float min_height = 200;
 
 	void draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hovered, bool focussed);
+	void require_redraw();
 
 	void select_edge(Camera& view, Point& p);
 	void move(float dx, float dy, Camera& view, Input& input);

@@ -280,6 +280,11 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 		current_dd->draw_menu(nullptr, view, rect);
 }
 
+void Box::require_redraw() {
+	for (auto& elem : ui)
+		elem->needs_redraw = true;
+}
+
 void Box::select_edge(Camera& view, Point& p) {
 	edge = 0;
 	float gap = 6 / view.scale;

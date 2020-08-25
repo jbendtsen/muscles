@@ -414,7 +414,9 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 		ui->reg_table->sel_color = ws.light_color;
 		ui->reg_table->column_spacing = 0.5;
 		ui->reg_table->vscroll = ui->reg_scroll;
+		ui->reg_table->vscroll->content = ui->reg_table;
 		ui->reg_table->hscroll = ui->reg_lat_scroll;
+		ui->reg_table->hscroll->content = ui->reg_table;
 
 		float digit_units = (float)ui->reg_table->font->render.digit_width() / (float)ui->reg_table->font->render.text_height();
 		float addr_w = 16 * digit_units;
@@ -467,6 +469,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->hex = new Hex_View();
 	ui->hex->font = ws.make_font(8, ws.text_color);
 	ui->hex->default_color = ws.dark_color;
+	ui->hex->back_color = ws.back_color;
 	ui->hex->caret = ws.caret_color;
 	ui->hex->source = ui->source;
 	ui->hex->scroll = ui->hex_scroll;
@@ -491,7 +494,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->addr_box->sel_color = ws.cb_color;
 	ui->addr_box->pos.h = ui->addr_box->font->render.text_height() * 1.1f / ws.temp_scale;
 	ui->addr_box->pos.w = 2 * ui->addr_box->pos.h;
-	ui->addr_box->action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->checked = !c->checked;};
+	ui->addr_box->action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->toggle();};
 	b.ui.push_back(ui->addr_box);
 
 	ui->hex_box = new Checkbox();
