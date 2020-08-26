@@ -15,6 +15,30 @@ enum Element_Type {
 	ElemTextEditor
 };
 
+struct Editor {
+	bool multiline = true;
+	bool selected = false;
+	int tab_width = 4;
+
+	struct Cursor {
+		int cursor;
+		int line;
+		int column;
+		int target_column;
+	}
+	primary = {0},
+	secondary = {0};
+
+	std::string text;
+
+	void erase(Cursor& cursor, bool is_back);
+	void set_cursor(Cursor& cursor, int cur);
+	void set_line(Cursor& cursor, int line_idx);
+	void set_column(Cursor& cursor, int col_idx);
+
+	int handle_input(Input& input);
+};
+
 struct Box;
 
 struct UI_Element {
@@ -234,14 +258,19 @@ struct Drop_Down : UI_Element {
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(ElemEditBox, CursorEdit) {
 		action = get_set_active_edit();
+		editor.multiline = false;
 	}
 
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
-	bool update = false;
 
-	int cursor = 0;
+	/*
 	float offset = 0;
 	float window_w = 0;
+	*/
+	bool text_changed = false;
+
+	Editor editor;
+
 	RGBA caret = {};
 
 	float text_off_x = 0.3;
@@ -260,7 +289,6 @@ struct Edit_Box : UI_Element {
 
 	Font *ph_font = nullptr;
 
-	std::string line;
 	std::string placeholder;
 
 	Render_Clip clip = {
@@ -268,8 +296,6 @@ struct Edit_Box : UI_Element {
 		0, 0, 0, 0
 	};
 
-	bool remove(bool is_back);
-	void move_cursor(int delta);
 	void clear();
 
 	void update_icon(Icon_Type type, float height, float scale);
@@ -387,11 +413,8 @@ struct Scroll : UI_Element {
 struct Text_Editor : UI_Element {
 	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {}
 
-	bool selected = false;
 	bool mouse_held = false;
 	bool show_caret = false;
-
-	int tab_width = 4;
 	float border = 4;
 	float cursor_width = 1;
 
@@ -403,33 +426,20 @@ struct Text_Editor : UI_Element {
 	Scroll *vscroll = nullptr;
 	Scroll *hscroll = nullptr;
 
-	struct Cursor {
-		int cursor;
-		int line;
-		int column;
-		int target_column;
-	}
-	primary = {0},
-	secondary = {0};
+	Editor editor = {};
 
 	Render_Clip clip = {
 		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
 		0, 0, 0, 0
 	};
-	std::string text;
 
 	void (*key_action)(Text_Editor*, Input&) = nullptr;
-
-	void erase(Cursor& cursor, bool is_back);
-	void set_cursor(Cursor& cursor, int cur);
-	void set_line(Cursor& cursor, int line_idx);
-	void set_column(Cursor& cursor, int col_idx);
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void update() override;
 
-	void draw_cursor(Renderer renderer, Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
+	void draw_cursor(Renderer renderer, Editor::Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
 	void draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad);
 	void draw_texteditor(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
 	void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;

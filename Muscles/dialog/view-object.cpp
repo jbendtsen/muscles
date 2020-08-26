@@ -183,10 +183,10 @@ void source_edit_refresh(Edit_Box *edit, Input& input) {
 
 	Source *src = nullptr;
 
-	if (edit->line.size() > 0) {
+	if (edit->editor.text.size() > 0) {
 		Workspace& ws = *edit->parent->parent;
 		for (auto& s : ws.sources) {
-			if (s->name == edit->line) {
+			if (s->name == edit->editor.text) {
 				src = s;
 				break;
 			}
@@ -213,7 +213,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 
 	Span& span = ui->source->spans[ui->span_idx];
 
-	span.address = strtoull(ui->addr_edit->line.c_str(), nullptr, 16);
+	span.address = strtoull(ui->addr_edit->editor.text.c_str(), nullptr, 16);
 	span.size = (ui->record->total_size + 7) / 8;
 
 	char hex[16];
@@ -469,10 +469,10 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, Strin
 
 	ui->record = nullptr;
 
-	if (!ui->struct_edit->line.size())
+	if (!ui->struct_edit->editor.text.size())
 		return;
 
-	const char *name_str = ui->struct_edit->line.c_str();
+	const char *name_str = ui->struct_edit->editor.text.c_str();
 	Struct *record = nullptr;
 	for (auto& s : structs) {
 		if (!s)

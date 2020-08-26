@@ -154,6 +154,7 @@
     <ClCompile Include="dialog\open-source.cpp" />
     <ClCompile Include="dialog\view-object.cpp" />
     <ClCompile Include="dialog\view-source.cpp" />
+    <ClCompile Include="editor.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="format.cpp" />
     <ClCompile Include="icons.cpp" />

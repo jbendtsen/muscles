@@ -105,7 +105,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent->markup;
 
 	if (ui->first_run) {
-		int reserve = edit->text.size() + 2;
+		int reserve = edit->editor.text.size() + 2;
 		ui->tokens.try_expand(reserve);
 		ui->name_vector.try_expand(reserve);
 		ui->first_run = false;
@@ -121,7 +121,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 		}
 	}
 
-	tokenize(ui->tokens, edit->text.c_str(), edit->text.size());
+	tokenize(ui->tokens, edit->editor.text.c_str(), edit->editor.text.size());
 
 	char *tokens_alias = ui->tokens.pool;
 	parse_c_struct(ui->structs, &tokens_alias, ui->name_vector);
@@ -232,7 +232,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit->sel_color = ws.inactive_outline_color;
 	ui->edit->caret_color = ws.caret_color;
 	ui->edit->font = ws.make_font(10, ws.text_color);
-	ui->edit->text = "struct Test {\n\tint a;\n\tint b;\n};";
+	ui->edit->editor.text = "struct Test {\n\tint a;\n\tint b;\n};";
 	ui->edit->action = get_set_active_edit();
 	ui->edit->key_action = structs_edit_handler;
 	b.ui.push_back(ui->edit);

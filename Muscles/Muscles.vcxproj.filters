@@ -63,6 +63,9 @@
     <ClCompile Include="format.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="editor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dialog\dialog.h">

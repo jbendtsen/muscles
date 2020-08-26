@@ -263,7 +263,7 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 	ui->goto_digits = idx <= 0 ? 4 : count_digits(ui->source->regions[idx-1].base) + 2;
 
 	if (ui->reg_table->data.filtered > 0) {
-		ui->reg_table->data.update_filter(ui->reg_search->line);
+		ui->reg_table->data.update_filter(ui->reg_search->editor.text);
 		sel = ui->reg_table->data.filtered_from_index(sel);
 	}
 
@@ -273,13 +273,13 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 }
 
 void goto_handler(Edit_Box *edit, Input& input) {
-	if (input.enter != 1 || !edit->line.size())
+	if (input.enter != 1 || !edit->editor.text.size())
 		return;
 
 	auto ui = (View_Source*)edit->parent->markup;
 
 	u64 base = 0;
-	u64 address = strtoull(edit->line.c_str(), nullptr, 16);
+	u64 address = strtoull(edit->editor.text.c_str(), nullptr, 16);
 
 	if (ui->multiple_regions) {
 		int sel_row = -1;
@@ -311,7 +311,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 
 void region_search_handler(Edit_Box *edit, Input& input) {
 	auto ui = (View_Source*)edit->parent->markup;
-	ui->reg_table->data.update_filter(edit->line);
+	ui->reg_table->data.update_filter(edit->editor.text);
 	ui->reg_table->hl_row = ui->reg_table->sel_row = -1;
 	ui->reg_scroll->position = 0;
 	ui->selected_region = 0;

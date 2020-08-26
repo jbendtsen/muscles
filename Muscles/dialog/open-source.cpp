@@ -14,7 +14,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, Box *
 	}
 
 	if (ui->search && ui->scroll) {
-		if (focussed && ui->table && ui->search->update)
+		if (focussed && ui->table && ui->search->text_changed)
 			ui->scroll->position = 0;
 
 		float x2 = b.box.w - ui->scroll->padding;
@@ -119,10 +119,15 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->search = new Edit_Box();
 	ui->search->caret = ws.caret_color;
 	ui->search->default_color = ws.dark_color;
+	ui->search->sel_color = ws.inactive_outline_color;
 	ui->search->font = ws.make_font(9, ws.text_color);
 	ui->search->icon_color = ws.text_color;
 	ui->search->icon_color.a = 0.7;
-	ui->search->key_action = [](Edit_Box* edit, Input& input) {((Source_Menu*)edit->parent->markup)->table->data.update_filter(edit->line);};
+	ui->search->key_action = [](Edit_Box* edit, Input& input) {
+		Data_View *table = ((Source_Menu*)edit->parent->markup)->table;
+		table->data.update_filter(edit->editor.text);
+		table->needs_redraw = true;
+	};
 
 	b.ui.push_back(ui->scroll);
 	b.ui.push_back(ui->table);
@@ -289,13 +294,14 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 
 	Point p = {0};
 	refresh_file_menu(*elem->parent, p);
+	ui->table->needs_redraw = true;
 }
 
 void file_path_handler(Edit_Box *edit, Input& input) {
-	if (input.enter != 1 || !edit->line.size())
+	if (input.enter != 1 || !edit->editor.text.size())
 		return;
 
-	std::string str = edit->line;
+	std::string str = edit->editor.text;
 	char sep = get_folder_separator()[0];
 	if (str.back() == sep)
 		str.pop_back();
@@ -315,6 +321,7 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 
 	Point p = {0};
 	refresh_file_menu(*edit->parent, p);
+	ui->table->needs_redraw = true;
 }
 
 void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -397,6 +404,7 @@ void make_file_menu(Workspace& ws, Box& b) {
 	ui->path = new Edit_Box();
 	ui->path->font = up_font;
 	ui->path->default_color = ws.dark_color;
+	ui->path->sel_color = ws.inactive_outline_color;
 	ui->path->caret = ws.caret_color;
 	ui->path->placeholder = get_root_folder();
 	ui->path->key_action = file_path_handler;
