@@ -82,12 +82,15 @@ int run() {
 	return 0;
 }
 
-int next_power_of_2(int num) {
+std::pair<int, int> next_power_of_2(int num) {
 	int power = 2;
-	while (power < num)
+	int exp = 1;
+	while (power < num) {
 		power *= 2;
+		exp++;
+	}
 
-	return power;
+	return std::make_pair(power, exp);
 }
 
 int count_digits(u64 num) {

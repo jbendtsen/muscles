@@ -70,7 +70,7 @@ void String_Vector::try_expand(int new_size) {
 		if (pool && new_size <= pool_size)
 			return;
 
-		new_size = next_power_of_2(new_size);
+		new_size = next_power_of_2(new_size).first;
 	}
 
 	char *new_pool = new char[new_size];

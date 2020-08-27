@@ -3,8 +3,6 @@
 #include <string>
 #include <memory>
 #include <vector>
-#include <unordered_map>
-#include <map>
 #include <set>
 
 #define MIN_CHAR ' '
@@ -27,7 +25,7 @@ void destroy_font_face(Font_Face face);
 
 int run();
 
-int next_power_of_2(int num);
+std::pair<int, int> next_power_of_2(int num);
 int count_digits(u64 num);
 void print_hex(const char *hex, char *out, u64 n, int n_digits);
 
@@ -81,7 +79,8 @@ enum Cursor_Type {
 	CursorResizeNorthSouth,
 	CursorResizeWestEast,
 	CursorResizeNESW,
-	CursorResizeNWSE
+	CursorResizeNWSE,
+	NumCursors
 };
 
 void *sdl_get_hw_renderer();
@@ -193,7 +192,7 @@ struct String_Vector {
 #define MAX_FNAME 112
 
 struct File_Entry {
-	int flags;
+	u32 flags;
 	char *path;
 	char name[MAX_FNAME];
 };
@@ -266,7 +265,7 @@ struct Table {
 #define CLIP_RIGHT   8
 
 struct Render_Clip {
-	int flags = 0;
+	u32 flags = 0;
 	float x_lower = 0, y_lower = 0;
 	float x_upper = 0, y_upper = 0;
 };
@@ -428,15 +427,53 @@ struct Span {
 	int size = 0;
 	int retrieved = 0;
 	int offset = 0;
-	int flags = 0;
+	u32 flags = 0;
 	u8 *data = nullptr;
 };
 
 struct Region {
+	char *name = nullptr;
 	u64 base = 0;
 	u64 size = 0;
-	int flags = 0;
-	char *name = nullptr;
+	u32 offset = 0;
+	u32 flags = 0;
+};
+
+struct Region_Map {
+	Region *data = nullptr;
+	float max_load = 0.75;
+	int log2_slots = 3;
+	int n_entries = 0;
+
+	const u32 seed = 2357;
+
+	Region_Map() {
+		data = new Region[1 << log2_slots]();
+	}
+	Region_Map(int n_slots) {
+		log2_slots = next_power_of_2(n_slots - 1).second;
+		data = new Region[1 << log2_slots]();
+	}
+
+	Region& operator[](u64 key) {
+		return data[get(key)];
+	}
+
+	int get(u64 key);
+	void insert(u64 key, Region& reg);
+	void clear(int new_size);
+
+	void ensure(int min_size) {
+		if ((1 << log2_slots) < min_size)
+			clear(min_size);
+	}
+
+	int size() { return 1 << log2_slots; }
+
+	void place_at(int idx, Region& reg);
+	void place_at(int idx, Region&& reg);
+	void next_level();
+	void next_level_maybe();
 };
 
 enum Source_Type {
@@ -456,11 +493,11 @@ struct Source {
 	u8 *buffer = nullptr;
 	int buf_size = 0;
 
+	Region_Map regions_map;
+	Region_Map sections;
+
 	std::vector<Region> regions;
 	std::vector<Span> spans;
-
-	std::map<u64, int> region_index;
-	std::map<u64, char*> sections;
 
 	bool region_refreshed = false;
 	bool block_region_refresh = false;
@@ -506,6 +543,9 @@ void close_source(Source& source);
 
 #define FLAG_AVAILABLE  0x10000
 
+#define FLAG_OCCUPIED  0x80000000
+#define FLAG_NEW       0x40000000
+
 struct Struct;
 
 struct Field {
@@ -523,7 +563,7 @@ struct Field {
 	int default_bit_size;
 	int array_len;
 	int pointer_levels;
-	int flags;
+	u32 flags;
 
 	void reset() {
 		memset(this, 0, sizeof(Field));
@@ -554,14 +594,8 @@ struct Struct {
 	int offset;
 	int total_size;
 	int longest_primitive;
-	int flags;
+	u32 flags;
 	Field_Vector fields;
-};
-
-struct Primitive {
-	std::string name;
-	int bit_size;
-	int flags;
 };
 
 void tokenize(String_Vector& tokens, const char *text, int sz);
@@ -569,3 +603,16 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
+
+struct Primitive {
+	std::string name;
+	int bit_size;
+	u32 flags;
+};
+
+struct Definition {
+	u32 flags;
+	int name_idx;
+	int parent_name_idx;
+	u32 value;
+};

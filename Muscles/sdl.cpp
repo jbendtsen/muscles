@@ -18,7 +18,7 @@ static SDL_Renderer *renderer = nullptr;
 static SDL_Surface *sf_cache = nullptr;
 static SDL_Renderer *soft_renderer = nullptr;
 
-std::unordered_map<Cursor_Type, SDL_Cursor*> cursors;
+std::vector<SDL_Cursor*> cursors;
 Cursor_Type cursor = CursorDefault;
 
 bool capture = false;
@@ -77,6 +77,7 @@ bool sdl_init(const char *title, int width, int height) {
 
 	SDL_StartTextInput();
 
+	cursors.resize(NumCursors);
 	cursors[CursorDefault]          = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 	cursors[CursorClick]            = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 	cursors[CursorEdit]             = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
@@ -456,10 +457,8 @@ void sdl_close() {
 	}
 
 	for (auto& c : cursors) {
-		if (c.second) {
-			SDL_FreeCursor(c.second);
-			c.second = nullptr;
-		}
+		SDL_FreeCursor(c);
+		c = nullptr;
 	}
 
 	SDL_Quit();

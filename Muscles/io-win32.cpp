@@ -251,7 +251,7 @@ u8 *header = nullptr;
 #define PROCESS_BASE_NAME_SIZE 1000
 #define PROCESS_NAME_LEN 100
 
-bool find_section_names(HANDLE proc, u64 base, u8 *buf, std::map<u64, char*>& sections, Arena& arena) {
+bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map, Arena& arena) {
 	SIZE_T len = 0;
 	ReadProcessMemory(proc, (LPCVOID)base, (LPVOID)buf, IMAGE_HEADER_PAGE_SIZE, &len);
 	if (len != IMAGE_HEADER_PAGE_SIZE)
@@ -265,11 +265,18 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, std::map<u64, char*>& se
 	IMAGE_SECTION_HEADER *section = IMAGE_FIRST_SECTION(headers);
 
 	for (int i = 0; i < n_sections; i++) {
-		auto& s = sections[base + section->VirtualAddress];
-		if (!s)
-			s = arena.alloc_string((char*)section->Name);
-		else
-			strcpy(s, (char*)section->Name); // will likely cause errors if the new name exceeds the length of the old name
+		u64 key = base + section->VirtualAddress;
+		int idx = section_map.get(key);
+		Region& r = section_map.data[idx];
+
+		if ((r.flags & FLAG_OCCUPIED) == 0) {
+			section_map.place_at(idx, {
+				.name = arena.alloc_string((char*)section->Name),
+				.base = key,
+				.offset = section->VirtualAddress
+			});
+			section_map.next_level_maybe();
+		}
 
 		section++;
 	}
@@ -278,6 +285,9 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, std::map<u64, char*>& se
 }
 
 void refresh_process_regions(Source& source, Arena& arena) {
+	source.regions_map.ensure(1024);
+	source.sections.ensure(256);
+
 	auto& proc = (HANDLE&)source.handle;
 	if (!proc)
 		proc = OpenProcess(PROCESS_ALL_ACCESS, false, source.pid);
@@ -285,8 +295,6 @@ void refresh_process_regions(Source& source, Arena& arena) {
 	MEMORY_BASIC_INFORMATION info = {0};
 	VirtualQueryEx(proc, (LPCVOID)0, &info, sizeof(MEMORY_BASIC_INFORMATION));
 	u64 base = info.RegionSize;
-
-	std::map<u64, Region> new_regions;
 
 	while (1) {
 		if (!VirtualQueryEx(proc, (LPCVOID)base, &info, sizeof(MEMORY_BASIC_INFORMATION)))
@@ -314,23 +322,25 @@ void refresh_process_regions(Source& source, Arena& arena) {
 			protect == PAGE_EXECUTE_READWRITE ||
 			protect == PAGE_EXECUTE_WRITECOPY;
 
-		int flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
+		u32 flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
 
 		bool exists = false;
-		auto it = source.region_index.find(base);
+		int idx = source.regions_map.get(base);
+		Region& reg = source.regions_map.data[idx];
 
-		if (it != source.region_index.end()) {
+		if (reg.flags & FLAG_OCCUPIED) {
 			int mask = (1 << REG_PM_READ) | (1 << REG_PM_WRITE) | (1 << REG_PM_EXEC);
-			auto& reg = source.regions[it->second];
 			if (reg.base == base && reg.size == size && (reg.flags & mask) == (flags & mask))
 				exists = true;
 		}
 
 		if (!exists) {
-			Region& reg = new_regions[base];
-			reg.base = base;
-			reg.size = size;
-			reg.flags = flags;
+			source.regions_map.place_at(idx, {
+				.base = base,
+				.size = size,
+				.flags = flags | FLAG_NEW
+			});
+			source.regions_map.next_level_maybe();
 		}
 
 		base += info.RegionSize;
@@ -340,9 +350,18 @@ void refresh_process_regions(Source& source, Arena& arena) {
 	if (!header)
 		header = new u8[IMAGE_HEADER_PAGE_SIZE];
 
+	source.regions.reserve(source.regions_map.size());
+	bool first_run = source.regions.size() == 0;
+
 	int idx = 0;
-	for (auto& r : new_regions) {
-		auto& reg = r.second;
+	u32 mask = FLAG_OCCUPIED | FLAG_NEW;
+	for (int i = 0; i < source.regions_map.size(); i++) {
+		u32 new_flags = source.regions_map.data[i].flags & mask;
+		if (new_flags != mask)
+			continue;
+
+		auto& reg = source.regions_map.data[i];
+		reg.flags &= ~FLAG_NEW;
 		if (reg.size == IMAGE_HEADER_PAGE_SIZE)
 			find_section_names(proc, reg.base, header, source.sections, arena);
 
@@ -353,15 +372,14 @@ void refresh_process_regions(Source& source, Arena& arena) {
 			exe = str ? str+1 : name;
 		}
 
-		auto it = source.sections.find(reg.base);
-		char *s_name = (it != source.sections.end()) ? it->second : nullptr;
+		Region& s = source.sections[reg.base];
+		char *s_name = (s.flags & FLAG_OCCUPIED) ? s.name : nullptr;
 
 		if (exe || s_name) {
 			if (!reg.name)
 				reg.name = (char*)arena.allocate(PROCESS_NAME_LEN);
 
-			snprintf(reg.name, PROCESS_NAME_LEN-1,
-				"%s%s%s",
+			snprintf(reg.name, PROCESS_NAME_LEN-1, "%s%s%s",
 				exe ? exe : "",
 				s_name ? " " : "",
 				s_name ? s_name : ""
@@ -371,24 +389,30 @@ void refresh_process_regions(Source& source, Arena& arena) {
 			reg.name = nullptr;
 
 		bool modified = false;
-		for (int i = idx; i < source.regions.size(); i++) {
-			auto& r = source.regions[i];
-			if (r.base >= reg.base) {
-				if (r.base == reg.base)
-					r = reg;
-				else
-					source.regions.insert(source.regions.begin()+i, reg);
+		if (!first_run) {
+			for (int j = idx; j < source.regions.size(); j++) {
+				auto& r = source.regions[j];
+				if (r.base >= reg.base) {
+					if (r.base == reg.base)
+						r = reg;
+					else
+						source.regions.insert(source.regions.begin()+j, reg);
 
-				idx = i;
-				source.region_index[reg.base] = idx;
-				modified = true;
-				break;
+					idx = j;
+					modified = true;
+					break;
+				}
 			}
 		}
 
 		if (!modified)
 			source.regions.push_back(reg);
 	}
+
+	if (first_run)
+		std::sort(source.regions.begin(), source.regions.end(), [](Region& a, Region& b) {
+			return a.base < b.base;
+		});
 }
 
 void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena) {

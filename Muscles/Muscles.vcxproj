@@ -157,6 +157,7 @@
     <ClCompile Include="editor.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="format.cpp" />
+    <ClCompile Include="hashmap.cpp" />
     <ClCompile Include="icons.cpp" />
     <ClCompile Include="io-win32.cpp" />
     <ClCompile Include="io.cpp" />
