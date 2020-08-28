@@ -8,7 +8,7 @@ u32 murmur3_32(const char* key, int len, u32 seed) {
 	u32 h = seed;
 	const u32 *p = (const u32*)key;
 
-	for (int i = 0; i < len; i += sizeof(u32)) {
+	for (int i = 0; i < (len & ~3); i += sizeof(u32)) {
 		u32 k = *p++;
 		k *= c1;
 		k = ROTL32(k, 15);
@@ -64,14 +64,14 @@ void Region_Map::insert(u64 key, Region& reg) {
 
 	int n_slots = 1 << log2_slots;
 	int idx = get(key);
-
+/*
 	if (data[idx].flags & FLAG_OCCUPIED) {
 		int mask = n_slots - 1;
 		int end = (idx + mask) & mask;
 		while (idx != end && (data[idx].flags & FLAG_OCCUPIED))
 			idx = (idx + 1) & mask;
 	}
-
+*/
 	place_at(idx, reg);
 }
 
@@ -124,9 +124,124 @@ void Region_Map::next_level() {
 			idx = (idx + 1) & new_mask;
 
 		new_regions[idx] = data[i];
-		new_regions[idx].flags |= FLAG_OCCUPIED;
+		//new_regions[idx].flags |= FLAG_OCCUPIED;
 	}
 
 	delete[] data;
 	data = new_regions;
+}
+
+int Map::get(const char *str, int len) {
+	if (len <= 0) len = strlen(str);
+	u32 hash = murmur3_32(str, len, seed);
+
+	int mask = (1 << log2_slots) - 1;
+	int idx = hash & mask;
+
+	Bucket *buck = &data[idx];
+	if ((buck->flags & FLAG_OCCUPIED) == 0)
+		return idx;
+		
+	int end = (idx + mask) & mask;
+	while (idx != end && (data[idx].flags & FLAG_OCCUPIED)) {
+		if (!memcmp(str, sv->at(data[idx].name_idx), len))
+			break;
+
+		idx = (idx + 1) & mask;
+	}
+
+	return idx;
+}
+
+void Map::insert(const char *str, int len, u64 value) {
+	next_level_maybe();
+
+	if (len <= 0) len = strlen(str);
+	place_at(get(str, len), str, len, value);
+}
+void Map::insert(const char *str, int len, void *pointer) {
+	next_level_maybe();
+
+	if (len <= 0) len = strlen(str);
+	place_at(get(str, len), str, len, pointer);
+}
+
+void Map::assign(Bucket& buck, u64 value) {
+	buck.value = value;
+	buck.flags &= ~FLAG_POINTER;
+
+	if ((buck.flags & FLAG_OCCUPIED) == 0) {
+		buck.flags |= FLAG_OCCUPIED;
+		n_entries++;
+	}
+}
+void Map::assign(Bucket& buck, void *pointer) {
+	buck.pointer = pointer;
+	buck.flags |= FLAG_POINTER;
+
+	if ((buck.flags & FLAG_OCCUPIED) == 0) {
+		buck.flags |= FLAG_OCCUPIED;
+		n_entries++;
+	}
+}
+
+void Map::place_at(int idx, const char *str, int len, u64 value) {
+	int real_len = strlen(str);
+	if (len <= 0)
+		len = real_len;
+	else
+		len = real_len < len ? real_len : len;
+
+	data[idx].flags |= FLAG_OCCUPIED;
+	data[idx].flags &= ~FLAG_POINTER;
+	data[idx].name_idx = sv->add_buffer(str, len);
+	data[idx].value = value;
+	n_entries++;
+}
+void Map::place_at(int idx, const char *str, int len, void *pointer) {
+	int real_len = strlen(str);
+	if (len <= 0)
+		len = real_len;
+	else
+		len = real_len < len ? real_len : len;
+
+	data[idx].flags |= FLAG_OCCUPIED | FLAG_POINTER;
+	data[idx].name_idx = sv->add_buffer(str, len);
+	data[idx].pointer = pointer;
+	n_entries++;
+}
+
+void Map::next_level_maybe() {
+	int n_slots = 1 << log2_slots;
+	float load = (float)n_entries / (float)n_slots;
+	if (load >= max_load)
+		next_level();
+}
+
+void Map::next_level() {
+	int old_n_slots = 1 << log2_slots;
+	log2_slots++;
+
+	int new_n_slots = 1 << log2_slots;
+	int new_mask = new_n_slots - 1;
+	Bucket *new_buf = new Bucket[new_n_slots]();
+
+	for (int i = 0; i < old_n_slots; i++) {
+		if ((data[i].flags & FLAG_OCCUPIED) == 0)
+			continue;
+
+		const char *str = sv->at(data[i].name_idx);
+		int len = strlen(str);
+		u32 hash = murmur3_32(str, len, seed);
+		int idx = hash & new_mask;
+
+		int end = (idx + new_mask) & new_mask;
+		while (idx != end && (new_buf[idx].flags & FLAG_OCCUPIED))
+			idx = (idx + 1) & new_mask;
+
+		new_buf[idx] = data[i];
+	}
+
+	delete[] data;
+	data = new_buf;
 }

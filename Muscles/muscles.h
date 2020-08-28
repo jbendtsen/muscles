@@ -418,6 +418,57 @@ struct Input {
 	}
 };
 
+struct Bucket {
+	u32 flags = 0;
+	int name_idx = 0;
+	int parent_name_idx = 0;
+	union {
+		u64 value = 0;
+		void *pointer;
+	};
+};
+
+struct Map {
+	String_Vector default_sv;
+	String_Vector *sv = nullptr;
+
+	Bucket *data = nullptr;
+	int log2_slots = 7;
+	int n_entries = 0;
+	float max_load = 0.75;
+	const u32 seed = 331;
+
+	Map() {
+		data = new Bucket[1 << log2_slots]();
+		sv = &default_sv;
+	}
+	Map(int n_slots) {
+		log2_slots = next_power_of_2(n_slots).second;
+		data = new Bucket[1 << log2_slots]();
+		sv = &default_sv;
+	}
+	~Map() {
+		delete[] data;
+	}
+
+	Bucket& operator[](const char *str) {
+		return data[get(str, 0)];
+	}
+
+	int get(const char *str, int len);
+	void insert(const char *str, int len, u64 value);
+	void insert(const char *str, int len, void *pointer);
+
+	void assign(Bucket& buck, u64 value);
+	void assign(Bucket& buck, void *pointer);
+
+	void place_at(int idx, const char *str, int len, u64 value);
+	void place_at(int idx, const char *str, int len, void *pointer);
+
+	void next_level();
+	void next_level_maybe();
+};
+
 #define REG_PM_EXEC   0
 #define REG_PM_WRITE  1
 #define REG_PM_READ   2
@@ -453,6 +504,9 @@ struct Region_Map {
 	Region_Map(int n_slots) {
 		log2_slots = next_power_of_2(n_slots - 1).second;
 		data = new Region[1 << log2_slots]();
+	}
+	~Region_Map() {
+		delete[] data;
 	}
 
 	Region& operator[](u64 key) {
@@ -512,7 +566,7 @@ struct Source {
 };
 
 void get_process_id_list(std::vector<int>& list);
-int get_process_names(std::vector<int>& list, std::vector<Texture>& icons, std::vector<char*>& names, int count_per_cell);
+int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& names, int count_per_cell);
 
 const char *get_folder_separator();
 const char *get_root_folder();
@@ -608,11 +662,4 @@ struct Primitive {
 	std::string name;
 	int bit_size;
 	u32 flags;
-};
-
-struct Definition {
-	u32 flags;
-	int name_idx;
-	int parent_name_idx;
-	u32 value;
 };

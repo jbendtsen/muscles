@@ -6,6 +6,41 @@
 #define FONT_MONO "RobotoMono-Regular.ttf"
 #define FONT_SANS "OpenSans-Regular.ttf"
 
+std::pair<int, int> next_power_of_2(int num) {
+	int power = 2;
+	int exp = 1;
+	while (power < num) {
+		power *= 2;
+		exp++;
+	}
+
+	return std::make_pair(power, exp);
+}
+
+int count_digits(u64 num) {
+	if (num == 0)
+		return 1;
+
+	u64 n = num;
+	int n_digits = 0;
+	while (n) {
+		n >>= 4;
+		n_digits++;
+	}
+
+	return n_digits;
+}
+
+void print_hex(const char *hex, char *out, u64 n, int n_digits) {
+	int shift = (n_digits-1) * 4;
+	char *p = out;
+	for (int i = 0; i < n_digits; i++) {
+		*p++ = hex[(n >> shift) & 0xf];
+		shift -= 4;
+	}
+	*p = 0;
+}
+
 int run() {
 	if (!sdl_init("Muscles", 960, 540))
 		return 1;
@@ -80,39 +115,4 @@ int run() {
 	sdl_close();
 
 	return 0;
-}
-
-std::pair<int, int> next_power_of_2(int num) {
-	int power = 2;
-	int exp = 1;
-	while (power < num) {
-		power *= 2;
-		exp++;
-	}
-
-	return std::make_pair(power, exp);
-}
-
-int count_digits(u64 num) {
-	if (num == 0)
-		return 1;
-
-	u64 n = num;
-	int n_digits = 0;
-	while (n) {
-		n >>= 4;
-		n_digits++;
-	}
-
-	return n_digits;
-}
-
-void print_hex(const char *hex, char *out, u64 n, int n_digits) {
-	int shift = (n_digits-1) * 4;
-	char *p = out;
-	for (int i = 0; i < n_digits; i++) {
-		*p++ = hex[(n >> shift) & 0xf];
-		shift -= 4;
-	}
-	*p = 0;
 }

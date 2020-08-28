@@ -42,7 +42,7 @@ void get_process_id_list(std::vector<int>& list) {
 	list.resize(size / sizeof(int));
 }
 
-int get_process_names(std::vector<int>& list, std::vector<Texture>& icons, std::vector<char*>& names, int count_per_cell) {
+int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& names, int count_per_cell) {
 	const int proc_path_len = 1024;
 	auto proc_path = std::make_unique<char[]>(proc_path_len);
 	int size = list.size() < names.size() ? list.size() : names.size();
@@ -65,8 +65,6 @@ int get_process_names(std::vector<int>& list, std::vector<Texture>& icons, std::
 		if (!res)
 			continue;
 
-		icons[idx] = load_icon(path);
-
 		// The name in 'proc_path' is currently represented as a path to the file,
 		//  so we find the last backslash and use the string from that point
 		char *p = strrchr(path, '\\');
@@ -75,7 +73,19 @@ int get_process_names(std::vector<int>& list, std::vector<Texture>& icons, std::
 		else
 			p++;
 
-		snprintf(names[idx], count_per_cell, "%5d %s", pid, p);
+		int p_len = strlen(p);
+		int b_idx = icon_map.get(p, p_len);
+		Bucket& buck = icon_map.data[b_idx];
+
+		Texture icon = buck.pointer;
+		if ((buck.flags & FLAG_OCCUPIED) == 0) {
+			icon = load_icon(path);
+			icon_map.place_at(b_idx, p, p_len, load_icon(path));
+			icon_map.next_level_maybe();
+		}
+
+		icons[idx] = icon;
+		snprintf((char*)names[idx], count_per_cell, "%5d %s", pid, p);
 		idx++;
 	}
 

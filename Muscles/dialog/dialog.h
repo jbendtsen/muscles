@@ -32,6 +32,7 @@ struct Source_Menu {
 	RGBA folder_light = {0.88, 0.84, 0.26, 1.0};
 
 	Texture folder_icon = nullptr;
+	Map icon_map;
 };
 
 struct View_Source {

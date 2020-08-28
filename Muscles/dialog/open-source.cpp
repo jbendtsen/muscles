@@ -244,10 +244,9 @@ void refresh_process_menu(Box& b, Point& cursor) {
 	std::vector<int> pids;
 	get_process_id_list(pids);
 
-	ui->table->data.release();
 	ui->table->data.resize(pids.size());
 
-	int n_procs = get_process_names(pids, (std::vector<Texture>&)ui->table->data.columns[0], (std::vector<char*>&)ui->table->data.columns[1], 64);
+	int n_procs = get_process_names(pids, ui->icon_map, ui->table->data.columns[0], ui->table->data.columns[1], 64);
 	ui->table->data.resize(n_procs);
 }
 
