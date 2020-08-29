@@ -220,7 +220,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 	memcpy(hex, "0123456789abcdef", 16);
 
 	int idx = 0;
-	for (auto& row : ui->view->data.columns[1]) {
+	for (auto& row : ui->view->data->columns[1]) {
 		auto name = (const char*)row;
 		if (!name) {
 			idx++;
@@ -237,7 +237,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 			if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
 				break;
 
-			auto& cell = (char*&)ui->view->data.columns[2][idx];
+			auto& cell = (char*&)ui->view->data->columns[2][idx];
 
 			int offset = (field.bit_offset + 7) / 8;
 			if (offset >= span.retrieved) {
@@ -344,10 +344,10 @@ void make_view_object(Workspace& ws, Box& b) {
 		{ColumnString, 0, 0.5, 0, 0, "Name"},
 		{ColumnString, 20, 0.45, 0, 0, "Value"}
 	};
-	ui->view->data.init(cols, 3, 0);
 
-	ui->view->data.use_default_arena = false;
-	ui->view->data.arena.set_rewind_point();
+	ui->table.arena->set_rewind_point();
+	ui->table.init(cols, &ui->arena, 3, 0);
+	ui->view->data = &ui->table;
 
 	b.ui.push_back(ui->view);
 
@@ -386,7 +386,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	ui->source_dd->hl_color = ws.hl_color;
 	ui->source_dd->sel_color = ws.active_color;
 	ui->source_dd->width = 250;
-	ui->source_dd->external = (std::vector<char*>*)&mm->table->data.columns[2];
+	ui->source_dd->external = (std::vector<char*>*)&mm->sources->data->columns[2];
 	b.ui.push_back(ui->source_dd);
 
 	ui->source_edit = new Edit_Box();
@@ -464,8 +464,8 @@ void make_view_object(Workspace& ws, Box& b) {
 }
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
-	ui->view->data.clear_data();
-	ui->view->data.arena.rewind();
+	ui->view->data->clear_data();
+	ui->view->data->arena->rewind();
 
 	ui->record = nullptr;
 
@@ -490,10 +490,10 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, Strin
 
 	ui->record = record;
 	int n_rows = ui->record->fields.n_fields;
-	ui->view->data.resize(n_rows);
+	ui->view->data->resize(n_rows);
 
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view->data, 0, i, false);
-		ui->view->data.columns[1][i] = (void*)name_vector.at(ui->record->fields.data[i].field_name_idx);
+		ui->view->data->columns[1][i] = (void*)name_vector.at(ui->record->fields.data[i].field_name_idx);
 	}
 }

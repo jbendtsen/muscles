@@ -198,13 +198,13 @@ struct File_Entry {
 };
 
 #define SET_TABLE_CHECKBOX(table, col, row, state) \
-	*(u8*)&table.columns[col][row] = state ? 2 : 1
+	*(u8*)&table->columns[col][row] = state ? 2 : 1
 
 #define TOGGLE_TABLE_CHECKBOX(table, col, row) \
-	*(u8*)&table.columns[col][row] = *(u8*)&table.columns[col][row] == 2 ? 1 : 2
+	*(u8*)&table->columns[col][row] = *(u8*)&table->columns[col][row] == 2 ? 1 : 2
 
 #define TABLE_CHECKBOX_CHECKED(table, col, row) \
-	(*(u8*)&table.columns[col][row] == 2)
+	(*(u8*)&table->columns[col][row] == 2)
 
 enum Column_Type {
 	ColumnNone = 0,
@@ -224,14 +224,13 @@ struct Column {
 };
 
 struct Table {
-	Arena arena;
+	Arena *arena = nullptr;
 	std::vector<Column> headers;
 	std::unique_ptr<std::vector<void*>[]> columns;
 	std::set<int> list;
 	int filtered = -1;
-	bool use_default_arena = true;
 
-	Table() = default;
+	Table();
 	Table(const Table& t);
 	Table(Table&& t);
 
@@ -250,7 +249,7 @@ struct Table {
 		return it == list.end() ? -1 : std::distance(list.begin(), it);
 	}
 
-	void init(Column *headers, int n_cols, int n_rows);
+	void init(Column *headers, Arena *a, int n_cols, int n_rows);
 	void resize(int n_rows);
 	void clear_filter();
 	void clear_data();
@@ -467,6 +466,7 @@ struct Map {
 
 	void next_level();
 	void next_level_maybe();
+	void release();
 };
 
 #define REG_PM_EXEC   0

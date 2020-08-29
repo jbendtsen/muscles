@@ -289,7 +289,7 @@ void Data_View::update_tree(std::vector<Branch> *new_branches) {
 		std::copy(new_branches->begin(), new_branches->end(), branches.begin());
 	}
 
-	int n_rows = data.row_count();
+	int n_rows = data->row_count();
 	int n_branches = branches.size();
 	tree.clear();
 	tree.reserve(n_rows);
@@ -321,7 +321,7 @@ int Data_View::get_table_index(int view_idx) {
 		if (view_idx < tree_size)
 			idx = tree[view_idx];
 	}
-	else if (view_idx < data.row_count())
+	else if (view_idx < data->row_count())
 		idx = view_idx;
 
 	return idx;
@@ -344,9 +344,9 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
-	int n_rows = tree.size() > 0 ? tree.size() : data.row_count();
-	n_rows = data.filtered >= 0 ? data.filtered : n_rows;
-	int n_cols = data.column_count();
+	int n_rows = tree.size() > 0 ? tree.size() : data->row_count();
+	n_rows = data->filtered >= 0 ? data->filtered : n_rows;
+	int n_cols = data->column_count();
 
 	float space = font->line_spacing * font_units;
 
@@ -386,19 +386,19 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 }
 
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
-	float w = data.headers[idx].width;
+	float w = data->headers[idx].width;
 	if (w == 0)
 		return (total_width - min_width) * scale;
 
 	w *= total_width * scale;
 
-	if (data.headers[idx].max_size > 0) {
-		float max = data.headers[idx].max_size * font_height;
+	if (data->headers[idx].max_size > 0) {
+		float max = data->headers[idx].max_size * font_height;
 		w = w < max ? w : max;
 	}
 
-	if (data.headers[idx].min_size > 0) {
-		float min = data.headers[idx].min_size * font_height;
+	if (data->headers[idx].min_size > 0) {
+		float min = data->headers[idx].min_size * font_height;
 		w = w > min ? w : min;
 	}
 
@@ -427,8 +427,8 @@ void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect& back, fl
 }
 
 void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	int n_rows = data.row_count();
-	int n_cols = data.column_count();
+	int n_rows = data->row_count();
+	int n_cols = data->column_count();
 	int tree_size = tree.size();
 
 	float font_height = (float)font->render.text_height();
@@ -445,7 +445,7 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 	int top = 0;
 	int n_visible = table.h / item_height;
 
-	int n_items = data.filtered;
+	int n_items = data->filtered;
 	if (n_items < 0)
 		n_items = tree_size > 0 ? tree_size : n_rows;
 
@@ -461,7 +461,7 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 
 	if (hscroll) {
 		for (int i = 0; i < n_cols; i++)
-			scroll_total += data.headers[i].min_size + column_spacing;
+			scroll_total += data->headers[i].min_size + column_spacing;
 		scroll_total *= font_height / view.scale;
 
 		hscroll->set_maximum(scroll_total, pos.w);
@@ -488,7 +488,7 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 		float y = back.y - (header.h + font->line_offset * font_height);
 
 		for (int i = 0; i < n_cols; i++) {
-			font->render.draw_text_simple(renderer, data.headers[i].name, x, y);
+			font->render.draw_text_simple(renderer, data->headers[i].name, x, y);
 
 			float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 			x += w + column_spacing * font_height;
@@ -575,11 +575,11 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 		clip.x_upper = x+w < x_max ? x+w : x_max;
 
-		Column_Type type = data.headers[i].type;
+		Column_Type type = data->headers[i].type;
 
-		if (data.filtered >= 0) {
+		if (data->filtered >= 0) {
 			int n = -1;
-			for (auto& idx : data.list) {
+			for (auto& idx : data->list) {
 				if (y >= y_max)
 					break;
 				n++;
@@ -594,7 +594,7 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 					skip_draw = condition_col == i;
 				}
 
-				auto thing = data.columns[i][idx];
+				auto thing = data->columns[i][idx];
 				if (thing && !skip_draw)
 					draw_cell(thing, type, x, y);
 
@@ -630,7 +630,7 @@ void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, b
 						skip_draw = condition_col == i;
 					}
 
-					auto thing = data.columns[i][idx];
+					auto thing = data->columns[i][idx];
 					if (thing && !skip_draw)
 						draw_cell(thing, type, x, y);
 				}
@@ -659,8 +659,9 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 		}
 		int row = get_table_index(hl_row);
 		if (input.lclick) {
-			if (hl_col >= 0 && row >= 0 && data.headers[hl_col].type == ColumnCheckbox)
+			if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
 				TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+			}
 			else if (hl_row >= 0 && row < 0 && tree.size() > 0) {
 				int b = -row - 1;
 				branches[b].closed = !branches[b].closed;
@@ -676,7 +677,7 @@ void Data_View::deselect() {
 }
 
 void Data_View::release() {
-	data.release();
+	data->release();
 }
 
 void Divider::make_icon(float scale) {

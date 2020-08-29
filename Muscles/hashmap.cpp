@@ -245,3 +245,12 @@ void Map::next_level() {
 	delete[] data;
 	data = new_buf;
 }
+
+void Map::release() {
+	int n_slots = 1 << log2_slots;
+	for (int i = 0; i < n_slots; i++)
+		data[i].flags = 0;
+
+	sv->head = 0;
+	n_entries = 0;
+}

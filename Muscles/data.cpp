@@ -173,8 +173,11 @@ void Arena::rewind() {
 	memset(&pools.back()[idx], 0, delta);
 }
 
+Table::Table() : arena(get_default_arena()) {}
+
 Table::Table(const Table& t) :
-	headers(t.headers)
+	headers(t.headers),
+	arena(t.arena ? t.arena : get_default_arena())
 {
 	int n_cols = t.column_count();
 	int n_rows = t.row_count();
@@ -191,11 +194,11 @@ Table::Table(const Table& t) :
 
 Table::Table(Table&& t) :
 	headers(std::move(t.headers)),
-	columns(std::move(t.columns))
+	columns(std::move(t.columns)),
+	arena(t.arena ? t.arena : get_default_arena())
 {}
 
 void Table::resize(int n_rows) {
-	Arena *arena = use_default_arena ? get_default_arena() : &this->arena;
 	int n_cols = column_count();
 
 	for (int i = 0; i < n_cols; i++) {
@@ -213,7 +216,10 @@ void Table::resize(int n_rows) {
 	}
 }
 
-void Table::init(Column *headers, int n_cols, int n_rows) {
+void Table::init(Column *headers, Arena *a, int n_cols, int n_rows) {
+	if (a)
+		arena = a;
+
 	this->headers.resize(n_cols);
 	memcpy(this->headers.data(), headers, n_cols * sizeof(Column));
 

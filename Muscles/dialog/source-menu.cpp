@@ -14,7 +14,7 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, Box *
 	}
 
 	if (ui->search && ui->scroll) {
-		if (focussed && ui->table && ui->search->text_changed)
+		if (focussed && ui->menu && ui->search->text_changed)
 			ui->scroll->position = 0;
 
 		float x2 = b.box.w - ui->scroll->padding;
@@ -53,17 +53,17 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, Box *
 		ui->path->pos.h = path_h;
 	}
 
-	if (ui->table) {
-		ui->table->pos.x = b.border;
-		ui->table->pos.y = y;
-		ui->table->pos.w = end_x - ui->table->pos.x;
+	if (ui->menu) {
+		ui->menu->pos.x = b.border;
+		ui->menu->pos.y = y;
+		ui->menu->pos.w = end_x - ui->menu->pos.x;
 
 		float hack = 3;
 		float end = ui->div ? ui->div->pos.y - hack : b.box.h;
-		ui->table->pos.h = end - b.border - y;
+		ui->menu->pos.h = end - b.border - y;
 
 		if (ui->scroll)
-			ui->scroll->pos.h = ui->table->pos.h;
+			ui->scroll->pos.h = ui->menu->pos.h;
 	}
 
 	if (ui->cross) {
@@ -73,9 +73,9 @@ void update_source_menu(Box& b, Camera& view, Input& input, Point& inside, Box *
 		ui->cross->pos.h = b.cross_size;
 	}
 
-	if (ui->up && ui->table && ui->search) {
+	if (ui->up && ui->menu && ui->search) {
 		ui->up->pos = {
-			ui->table->pos.x,
+			ui->menu->pos.x,
 			ui->search->pos.y,
 			ui->up->width,
 			ui->up->height
@@ -107,14 +107,15 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->title->text = title_str;
 	ui->title->font = ws.default_font;
 
-	ui->table = new Data_View();
-	ui->table->action = table_handler;
-	ui->table->default_color = ws.back_color;
-	ui->table->hl_color = ws.hl_color;
-	ui->table->font = ws.default_font;
-	ui->table->consume_box_scroll = true;
-	ui->table->vscroll = ui->scroll;
-	ui->table->vscroll->content = ui->table;
+	ui->menu = new Data_View();
+	ui->menu->data = &ui->table;
+	ui->menu->action = table_handler;
+	ui->menu->default_color = ws.back_color;
+	ui->menu->hl_color = ws.hl_color;
+	ui->menu->font = ws.default_font;
+	ui->menu->consume_box_scroll = true;
+	ui->menu->vscroll = ui->scroll;
+	ui->menu->vscroll->content = ui->menu;
 
 	ui->search = new Edit_Box();
 	ui->search->caret = ws.caret_color;
@@ -124,13 +125,13 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 	ui->search->icon_color = ws.text_color;
 	ui->search->icon_color.a = 0.7;
 	ui->search->key_action = [](Edit_Box* edit, Input& input) {
-		Data_View *table = ((Source_Menu*)edit->parent->markup)->table;
-		table->data.update_filter(edit->editor.text);
-		table->needs_redraw = true;
+		Data_View *menu = ((Source_Menu*)edit->parent->markup)->menu;
+		menu->data->update_filter(edit->editor.text);
+		menu->needs_redraw = true;
 	};
 
 	b.ui.push_back(ui->scroll);
-	b.ui.push_back(ui->table);
+	b.ui.push_back(ui->menu);
 	b.ui.push_back(ui->search);
 	b.ui.push_back(ui->title);
 	b.ui.push_back(ui->cross);
@@ -146,7 +147,7 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 void notify_main_box(Workspace *ws) {
 	Box *main_box = ws->first_box_of_type(BoxMain);
 	auto main_ui = (Main_Menu*)main_box->markup;
-	main_ui->table->sel_row = ws->sources.size() - 1;
+	main_ui->sources->sel_row = ws->sources.size() - 1;
 	main_box->require_redraw();
 }
 
@@ -154,12 +155,12 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
 		return;
 
-	auto table = dynamic_cast<Data_View*>(elem);
-	if (table->hl_row < 0)
+	auto menu = dynamic_cast<Data_View*>(elem);
+	if (menu->hl_row < 0)
 		return;
 
-	int idx = table->data.index_from_filtered(table->hl_row);
-	char *process = (char*)table->data.columns[1][idx];
+	int idx = menu->data->index_from_filtered(menu->hl_row);
+	char *process = (char*)menu->data->columns[1][idx];
 
 	Workspace *ws = elem->parent->parent;
 	ws->delete_box(elem->parent);
@@ -189,25 +190,25 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
 		return;
 
-	auto table = dynamic_cast<Data_View*>(elem);
-	if (table->hl_row < 0)
+	auto menu = dynamic_cast<Data_View*>(elem);
+	if (menu->hl_row < 0)
 		return;
 
-	auto ui = (Source_Menu*)table->parent->markup;
+	auto ui = (Source_Menu*)menu->parent->markup;
 
-	int idx = table->data.index_from_filtered(table->hl_row);
-	auto file = (File_Entry*)table->data.columns[1][idx];
+	int idx = menu->data->index_from_filtered(menu->hl_row);
+	auto file = (File_Entry*)menu->data->columns[1][idx];
 
 	if (file->flags & 8) {
 		ui->path->placeholder += file->name;
 		ui->path->placeholder += get_folder_separator();
 
 		Point p = {0, 0};
-		refresh_file_menu(*table->parent, p);
+		refresh_file_menu(*menu->parent, p);
 
 		ui->scroll->position = 0;
 		ui->search->clear();
-		table->data.clear_filter();
+		menu->data->clear_filter();
 
 		return;
 	}
@@ -238,40 +239,43 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 
 void refresh_process_menu(Box& b, Point& cursor) {
 	auto ui = (Source_Menu*)b.markup;
-	if (ui->table->pos.contains(cursor))
+	if (ui->menu->pos.contains(cursor))
 		return;
 
 	std::vector<int> pids;
 	get_process_id_list(pids);
 
-	ui->table->data.resize(pids.size());
+	ui->menu->data->resize(pids.size());
 
-	int n_procs = get_process_names(pids, ui->icon_map, ui->table->data.columns[0], ui->table->data.columns[1], 64);
-	ui->table->data.resize(n_procs);
+	int n_procs = get_process_names(pids, ui->icon_map, ui->menu->data->columns[0], ui->menu->data->columns[1], 64);
+	ui->menu->data->resize(n_procs);
 }
 
 void process_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	auto ui = (Source_Menu*)b.markup;
 	ui->cross->img = ws.cross;
 	scale_search_bar(ui, new_scale);
+
+	ui->menu->data->release();
+	ui->icon_map.release();
 }
 
 void refresh_file_menu(Box& b, Point& cursor) {
 	auto ui = (Source_Menu*)b.markup;
-	if (ui->table->pos.contains(cursor))
+	if (ui->menu->pos.contains(cursor))
 		return;
 
-	auto& files = (std::vector<File_Entry*>&)ui->table->data.columns[1];
+	auto& files = (std::vector<File_Entry*>&)ui->menu->data->columns[1];
 	enumerate_files((char*)ui->path->placeholder.c_str(), files, *get_default_arena());
 
 	if (files.size() > 0) {
-		ui->table->data.columns[0].resize(files.size(), nullptr);
+		ui->menu->data->columns[0].resize(files.size(), nullptr);
 
 		for (int i = 0; i < files.size(); i++)
-			ui->table->data.columns[0][i] = (files[i]->flags & 8) ? ui->folder_icon : nullptr;
+			ui->menu->data->columns[0][i] = (files[i]->flags & 8) ? ui->folder_icon : nullptr;
 	}
 	else
-		ui->table->data.clear_data();
+		ui->menu->data->clear_data();
 }
 
 void file_up_handler(UI_Element *elem, bool dbl_click) {
@@ -288,12 +292,12 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 		ui->path->placeholder.erase(pos + 1);
 		ui->scroll->position = 0;
 		ui->search->clear();
-		ui->table->data.clear_filter();
+		ui->menu->data->clear_filter();
 	}
 
 	Point p = {0};
 	refresh_file_menu(*elem->parent, p);
-	ui->table->needs_redraw = true;
+	ui->menu->needs_redraw = true;
 }
 
 void file_path_handler(Edit_Box *edit, Input& input) {
@@ -316,11 +320,11 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 	auto ui = (Source_Menu*)edit->parent->markup;
 	ui->scroll->position = 0;
 	ui->search->clear();
-	ui->table->data.clear_filter();
+	ui->menu->data->clear_filter();
 
 	Point p = {0};
 	refresh_file_menu(*edit->parent, p);
-	ui->table->needs_redraw = true;
+	ui->menu->needs_redraw = true;
 }
 
 void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
@@ -332,11 +336,11 @@ void file_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	float h = ui->up->active_theme.font->render.text_height();
 	ui->up->icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
-	h = ui->table->font->render.text_height();
+	h = ui->menu->font->render.text_height();
 	ui->folder_icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
-	int n_rows = ui->table->data.row_count();
-	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];
+	int n_rows = ui->menu->data->row_count();
+	auto& icons = (std::vector<Texture>&)ui->menu->data->columns[0];
 	for (int i = 0; i < n_rows; i++) {
 		if (icons[i])
 			icons[i] = ui->folder_icon;
@@ -357,7 +361,7 @@ void make_process_menu(Workspace& ws, Box& b) {
 		{ColumnImage, 0, 0.1, 0, 1.5, ""},
 		{ColumnString, 64, 0.9, 0, 0, ""}
 	};
-	ui->table->data.init(col, 2, 0);
+	ui->menu->data->init(col, nullptr, 2, 0);
 }
 
 void make_file_menu(Workspace& ws, Box& b) {
@@ -371,9 +375,9 @@ void make_file_menu(Workspace& ws, Box& b) {
 		{ColumnImage, 0, 0.1, 0, 1.5, ""},
 		{ColumnFile, 0, 0.9, 0, 0, ""}
 	};
-	ui->table->data.init(col, 2, 1);
+	ui->menu->data->init(col, nullptr, 2, 1);
 
-	float h = ui->table->font->render.text_height();
+	float h = ui->menu->font->render.text_height();
 	ui->folder_icon = make_folder_icon(ui->folder_dark, ui->folder_light, h, h);
 
 	ui->up = new Button();

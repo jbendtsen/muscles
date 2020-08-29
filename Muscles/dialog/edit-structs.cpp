@@ -145,8 +145,8 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	ui->output->branches.clear();
 	ui->output->branch_name_vector.head = 0;
 
-	ui->output->data.resize(n_rows);
-	ui->output->data.arena.rewind();
+	ui->output->data->resize(n_rows);
+	ui->output->data->arena->rewind();
 
 	int idx = 0;
 	for (auto& s : ui->structs) {
@@ -165,10 +165,10 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 
 		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
 			auto& f = s->fields.data[i];
-			auto& cols = ui->output->data.columns;
+			auto& cols = ui->output->data->columns;
 
-			cols[0][idx] = format_field_name(ui->output->data.arena, ui->name_vector, f);
-			cols[1][idx] = format_type_name(ui->output->data.arena, ui->name_vector, f);
+			cols[0][idx] = format_field_name(*ui->output->data->arena, ui->name_vector, f);
+			cols[1][idx] = format_type_name(*ui->output->data->arena, ui->name_vector, f);
 		}
 	}
 
@@ -309,9 +309,9 @@ void make_struct_box(Workspace& ws, Box& b) {
 		{ColumnString, 0, 0.5, 0, 0, "Type"}
 	};
 
-	ui->output->data.use_default_arena = false;
-	ui->output->data.arena.set_rewind_point();
-	ui->output->data.init(cols, 2, 0);
+	ui->arena.set_rewind_point();
+	ui->table.init(cols, &ui->arena, 2, 0);
+	ui->output->data = &ui->table;
 	b.ui.push_back(ui->output);
 
 	b.type = BoxStructs;

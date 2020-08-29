@@ -4,13 +4,13 @@
 
 void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	Main_Menu *ui = (Main_Menu*)b.markup;
-	if (ui->table->sel_row >= 0) {
+	if (ui->sources->sel_row >= 0) {
 		ui->button->set_active(true);
-		ui->view->content[0] = (char*)ui->table->data.columns[2][ui->table->sel_row];
+		ui->view_dd->content[0] = (char*)ui->sources->data->columns[2][ui->sources->sel_row];
 	}
 	else {
 		ui->button->set_active(false);
-		ui->view->content[0] = (char*)"<source>";
+		ui->view_dd->content[0] = (char*)"<source>";
 	}
 
 	b.update_elements(view, input, inside, hover, focussed);
@@ -19,15 +19,15 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *ho
 	float y = b.border;
 	float dd_x = x;
 
-	ui->sources->pos = { dd_x, y, 80, 25 };
-	dd_x += ui->sources->pos.w;
+	ui->sources_dd->pos = { dd_x, y, 80, 25 };
+	dd_x += ui->sources_dd->pos.w;
 
-	ui->edit->pos = { dd_x, y, 56, 25 };
-	dd_x += ui->edit->pos.w;
+	ui->edit_dd->pos = { dd_x, y, 56, 25 };
+	dd_x += ui->edit_dd->pos.w;
 
-	ui->view->pos = { dd_x, y, 56, 25 };
+	ui->view_dd->pos = { dd_x, y, 56, 25 };
 
-	y += ui->sources->pos.h + b.border;
+	y += ui->sources_dd->pos.h + b.border;
 
 	float view_w = ui->button->width;
 	float view_h = ui->button->height;
@@ -41,7 +41,7 @@ void update_main_menu(Box& b, Camera& view, Input& input, Point& inside, Box *ho
 
 	y += 10;
 
-	ui->table->pos = {
+	ui->sources->pos = {
 		x,
 		y,
 		b.box.w - 2*x,
@@ -56,13 +56,13 @@ void refresh_main_menu(Box& b, Point& cursor) {
 	auto& sources = (std::vector<Source*>&)b.parent->sources;
 
 	int n_sources = sources.size();
-	ui->table->data.resize(n_sources);
+	ui->sources->data->resize(n_sources);
 	if (!n_sources)
 		return;
 
-	auto& icons = ui->table->data.columns[0];
-	auto& pids = (std::vector<char*>&)ui->table->data.columns[1];
-	auto& names = (std::vector<char*>&)ui->table->data.columns[2];
+	auto& icons = ui->sources->data->columns[0];
+	auto& pids = (std::vector<char*>&)ui->sources->data->columns[1];
+	auto& names = (std::vector<char*>&)ui->sources->data->columns[2];
 
 	Arena *arena = get_default_arena();
 	for (int i = 0; i < n_sources; i++) {
@@ -142,6 +142,9 @@ void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	else if (dd->sel == 1) {
 		open_edit_structs(*ws);
 	}
+	else if (dd->sel == 2) {
+		open_view_definitions(*ws);
+	}
 
 	dd->parent->set_dropdown(nullptr);
 }
@@ -155,7 +158,7 @@ void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	Workspace *ws = dd->parent->parent;
 
 	if (dd->sel == 0) {
-		open_view_source(*ws, ui->table->sel_row);
+		open_view_source(*ws, ui->sources->sel_row);
 	}
 
 	dd->parent->set_dropdown(nullptr);
@@ -176,12 +179,12 @@ void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	sdl_destroy_texture(&ui->file_icon);
 	sdl_destroy_texture(&ui->process_icon);
 
-	float h = ui->table->font->render.text_height();
+	float h = ui->sources->font->render.text_height();
 	ui->file_icon = make_file_icon(ui->file_back, ui->file_fold, ui->file_line, h, h);
 	ui->process_icon = make_process_icon(ui->process_back, ui->process_outline, h);
 
-	int n_rows = ui->table->data.row_count();
-	auto& icons = (std::vector<Texture>&)ui->table->data.columns[0];
+	int n_rows = ui->sources->data->row_count();
+	auto& icons = (std::vector<Texture>&)ui->sources->data->columns[0];
 	for (int i = 0; i < n_rows; i++) {
 		Source_Type type = ((Source*)ws.sources[i])->type;
 		if (type == SourceFile)
@@ -201,68 +204,69 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->file_fold = {0.9, 0.9, 0.9, 1.0};
 	ui->file_line = {0.5, 0.5, 0.5, 1.0};
 
-	ui->sources = new Drop_Down();
-	ui->sources->title = "Sources";
-	ui->sources->font = ws.make_font(11, ws.text_color);
-	ui->sources->action = sources_main_menu_handler;
-	ui->sources->default_color = ws.back_color;
-	ui->sources->hl_color = ws.hl_color;
-	ui->sources->sel_color = ws.active_color;
-	ui->sources->width = 150;
-	ui->sources->content = {
+	ui->sources_dd = new Drop_Down();
+	ui->sources_dd->title = "Sources";
+	ui->sources_dd->font = ws.make_font(11, ws.text_color);
+	ui->sources_dd->action = sources_main_menu_handler;
+	ui->sources_dd->default_color = ws.back_color;
+	ui->sources_dd->hl_color = ws.hl_color;
+	ui->sources_dd->sel_color = ws.active_color;
+	ui->sources_dd->width = 150;
+	ui->sources_dd->content = {
 		(char*)"Add File",
 		(char*)"Add Process"
 	};
 
-	ui->edit = new Drop_Down();
-	ui->edit->title = "Edit";
-	ui->edit->font = ui->sources->font;
-	ui->edit->action = edit_main_menu_handler;
-	ui->edit->default_color = ws.back_color;
-	ui->edit->hl_color = ws.hl_color;
-	ui->edit->sel_color = ws.active_color;
-	ui->edit->width = 150;
-	ui->edit->content = {
+	ui->edit_dd = new Drop_Down();
+	ui->edit_dd->title = "Edit";
+	ui->edit_dd->font = ui->sources_dd->font;
+	ui->edit_dd->action = edit_main_menu_handler;
+	ui->edit_dd->default_color = ws.back_color;
+	ui->edit_dd->hl_color = ws.hl_color;
+	ui->edit_dd->sel_color = ws.active_color;
+	ui->edit_dd->width = 150;
+	ui->edit_dd->content = {
 		(char*)"New Object",
 		(char*)"Structs",
-		(char*)"Mappings",
-		(char*)"Types"
+		(char*)"Definitions",
+		(char*)"Mappings"
 	};
 
-	ui->view = new Drop_Down();
-	ui->view->title = "View";
-	ui->view->font = ui->sources->font;
-	ui->view->action = view_main_menu_handler;
-	ui->view->default_color = ws.back_color;
-	ui->view->hl_color = ws.hl_color;
-	ui->view->sel_color = ws.active_color;
-	ui->view->width = 140;
-	ui->view->content = {
+	ui->view_dd = new Drop_Down();
+	ui->view_dd->title = "View";
+	ui->view_dd->font = ui->sources_dd->font;
+	ui->view_dd->action = view_main_menu_handler;
+	ui->view_dd->default_color = ws.back_color;
+	ui->view_dd->hl_color = ws.hl_color;
+	ui->view_dd->sel_color = ws.active_color;
+	ui->view_dd->width = 140;
+	ui->view_dd->content = {
 		(char*)"<source>",
 		(char*)"Search"
 	};
 
-	ui->table = new Data_View();
-	ui->table->show_column_names = true;
-	ui->table->action = table_main_menu_handler;
-	ui->table->font = ws.default_font;
-	ui->table->default_color = ws.dark_color;
-	ui->table->hl_color = ws.hl_color;
-	ui->table->sel_color = ws.light_color;
-	ui->table->back_color = ws.back_color;
+	ui->sources = new Data_View();
+	ui->sources->show_column_names = true;
+	ui->sources->action = table_main_menu_handler;
+	ui->sources->font = ws.default_font;
+	ui->sources->default_color = ws.dark_color;
+	ui->sources->hl_color = ws.hl_color;
+	ui->sources->sel_color = ws.light_color;
+	ui->sources->back_color = ws.back_color;
 
 	Column sources_cols[] = {
 		{ColumnImage, 0, 0.1, 0, 1.2, ""},
 		{ColumnString, 0, 0.2, 0, 3, "PID"},
 		{ColumnString, 0, 0.7, 0, 0, "Name"},
 	};
-	ui->table->data.init(sources_cols, 3, 0);
+	ui->table.init(sources_cols, nullptr, 3, 0);
+	ui->sources->data = &ui->table;
 
 	ui->button = new Button();
 
 	ui->button->action = [](UI_Element* elem, bool dbl_click) {
 		auto ui = (Main_Menu*)elem->parent->markup;
-		open_view_source(*elem->parent->parent, ui->table->sel_row);
+		open_view_source(*elem->parent->parent, ui->sources->sel_row);
 	};
 
 	ui->button->active_theme = {
@@ -281,10 +285,10 @@ void make_main_menu(Workspace& ws, Box& b) {
 	ui->button->active = false;
 	ui->button->update_size(ws.temp_scale);
 
+	b.ui.push_back(ui->sources_dd);
+	b.ui.push_back(ui->edit_dd);
+	b.ui.push_back(ui->view_dd);
 	b.ui.push_back(ui->sources);
-	b.ui.push_back(ui->edit);
-	b.ui.push_back(ui->view);
-	b.ui.push_back(ui->table);
 	b.ui.push_back(ui->button);
 
 	b.type = BoxMain;
@@ -339,14 +343,15 @@ void make_opening_menu(Workspace& ws, Box& b) {
 	title->text = "Muscles";
 
 	Data_View *table = new Data_View();
+	table->data = new Table();
 	table->font = ws.default_font;
 	table->hl_color = ws.hl_color;
 	table->default_color = ws.back_color;
 
 	Column menu_column = { ColumnString, 0, 1, 0, 0, "" };
-	table->data.init(&menu_column, 1, 2);
-	table->data.columns[0][0] = (void*)"New";
-	table->data.columns[0][1] = (void*)"Open Workspace";
+	table->data->init(&menu_column, nullptr, 1, 2);
+	table->data->columns[0][0] = (void*)"New";
+	table->data->columns[0][1] = (void*)"Open Workspace";
 	table->action = opening_menu_handler;
 
 	b.ui.push_back(dynamic_cast<UI_Element*>(title));

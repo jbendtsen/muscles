@@ -145,7 +145,7 @@ struct Data_View : UI_Element {
 
 	RGBA back_color = {};
 
-	Table data = {};
+	Table *data = nullptr;
 
 	struct Branch {
 		int row_idx;
@@ -449,7 +449,8 @@ enum BoxType {
 	BoxDefault = 0,
 	BoxMain,
 	BoxStructs,
-	BoxObject
+	BoxObject,
+	BoxDefinitions
 };
 
 struct Workspace;

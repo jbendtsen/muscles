@@ -198,13 +198,13 @@ void update_regions_table(View_Source *ui) {
 		return;
 	}
 
-	sel = ui->reg_table->data.index_from_filtered(sel);
+	sel = ui->reg_table->data->index_from_filtered(sel);
 
-	char *name = (char*)ui->reg_table->data.columns[0][sel];
+	char *name = (char*)ui->reg_table->data->columns[0][sel];
 	ui->reg_name->text = name ? name : "";
 
-	u64 address = strtoull((char*)ui->reg_table->data.columns[1][sel], nullptr, 16);
-	u64 size = strtoull((char*)ui->reg_table->data.columns[2][sel], nullptr, 16);
+	u64 address = strtoull((char*)ui->reg_table->data->columns[1][sel], nullptr, 16);
+	u64 size = strtoull((char*)ui->reg_table->data->columns[2][sel], nullptr, 16);
 
 	ui->selected_region = address;
 	ui->hex->set_region(address, size);
@@ -221,7 +221,7 @@ void regions_handler(UI_Element *elem, bool dbl_click) {
 }
 
 void refresh_region_list(View_Source *ui, Point& cursor) {
-	int n_rows = ui->reg_table->data.row_count();
+	int n_rows = ui->table.row_count();
 	bool hovered = ui->reg_table->pos.contains(cursor);
 	ui->source->block_region_refresh = hovered;
 
@@ -235,7 +235,7 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 	if (n_sources != ui->region_list.size()) {
 		u64 sel_addr = 0;
 
-		ui->reg_table->data.resize(n_sources);
+		ui->reg_table->data->resize(n_sources);
 		ui->region_list.resize(n_sources);
 		std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
 	}
@@ -244,9 +244,9 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 	char hex[16];
 	memcpy(hex, "0123456789abcdef", 16);
 
-	auto& names = (std::vector<char*>&)ui->reg_table->data.columns[0];
-	auto& addrs = (std::vector<char*>&)ui->reg_table->data.columns[1];
-	auto& sizes = (std::vector<char*>&)ui->reg_table->data.columns[2];
+	auto& names = (std::vector<char*>&)ui->table.columns[0];
+	auto& addrs = (std::vector<char*>&)ui->table.columns[1];
+	auto& sizes = (std::vector<char*>&)ui->table.columns[2];
 
 	int idx = 0, sel = -1;
 	for (auto& r : ui->region_list) {
@@ -262,9 +262,9 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 
 	ui->goto_digits = idx <= 0 ? 4 : count_digits(ui->source->regions[idx-1].base) + 2;
 
-	if (ui->reg_table->data.filtered > 0) {
-		ui->reg_table->data.update_filter(ui->reg_search->editor.text);
-		sel = ui->reg_table->data.filtered_from_index(sel);
+	if (ui->table.filtered > 0) {
+		ui->table.update_filter(ui->reg_search->editor.text);
+		sel = ui->table.filtered_from_index(sel);
 	}
 
 	ui->reg_table->sel_row = sel;
@@ -293,7 +293,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 		}
 
 		if (sel_row > 0)
-			ui->reg_table->data.clear_filter();
+			ui->reg_table->data->clear_filter();
 
 		ui->reg_table->sel_row = sel_row;
 		update_regions_table(ui);
@@ -311,7 +311,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 
 void region_search_handler(Edit_Box *edit, Input& input) {
 	auto ui = (View_Source*)edit->parent->markup;
-	ui->reg_table->data.update_filter(edit->editor.text);
+	ui->reg_table->data->update_filter(edit->editor.text);
 	ui->reg_table->hl_row = ui->reg_table->sel_row = -1;
 	ui->reg_scroll->position = 0;
 	ui->selected_region = 0;
@@ -428,7 +428,8 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 			{ColumnString, 20, 0.1, size_w, 0, "Size"}
 		};
 
-		ui->reg_table->data.init(cols, 3, 0);
+		ui->table.init(cols, nullptr, 3, 0);
+		ui->reg_table->data = &ui->table;
 		b.ui.push_back(ui->reg_table);
 
 		ui->reg_search = new Edit_Box();

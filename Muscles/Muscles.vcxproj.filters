@@ -57,9 +57,6 @@
     <ClCompile Include="structs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dialog\open-source.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="format.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -67,6 +64,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hashmap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="view-definitions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dialog\source-menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

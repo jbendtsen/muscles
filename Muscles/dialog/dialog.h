@@ -1,11 +1,13 @@
 #pragma once
 
 struct Main_Menu {
-	Drop_Down *sources = nullptr;
-	Drop_Down *edit = nullptr;
-	Drop_Down *view = nullptr;
-	Data_View *table = nullptr;
+	Drop_Down *sources_dd = nullptr;
+	Drop_Down *edit_dd = nullptr;
+	Drop_Down *view_dd = nullptr;
+	Data_View *sources = nullptr;
 	Button *button = nullptr;
+
+	Table table;
 
 	Texture process_icon = nullptr;
 	RGBA process_back = {};
@@ -18,7 +20,7 @@ struct Main_Menu {
 };
 
 struct Source_Menu {
-	Data_View *table = nullptr;
+	Data_View *menu = nullptr;
 	Image *cross = nullptr;
 	Label *title = nullptr;
 	Scroll *scroll = nullptr;
@@ -27,6 +29,8 @@ struct Source_Menu {
 	Button *up = nullptr;
 	Divider *div = nullptr;
 	Edit_Box *path = nullptr;
+
+	Table table;
 
 	RGBA folder_dark = {0.65, 0.64, 0.15, 1.0};
 	RGBA folder_light = {0.88, 0.84, 0.26, 1.0};
@@ -54,6 +58,7 @@ struct View_Source {
 	Checkbox *hex_box = nullptr;
 	Checkbox *ascii_box = nullptr;
 
+	Table table;
 	Source *source = nullptr;
 	std::vector<u64> region_list;
 	u64 selected_region = 0;
@@ -74,12 +79,16 @@ struct Edit_Structs {
 	Scroll *out_hscroll = nullptr;
 	Scroll *out_vscroll = nullptr;
 
-	float min_width = 200;
+	Arena arena;
+	Table table;
 
 	String_Vector tokens;
 	String_Vector name_vector;
+
 	std::vector<Struct*> structs;
 	std::vector<char*> struct_names;
+
+	float min_width = 200;
 	bool first_run = true;
 };
 
@@ -104,6 +113,9 @@ struct View_Object {
 	Button::Theme theme_on = {};
 	Button::Theme theme_off = {};
 
+	Arena arena;
+	Table table;
+
 	Struct *record = nullptr;
 	Source *source = nullptr;
 	int span_idx = -1;
@@ -115,10 +127,27 @@ struct View_Object {
 	bool all = true;
 };
 
+struct View_Definitions {
+	Image *cross = nullptr;
+	Label *title = nullptr;
+	//Tabs *tabs = nullptr;
+	Data_View *view = nullptr;
+	Scroll *vscroll = nullptr;
+	Scroll *hscroll = nullptr;
+
+	Table types;
+	Table enums;
+	Table typedefs;
+	Table constants;
+
+	Arena arena;
+};
+
 void make_file_menu(Workspace& ws, Box& b);
 void make_process_menu(Workspace& ws, Box& b);
 void make_view_source_menu(Workspace& ws, Source *s, Box& b);
 void make_view_object(Workspace& ws, Box& b);
 void open_edit_structs(Workspace& ws);
+void open_view_definitions(Workspace& ws);
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);
