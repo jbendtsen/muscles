@@ -230,7 +230,6 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit.caret_color = ws.caret_color;
 	ui->edit.font = ws.make_font(10, ws.text_color);
 	ui->edit.editor.text = "struct Test {\n\tint a;\n\tint b;\n};";
-	ui->edit.action = get_set_active_edit();
 	ui->edit.key_action = structs_edit_handler;
 	b.ui.push_back(&ui->edit);
 

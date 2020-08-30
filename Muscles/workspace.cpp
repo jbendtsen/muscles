@@ -363,7 +363,7 @@ void Box::set_dropdown(Drop_Down *dd) {
 void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	if (input.lclick) {
 		if (active_edit) {
-			if (active_edit->disengage(input, true))
+			if (active_edit->parent->disengage(input, true))
 				input.lclick = false;
 		}
 		active_edit = nullptr;

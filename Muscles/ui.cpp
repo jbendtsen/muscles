@@ -33,19 +33,20 @@ float center_align_title(Label *title, Box& b, float scale, float y_offset) {
 	return (line_h + padding * 2) / scale;
 }
 
-void set_active_edit(UI_Element *elem, bool dbl_click) {
-	elem->parent->active_edit = elem;
-}
-void (*get_set_active_edit(void))(UI_Element*, bool) {
-	return set_active_edit;
-}
-
 void delete_box(UI_Element *elem, bool dbl_click) {
 	elem->parent->parent->delete_box(elem->parent);
 }
-void (*get_delete_box(void))(UI_Element*, bool) {
-	return delete_box;
+void (*get_delete_box(void))(UI_Element*, bool) { return delete_box; }
+
+void text_editor_action(UI_Element *elem, bool dbl_click) {
+	elem->parent->active_edit = &dynamic_cast<Text_Editor*>(elem)->editor;
 }
+void (*get_text_editor_action(void))(UI_Element*, bool) { return text_editor_action; }
+
+void edit_box_action(UI_Element *elem, bool dbl_click) {
+	elem->parent->active_edit = &dynamic_cast<Edit_Box*>(elem)->editor;
+}
+void (*get_edit_box_action(void))(UI_Element*, bool) { return edit_box_action; }
 
 Rect UI_Element::make_ui_box(Rect_Int& box, Rect& elem, float scale) {
 	if (soft_draw) {
@@ -648,18 +649,19 @@ void Divider::make_icon(float scale) {
 	RGBA fade_color = default_color;
 	fade_color.a = 0.5;
 
-	icon_h = padding * 1.25 * scale + 0.5;
-	int w = 0;
+	float pad = padding * 1.5;
+	float h = pad * scale;
+	float w = h * 1.375;
+	icon_w = w + 0.5;
+	icon_h = h + 0.5;
 
-	double squish = 1.0;
-	double gap = breadth * 2 / padding;
-	double thickness = 0.3;
-	double sharpness = 3.0;
+	double gap = breadth * 2 / pad;
+	double thickness = 0.15;
+	double sharpness = 2.0;
 
-	icon_default = make_vertical_divider_icon(fade_color, icon_h, squish, gap, thickness, sharpness, &w);
-	icon_hl = make_vertical_divider_icon(default_color, icon_h, squish, gap, thickness, sharpness, &w);
+	icon_default = make_divider_icon(fade_color, icon_w, icon_h, gap, thickness, sharpness, false);
+	icon_hl = make_divider_icon(default_color, icon_w, icon_h, gap, thickness, sharpness, false);
 
-	icon_w = w;
 	icon = was_hl ? icon_hl : icon_default;
 }
 
@@ -839,31 +841,9 @@ bool Edit_Box::disengage(Input& input, bool try_select) {
 }
 
 void Edit_Box::key_handler(Camera& view, Input& input) {
-	/*
-	if (delta) {
-		editor.set_cursor(editor.primary, editor.primary.cursor + delta);
-
-		float x = 0;
-		const char *str = line.c_str();
-		font->render.text_width(str, cursor, &x);
-
-		float front = 0;
-		if (cursor > 0)
-			front = font->render.glyph_for(str[cursor-1])->box_w;
-
-		if (delta > 0 && x > offset + window_w)
-			offset = x - window_w;
-		else if (delta < 0 && x - front < offset)
-			offset = x - front;
-
-		if (offset < 0)
-			offset = 0;
-	}
-	*/
-
 	text_changed = false;
 
-	if (this != parent->active_edit)
+	if (parent->active_edit != &editor)
 		return;
 
 	int res = editor.handle_input(input);
@@ -982,7 +962,7 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 
 	fnt->render.draw_text(renderer, str, rect.x + text_x - offset, rect.y + text_y, clip);
 
-	if (this == parent->active_edit) {
+	if (parent->active_edit == &editor) {
 		float caret_w = (float)caret_width * height;
 
 		Rect_Int r = {
@@ -1274,6 +1254,14 @@ void Label::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool e
 	font->render.draw_text(renderer, text.c_str(), rect.x + x, rect.y + y, clip);
 }
 
+void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+
+}
+
+void Number_Edit::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	//Rect box = make_ui_box(rect, pos, view.scale);
+}
+
 void Scroll::set_maximum(double max, double span) {
 	maximum = max;
 
@@ -1421,6 +1409,11 @@ void Tabs::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered
 			break;
 		}
 	}
+
+	if (input.lclick && hl >= 0) {
+		sel = hl;
+		event(this);
+	}
 }
 
 void Tabs::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -1459,7 +1452,7 @@ void Tabs::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool el
 }
 
 void Text_Editor::key_handler(Camera& view, Input& input) {
-	if (this == parent->active_edit) {
+	if (parent->active_edit == &editor) {
 		int res = editor.handle_input(input);
 		if ((res & 1) && key_action)
 			key_action(this, input);
@@ -1475,7 +1468,7 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (hovered && input.lclick && pos.contains(cursor)) {
 		parent->ui_held = true;
-		parent->active_edit = this;
+		parent->active_edit = &editor;
 		mouse_held = true;
 		needs_redraw = true;
 	}
@@ -1583,7 +1576,7 @@ void Text_Editor::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, 
 }
 
 void Text_Editor::post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	if (this != parent->active_edit)
+	if (parent->active_edit != &editor)
 		return;
 
 	Rect back = make_ui_box(rect, pos, view.scale);

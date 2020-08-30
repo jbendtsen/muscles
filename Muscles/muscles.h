@@ -135,7 +135,7 @@ Texture make_cross_icon(RGBA& color, int length);
 Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
 Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
 Texture make_process_icon(RGBA& back, RGBA& outline, int length);
-Texture make_vertical_divider_icon(RGBA& color, int height, double squish, double gap, double thicc, double sharpness, int *width = nullptr);
+Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool vertical);
 Texture make_goto_icon(RGBA& color, int length);
 Texture make_glass_icon(RGBA& color, int length);
 Texture make_plus_minus_icon(RGBA& color, int length, bool plus);

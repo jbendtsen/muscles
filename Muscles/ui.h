@@ -13,13 +13,18 @@ enum Element_Type {
 	ElemCheckbox,
 	ElemHexView,
 	ElemTextEditor,
-	ElemTabs
+	ElemTabs,
+	ElemNumEdit
 };
+
+struct UI_Element;
+struct Box;
 
 struct Editor {
 	bool multiline = true;
 	bool selected = false;
 	int tab_width = 4;
+	UI_Element *parent = nullptr;
 
 	struct Cursor {
 		int cursor;
@@ -39,8 +44,6 @@ struct Editor {
 
 	int handle_input(Input& input);
 };
-
-struct Box;
 
 struct UI_Element {
 	bool visible = true;
@@ -93,8 +96,9 @@ struct UI_Element {
 	UI_Element(Element_Type t, Cursor_Type ct = CursorDefault) : elem_type(t), cursor_type(ct) {}
 };
 
-void (*get_set_active_edit(void))(UI_Element*, bool);
 void (*get_delete_box(void))(UI_Element*, bool);
+void (*get_text_editor_action(void))(UI_Element*, bool);
+void (*get_edit_box_action(void))(UI_Element*, bool);
 
 struct Scroll;
 
@@ -261,7 +265,8 @@ struct Drop_Down : UI_Element {
 
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(ElemEditBox, CursorEdit) {
-		action = get_set_active_edit();
+		action = get_edit_box_action();
+		editor.parent = this;
 		editor.multiline = false;
 	}
 
@@ -379,6 +384,16 @@ struct Label : UI_Element {
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
+struct Number_Edit : UI_Element {
+	Number_Edit() : UI_Element(ElemNumEdit) {}
+
+	int number = 0;
+	Editor editor = {};
+
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
 struct Scroll : UI_Element {
 	Scroll() : UI_Element(ElemScroll) {}
 
@@ -415,6 +430,10 @@ struct Scroll : UI_Element {
 };
 
 struct Tabs : UI_Element {
+	Tabs() : UI_Element(ElemTabs) {}
+
+	void (*event)(Tabs *tabs) = nullptr;
+
 	struct Tab {
 		char *name;
 		float width;
@@ -435,6 +454,8 @@ struct Tabs : UI_Element {
 
 struct Text_Editor : UI_Element {
 	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {
+		action = get_text_editor_action();
+		editor.parent = this;
 		use_sf_cache = true;
 	}
 
@@ -493,7 +514,7 @@ struct Box {
 
 	Workspace *parent = nullptr;
 	Drop_Down *current_dd = nullptr;
-	UI_Element *active_edit = nullptr;
+	Editor *active_edit = nullptr;
 	void *markup = nullptr;
 
 	void (*update_handler)(Box&, Camera&, Input&, Point&, Box*, bool) = nullptr;

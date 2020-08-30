@@ -269,48 +269,57 @@ Texture make_process_icon(RGBA& back, RGBA& outline, int length) {
 	return sdl_create_texture(pixels.get(), length, length);
 }
 
-Texture make_vertical_divider_icon(RGBA& color, int height, double squish, double gap, double thicc, double sharpness, int *width) {
-	RGBA clr = color;
-	int g = (int)((double)height * gap + 0.5);
-	gap = (double)g / (double)height;
+Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool vertical) {
+	RGBA shade = color;
+	auto pixels = std::make_unique<u32[]>(width * height);
 
-	int w = (double)height * (1.0 + gap + thicc) + 0.5;
-	auto pixels = std::make_unique<u32[]>(w * height);
-
-	double mirror = (gap + thicc) / 2.0;
-	double t_half = thicc / 2.0;
-	double start = 0.5 - t_half;
-	double end = 0.5 + t_half;
-	double lum = 0.0;
+	double inner = 0.5 - thicc;
+	double end = inner - gap;
+	double frac_h = (double)height / (double)width;
+	double frac_req_h = 1.0 - thicc - gap;
 
 	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < w; j++) {
-			double x = ((double)j + 0.5) / (double)height - 0.5;
+		for (int j = 0; j < width; j++) {
+			double x = ((double)j + 0.5) / (double)width - 0.5;
 			double y = ((double)i + 0.5) / (double)height - 0.5;
 
-			x -= t_half;
-			x = x < 0.0 ? x : gap - x;
-			y *= squish;
-
-			double d1 = x - y;
-			double d2 = -x - y;
-			double lum = 0.0;
-
-			if (d1 >= -end && d2 < end && (d1 < -start || d2 > start) && d1 < start && d2 >= -start) {
-				double bar = y > 0.0 ? d1 + 0.5 : d2 - 0.5;
-				lum = 1.0 - abs(bar / (thicc / 2.0));
-       			lum = clamp(lum * sharpness, 0.0, 1.0);
+			if (vertical) {
+				auto temp = x;
+				x = y;
+				y = temp;
 			}
 
-			clr.a = color.a * lum;
-			pixels[i*w+j] = rgba_to_u32(clr);
+			y *= frac_req_h / frac_h;
+
+			double max_y = frac_req_h / 2.0;
+			if (x >= 0.5 || y >= max_y || y < -max_y) {
+				pixels[i*width+j] = 0;
+				continue;
+			}
+
+			x = abs(x);
+			y = abs(y);
+			double g1 = x + y;
+			double g2 = y - x;
+
+			double lum = 0.0;
+			if (g1 >= inner && g1 < 0.5 && g2 < end) {
+				double mid = (inner + 0.5) / 2.0;
+				double slope = 0.5 - mid;
+				lum = 1.0 - (abs(g1 - mid) / slope);
+				lum = clamp(lum * sharpness, 0.0, 1.0);
+
+				double edge = end - g2;
+				edge = clamp(edge * sharpness / slope, 0.0, 1.0);
+				lum *= edge;
+			}
+
+			shade.a = color.a * lum;
+			pixels[i*width+j] = rgba_to_u32(shade);
 		}
 	}
 
-	if (width)
-		*width = w;
-
-	return sdl_create_texture(pixels.get(), w, height);
+	return sdl_create_texture(pixels.get(), width, height);
 }
 
 Texture make_goto_icon(RGBA& color, int length) {

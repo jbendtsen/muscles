@@ -76,11 +76,9 @@ void make_view_definitions(Workspace& ws, Box& b) {
 	ui->tabs.default_color = ws.dark_color;
 	ui->tabs.sel_color = ws.scroll_back;
 	ui->tabs.hl_color = ws.hl_color;
-	ui->tabs.action = [](UI_Element *elem, bool dbl_click) {
-		auto tabs = dynamic_cast<Tabs*>(elem);
-		if (tabs->hl >= 0) {
-			tabs->sel = tabs->hl;
-			auto ui = (View_Definitions*)elem->parent->markup;
+	ui->tabs.event = [](Tabs *tabs) {
+		if (tabs->sel >= 0) {
+			auto ui = (View_Definitions*)tabs->parent->markup;
 			ui->view.data = ui->tables[tabs->sel];
 		}
 	};
