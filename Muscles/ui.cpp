@@ -68,41 +68,8 @@ Rect UI_Element::make_ui_box(Rect_Int& box, Rect& elem, float scale) {
 void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	update();
 
-	// Some UI elements are more expensive to draw than others.
-	// For the cheaper ones, we don't bother with surface caching, we just draw them and return.
-	bool drawn = true;
-	switch (elem_type) {
-		case ElemButton:
-			dynamic_cast<Button*>(this)->draw_button(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemCheckbox:
-			dynamic_cast<Checkbox*>(this)->draw_checkbox(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemDivider:
-			dynamic_cast<Divider*>(this)->draw_divider(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemDropDown:
-			dynamic_cast<Drop_Down*>(this)->draw_dropdown(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemEditBox:
-			dynamic_cast<Edit_Box*>(this)->draw_editbox(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemHexView:
-			dynamic_cast<Hex_View*>(this)->draw_hexview(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemImage:
-			dynamic_cast<Image*>(this)->draw_image(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemLabel:
-			dynamic_cast<Label*>(this)->draw_label(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		case ElemScroll:
-			dynamic_cast<Scroll*>(this)->draw_scroll(nullptr, view, rect, elem_hovered, box_hovered, focussed);
-			break;
-		default:
-			drawn = false;
-	}
-	if (drawn) {
+	if (!use_sf_cache) {
+		draw_element(nullptr, view, rect, elem_hovered, box_hovered, focussed);
 		post_draw(view, rect, elem_hovered, box_hovered, focussed);
 		return;
 	}
@@ -146,14 +113,7 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 		if (soft_draw)
 			space = {0, 0, w, h};
 
-		switch (elem_type) {
-			case ElemDataView:
-				dynamic_cast<Data_View*>(this)->draw_dataview(renderer, view, space, elem_hovered, box_hovered, focussed);
-				break;
-			case ElemTextEditor:
-				dynamic_cast<Text_Editor*>(this)->draw_texteditor(renderer, view, space, elem_hovered, box_hovered, focussed);
-				break;
-		}
+		draw_element(renderer, view, space, elem_hovered, box_hovered, focussed);
 
 		if (soft_draw) {
 			if (tex_cache)
@@ -200,7 +160,7 @@ void Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 	needs_redraw = was_held != held;
 }
 
-void Button::draw_button(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Button::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect r = make_ui_box(rect, pos, view.scale);
 
 	float pad = padding * view.scale;
@@ -251,7 +211,7 @@ void Checkbox::toggle() {
 	needs_redraw = true;
 }
 
-void Checkbox::draw_checkbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	if (elem_hovered) {
 		Rect back = make_ui_box(rect, pos, view.scale);
 		sdl_draw_rect(back, hl_color, renderer);
@@ -426,7 +386,7 @@ void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect& back, fl
 	}
 }
 
-void Data_View::draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	int n_rows = data->row_count();
 	int n_cols = data->column_count();
 	int tree_size = tree.size();
@@ -748,7 +708,7 @@ void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 	needs_redraw = true;
 }
 
-void Divider::draw_divider(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Divider::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect r = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(r, default_color, renderer);
 
@@ -838,7 +798,7 @@ void Drop_Down::draw_menu(Renderer renderer, Camera& view, Rect_Int& rect) {
 	}
 }
 
-void Drop_Down::draw_dropdown(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
 	if (elem_hovered || dropped)
@@ -958,7 +918,7 @@ void Edit_Box::update_icon(Icon_Type type, float height, float scale) {
 	needs_redraw = true;
 }
 
-void Edit_Box::draw_editbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect back = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(back, default_color, renderer);
 
@@ -1186,7 +1146,7 @@ void Hex_View::draw_cursors(Renderer renderer, int idx, Rect& back, float x_star
 	}
 }
 
-void Hex_View::draw_hexview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
 	if (!alive || span_idx < 0 || rows <= 0 || columns <= 0) {
@@ -1295,7 +1255,7 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 	}
 }
 
-void Image::draw_image(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Image::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 	sdl_apply_texture(img, box, nullptr, renderer);
 }
@@ -1309,7 +1269,7 @@ void Label::update_position(float scale) {
 	width = pos.w * scale - pad;
 }
 
-void Label::draw_label(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Label::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	clip.x_upper = rect.x + x + width;
 	font->render.draw_text(renderer, text.c_str(), rect.x + x, rect.y + y, clip);
 }
@@ -1333,10 +1293,10 @@ void Scroll::engage(Point& p) {
 	else
 		hold_region = p.x - (pos.x + thumb_pos);
 
-	if (hold_region < 0 || hold_region > thumb_frac * length)
-		hold_region = 0;
+if (hold_region < 0 || hold_region > thumb_frac * length)
+hold_region = 0;
 
-	parent->ui_held = true;
+parent->ui_held = true;
 }
 
 void Scroll::scroll(double delta) {
@@ -1373,7 +1333,7 @@ void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hover
 	scroll(new_pos - position);
 }
 
-void Scroll::draw_scroll(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Scroll::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	if (vertical)
 		length = pos.h - 2*padding;
 	else
@@ -1407,7 +1367,7 @@ void Scroll::draw_scroll(Renderer renderer, Camera& view, Rect_Int& rect, bool e
 		h = bar.h - gap;
 	}
 
-	Rect_Int scroll_rect = {
+	Rect_Int scroll_rect ={
 		bar.x + (float)(x * view.scale + 0.5),
 		bar.y + (float)(y * view.scale + 0.5),
 		w,
@@ -1430,6 +1390,72 @@ bool Scroll::highlight(Camera& view, Point& inside) {
 
 void Scroll::deselect() {
 	hl = false;
+}
+
+void Tabs::add(const char **names, int count) {
+	for (int i = 0; i < count; i++) {
+		Tab t = {(char*)names[i], 0};
+		tabs.push_back(t);
+	}
+}
+
+void Tabs::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	hl = -1;
+	if (!hovered || !pos.contains(cursor))
+		return;
+
+	float total = 0;
+	for (auto& t : tabs)
+		total += t.width;
+
+	float border = tab_border * view.scale;
+	float spacing = (pos.w * view.scale) / (total + border - 1.0f);
+	float cur_x = cursor.x - pos.x;
+	int n_tabs = tabs.size();
+
+	float x = 0;
+	for (int i = 0; i < n_tabs; i++) {
+		x += tabs[i].width * spacing / view.scale;
+		if (cur_x < x) {
+			hl = i;
+			break;
+		}
+	}
+}
+
+void Tabs::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	Rect back = make_ui_box(rect, pos, view.scale);
+	back.h += 1.0f;
+	sdl_draw_rect(back, default_color, renderer);
+
+	float font_h = font->render.text_height();
+	float pad = x_offset * font_h;
+	float border = tab_border * view.scale;
+
+	float total = 0;
+	for (auto& t : tabs) {
+		t.width = font->render.digit_width() * (float)strlen(t.name);
+		total += t.width + border;
+	}
+	float spacing = back.w / (total + border - 1.0f);
+
+	int n_tabs = tabs.size();
+	float x = back.x + border;
+
+	Rect r = {0, back.y + border, 0, back.h - border};
+	for (int i = 0; i < n_tabs; i++) {
+		float width = (tabs[i].width + border) * spacing;
+
+		if (i == sel || i == hl) {
+			r.x = x;
+			r.w = width - border;
+			RGBA *color = i == hl ? &hl_color : &sel_color;
+			sdl_draw_rect(r, *color, renderer);
+		}
+
+		font->render.draw_text_simple(renderer, tabs[i].name, x + pad, back.y);
+		x += width;
+	}
 }
 
 void Text_Editor::key_handler(Camera& view, Input& input) {
@@ -1532,7 +1558,7 @@ void Text_Editor::update() {
 	show_caret = ticks % (caret_on_time + caret_off_time) < caret_on_time;
 }
 
-void Text_Editor::draw_texteditor(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void Text_Editor::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect back = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(back, default_color, renderer);
 

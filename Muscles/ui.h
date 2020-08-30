@@ -12,7 +12,8 @@ enum Element_Type {
 	ElemDropDown,
 	ElemCheckbox,
 	ElemHexView,
-	ElemTextEditor
+	ElemTextEditor,
+	ElemTabs
 };
 
 struct Editor {
@@ -44,6 +45,7 @@ struct Box;
 struct UI_Element {
 	bool visible = true;
 	bool active = true;
+	bool use_sf_cache = false;
 	bool use_default_cursor = false;
 
 	enum Element_Type elem_type;
@@ -76,6 +78,7 @@ struct UI_Element {
 	void set_active(bool state);
 
 	virtual void update() {}
+	virtual void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {}
 	virtual void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {}
 
 	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
@@ -123,7 +126,7 @@ struct Button : UI_Element {
 	void update_size(float scale);
 	
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	void draw_button(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Checkbox : UI_Element {
@@ -137,15 +140,18 @@ struct Checkbox : UI_Element {
 	float text_off_y = -0.15;
 
 	void toggle();
-	void draw_checkbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Data_View : UI_Element {
-	Data_View() : UI_Element(ElemDataView) {}
+	Data_View() : UI_Element(ElemDataView) {
+		use_sf_cache = true;
+	}
 
 	RGBA back_color = {};
 
 	Table *data = nullptr;
+	std::vector<Table*> *tables = nullptr;
 
 	struct Branch {
 		int row_idx;
@@ -188,10 +194,8 @@ struct Data_View : UI_Element {
 	void draw_item_backing(Renderer renderer, RGBA& color, Rect& back, float scale, int idx);
 
 	bool highlight(Camera& view, Point& inside) override;
-	void draw_dataview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
-
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-
 	void deselect() override;
 	void release() override;
 };
@@ -220,7 +224,7 @@ struct Divider : UI_Element {
 	void make_icon(float scale);
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	void draw_divider(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Drop_Down : UI_Element {
@@ -252,7 +256,7 @@ struct Drop_Down : UI_Element {
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
-	void draw_dropdown(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Edit_Box : UI_Element {
@@ -303,7 +307,7 @@ struct Edit_Box : UI_Element {
 	bool disengage(Input& input, bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	void draw_editbox(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Hex_View : UI_Element {
@@ -345,7 +349,7 @@ struct Hex_View : UI_Element {
 	void print_ascii_row(Renderer renderer, Span& span, int idx, float x, float y, Render_Clip& clip, Rect& box);
 	void draw_cursors(Renderer renderer, int idx, Rect& back, float x_start, float pad, float scale);
 
-	void draw_hexview(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 };
 
@@ -353,7 +357,7 @@ struct Image : UI_Element {
 	Image() : UI_Element(ElemImage) {}
 
 	Texture img = nullptr;
-	void draw_image(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Label : UI_Element {
@@ -372,7 +376,7 @@ struct Label : UI_Element {
 	float padding = 0.2;
 
 	void update_position(float scale);
-	void draw_label(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Scroll : UI_Element {
@@ -404,14 +408,35 @@ struct Scroll : UI_Element {
 	void scroll(double delta);
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	void draw_scroll(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 
 	bool highlight(Camera& view, Point& inside) override;
 	void deselect() override;
 };
 
+struct Tabs : UI_Element {
+	struct Tab {
+		char *name;
+		float width;
+	};
+
+	std::vector<Tab> tabs;
+	int sel = 0;
+	int hl = -1;
+
+	float x_offset = 0.2;
+	float tab_border = 4;
+
+	void add(const char **names, int count);
+
+	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+};
+
 struct Text_Editor : UI_Element {
-	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {}
+	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {
+		use_sf_cache = true;
+	}
 
 	bool mouse_held = false;
 	bool show_caret = false;
@@ -441,7 +466,7 @@ struct Text_Editor : UI_Element {
 
 	void draw_cursor(Renderer renderer, Editor::Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
 	void draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad);
-	void draw_texteditor(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
+	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 

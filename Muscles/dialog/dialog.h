@@ -1,11 +1,11 @@
 #pragma once
 
 struct Main_Menu {
-	Drop_Down *sources_dd = nullptr;
-	Drop_Down *edit_dd = nullptr;
-	Drop_Down *view_dd = nullptr;
-	Data_View *sources = nullptr;
-	Button *button = nullptr;
+	Drop_Down sources_dd;
+	Drop_Down edit_dd;
+	Drop_Down view_dd;
+	Data_View sources;
+	Button button;
 
 	Table table;
 
@@ -20,15 +20,15 @@ struct Main_Menu {
 };
 
 struct Source_Menu {
-	Data_View *menu = nullptr;
-	Image *cross = nullptr;
-	Label *title = nullptr;
-	Scroll *scroll = nullptr;
-	Edit_Box *search = nullptr;
+	Data_View menu;
+	Image cross;
+	Label title;
+	Scroll scroll;
+	Edit_Box search;
 
-	Button *up = nullptr;
-	Divider *div = nullptr;
-	Edit_Box *path = nullptr;
+	Button up;
+	Divider div;
+	Edit_Box path;
 
 	Table table;
 
@@ -40,23 +40,23 @@ struct Source_Menu {
 };
 
 struct View_Source {
-	Image *cross = nullptr;
-	Label *title = nullptr;
-	Divider *div = nullptr;
-	Label *reg_title = nullptr;
-	Data_View *reg_table = nullptr;
-	Scroll *reg_scroll = nullptr;
-	Scroll *reg_lat_scroll = nullptr;
-	Edit_Box *reg_search = nullptr;
-	Label *hex_title = nullptr;
-	Hex_View *hex = nullptr;
-	Scroll *hex_scroll = nullptr;
-	Label *reg_name = nullptr;
-	Label *size_label = nullptr;
-	Edit_Box *goto_box = nullptr;
-	Checkbox *addr_box = nullptr;
-	Checkbox *hex_box = nullptr;
-	Checkbox *ascii_box = nullptr;
+	Image cross;
+	Label title;
+	Divider div;
+	Label reg_title;
+	Data_View reg_table;
+	Scroll reg_scroll;
+	Scroll reg_lat_scroll;
+	Edit_Box reg_search;
+	Label hex_title;
+	Hex_View hex;
+	Scroll hex_scroll;
+	Label reg_name;
+	Label size_label;
+	Edit_Box goto_box;
+	Checkbox addr_box;
+	Checkbox hex_box;
+	Checkbox ascii_box;
 
 	Table table;
 	Source *source = nullptr;
@@ -68,16 +68,16 @@ struct View_Source {
 };
 
 struct Edit_Structs {
-	Image *cross = nullptr;
-	Label *title = nullptr;
-	Text_Editor *edit = nullptr;
-	Scroll *edit_hscroll = nullptr;
-	Scroll *edit_vscroll = nullptr;
-	Checkbox *show_cb = nullptr;
-	Divider *div = nullptr;
-	Data_View *output = nullptr;
-	Scroll *out_hscroll = nullptr;
-	Scroll *out_vscroll = nullptr;
+	Image cross;
+	Label title;
+	Text_Editor edit;
+	Scroll edit_hscroll;
+	Scroll edit_vscroll;
+	Checkbox show_cb;
+	Divider div;
+	Data_View output;
+	Scroll out_hscroll;
+	Scroll out_vscroll;
 
 	Arena arena;
 	Table table;
@@ -93,22 +93,22 @@ struct Edit_Structs {
 };
 
 struct View_Object {
-	Image *cross = nullptr;
-	Edit_Box *title_edit = nullptr;
-	Label *struct_label = nullptr;
-	Label *source_label = nullptr;
-	Label *addr_label = nullptr;
-	Edit_Box *struct_edit = nullptr;
-	Drop_Down *struct_dd = nullptr;
-	Edit_Box *source_edit = nullptr;
-	Drop_Down *source_dd = nullptr;
-	Edit_Box *addr_edit = nullptr;
-	Button *hide_meta = nullptr;
-	Data_View *view = nullptr;
-	Scroll *hscroll = nullptr;
-	Scroll *vscroll = nullptr;
-	Button *all_btn = nullptr;
-	Button *sel_btn = nullptr;
+	Image cross;
+	Edit_Box title_edit;
+	Label struct_label;
+	Label source_label;
+	Label addr_label;
+	Edit_Box struct_edit;
+	Drop_Down struct_dd;
+	Edit_Box source_edit;
+	Drop_Down source_dd;
+	Edit_Box addr_edit;
+	Button hide_meta;
+	Data_View view;
+	Scroll hscroll;
+	Scroll vscroll;
+	Button all_btn;
+	Button sel_btn;
 
 	Button::Theme theme_on = {};
 	Button::Theme theme_off = {};
@@ -128,17 +128,18 @@ struct View_Object {
 };
 
 struct View_Definitions {
-	Image *cross = nullptr;
-	Label *title = nullptr;
-	//Tabs *tabs = nullptr;
-	Data_View *view = nullptr;
-	Scroll *vscroll = nullptr;
-	Scroll *hscroll = nullptr;
+	Image cross;
+	Label title;
+	Tabs tabs;
+	Data_View view;
+	Scroll vscroll;
+	Scroll hscroll;
 
 	Table types;
 	Table enums;
 	Table typedefs;
 	Table constants;
+	std::vector<Table*> tables;
 
 	Arena arena;
 };
