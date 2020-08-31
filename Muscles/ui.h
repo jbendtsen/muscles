@@ -21,7 +21,14 @@ struct UI_Element;
 struct Box;
 
 struct Editor {
+	Editor(UI_Element *elem) {
+		parent = elem;
+	}
+
 	bool multiline = true;
+	bool use_clipboard = true;
+	bool numeric_only = false;
+
 	bool selected = false;
 	int tab_width = 4;
 	UI_Element *parent = nullptr;
@@ -37,12 +44,19 @@ struct Editor {
 
 	std::string text;
 
+	float cursor_width = 1;
+	float border = 4;
+
 	void erase(Cursor& cursor, bool is_back);
 	void set_cursor(Cursor& cursor, int cur);
 	void set_line(Cursor& cursor, int line_idx);
 	void set_column(Cursor& cursor, int col_idx);
 
 	int handle_input(Input& input);
+	void update_cursor(float x, float y, Font *font, float scale, bool click);
+
+	void draw_selection_box(Renderer renderer, RGBA& color, Render_Clip& clip, float digit_w, float font_h);
+	void draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float digit_w, float font_h, float scale);
 };
 
 struct UI_Element {
@@ -99,6 +113,7 @@ struct UI_Element {
 void (*get_delete_box(void))(UI_Element*, bool);
 void (*get_text_editor_action(void))(UI_Element*, bool);
 void (*get_edit_box_action(void))(UI_Element*, bool);
+void (*get_number_edit_action(void))(UI_Element*, bool);
 
 struct Scroll;
 
@@ -264,9 +279,8 @@ struct Drop_Down : UI_Element {
 };
 
 struct Edit_Box : UI_Element {
-	Edit_Box() : UI_Element(ElemEditBox, CursorEdit) {
+	Edit_Box() : UI_Element(ElemEditBox, CursorEdit), editor(this) {
 		action = get_edit_box_action();
-		editor.parent = this;
 		editor.multiline = false;
 	}
 
@@ -385,11 +399,34 @@ struct Label : UI_Element {
 };
 
 struct Number_Edit : UI_Element {
-	Number_Edit() : UI_Element(ElemNumEdit) {}
+	Number_Edit() : UI_Element(ElemNumEdit), editor(this) {
+		action = get_number_edit_action();
+		editor.use_clipboard = false;
+		editor.numeric_only = true;
+	}
 
 	int number = 0;
-	Editor editor = {};
+	Editor editor;
 
+	void (*key_action)(Number_Edit*, Input&) = nullptr;
+
+	Render_Clip clip = {
+		CLIP_RIGHT,
+		0, 0, 0, 0
+	};
+
+	float end_width = 0.6;
+	float box_width = 0.6;
+	float box_height = 0.8;
+	RGBA arrow_color = {0.8, 0.87, 1.0, 0.9};
+
+	Texture icon = nullptr;
+	int icon_w = 0;
+	int icon_h = 0;
+
+	void make_icon(float scale);
+
+	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
@@ -453,7 +490,7 @@ struct Tabs : UI_Element {
 };
 
 struct Text_Editor : UI_Element {
-	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit) {
+	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit), editor(this) {
 		action = get_text_editor_action();
 		editor.parent = this;
 		use_sf_cache = true;
@@ -462,7 +499,6 @@ struct Text_Editor : UI_Element {
 	bool mouse_held = false;
 	bool show_caret = false;
 	float border = 4;
-	float cursor_width = 1;
 
 	int ticks = 0;
 	int caret_on_time = 35;
@@ -472,7 +508,7 @@ struct Text_Editor : UI_Element {
 	Scroll *vscroll = nullptr;
 	Scroll *hscroll = nullptr;
 
-	Editor editor = {};
+	Editor editor;
 
 	Render_Clip clip = {
 		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
@@ -485,8 +521,6 @@ struct Text_Editor : UI_Element {
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void update() override;
 
-	void draw_cursor(Renderer renderer, Editor::Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale);
-	void draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad);
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };

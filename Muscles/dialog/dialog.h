@@ -57,6 +57,7 @@ struct View_Source {
 	Checkbox addr_box;
 	Checkbox hex_box;
 	Checkbox ascii_box;
+	Number_Edit columns;
 
 	Table table;
 	Source *source = nullptr;

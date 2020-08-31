@@ -48,6 +48,11 @@ void edit_box_action(UI_Element *elem, bool dbl_click) {
 }
 void (*get_edit_box_action(void))(UI_Element*, bool) { return edit_box_action; }
 
+void number_edit_action(UI_Element *elem, bool dbl_click) {
+	elem->parent->active_edit = &dynamic_cast<Number_Edit*>(elem)->editor;
+}
+void (*get_number_edit_action(void))(UI_Element*, bool) { return number_edit_action; }
+
 Rect UI_Element::make_ui_box(Rect_Int& box, Rect& elem, float scale) {
 	if (soft_draw) {
 		return {
@@ -868,9 +873,17 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		return;
 
 	float w = pos.h;
-	float x = icon_right ? pos.x + pos.w - w : pos.x;
-	bool on_icon = icon && cursor.y >= pos.y && cursor.y < pos.y + pos.h && cursor.x >= x && cursor.x - x < w;
+	float icon_x = icon_right ? pos.x + pos.w - w : pos.x;
+	float text_x = icon_right ? pos.x : pos.x + w;
+	bool on_icon = icon && cursor.y >= pos.y && cursor.y < pos.y + pos.h && cursor.x >= icon_x && cursor.x - icon_x < w;
 	use_default_cursor = on_icon;
+
+	if (hovered && input.lclick && pos.contains(cursor)) {
+		float x = (cursor.x - text_x) * view.scale;
+		float y = (cursor.y - pos.y) * view.scale;
+
+		editor.update_cursor(x, y, font, view.scale, input.lclick);
+	}
 
 	if (dropdown) {
 		dropdown->highlight(view, cursor);
@@ -935,13 +948,14 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 
 	float text_x = pos.x * view.scale + x;
 	float text_y = pos.y * view.scale + gap_y;
-	float caret_y = (float)caret_off_y * height;
 	float window_w = (pos.w * view.scale) - x - icon_w - gap_x;
 
 	clip.x_lower = rect.x + text_x;
 	clip.x_upper = clip.x_lower + window_w;
+	clip.y_lower = back.y;
+	clip.y_upper = back.y + back.h;
 	float offset = 0;
-
+/*
 	int first_col = editor.primary.column;
 	int second_col = editor.secondary.column;
 	if (first_col != second_col) {
@@ -959,11 +973,15 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 		};
 		sdl_draw_rect(r, sel_color, renderer);
 	}
+*/
+	float digit_w = fnt->render.digit_width();
+	editor.draw_selection_box(renderer, sel_color, clip, digit_w, height);
 
 	fnt->render.draw_text(renderer, str, rect.x + text_x - offset, rect.y + text_y, clip);
 
 	if (parent->active_edit == &editor) {
 		float caret_w = (float)caret_width * height;
+		float caret_y = (float)caret_off_y * height;
 
 		Rect_Int r = {
 			rect.x + text_x + cur_x - offset,
@@ -1254,12 +1272,91 @@ void Label::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool e
 	font->render.draw_text(renderer, text.c_str(), rect.x + x, rect.y + y, clip);
 }
 
-void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+void Number_Edit::make_icon(float scale) {
+	sdl_destroy_texture(&icon);
 
+	float w = font->render.text_height() * end_width * box_width;
+	float h = pos.h * scale * box_height;
+
+	icon_w = w;
+	icon_h = h;
+
+	double gap = 0.15;
+	double thickness = 0.15;
+	double sharpness = 2.0;
+	icon = make_divider_icon(arrow_color, icon_w, icon_h, gap, thickness, sharpness, true);
+}
+
+void Number_Edit::key_handler(Camera& view, Input& input) {
+	if (parent->active_edit == &editor) {
+		int res = editor.handle_input(input);
+		number = strtol(editor.text.c_str(), nullptr, 10);
+		if ((res & 1) && key_action)
+			key_action(this, input);
+		if (res & 2)
+			needs_redraw = true;
+		if (res & 8)
+			parent->active_edit = nullptr;
+	}
+}
+
+void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (!hovered || !input.lclick || !pos.contains(cursor))
+		return;
+
+	float x = (cursor.x - pos.x) * view.scale;
+	float y = (cursor.y - pos.y) * view.scale;
+
+	editor.update_cursor(x, y, font, view.scale, input.lclick);
+
+	if (x >= (pos.w * view.scale) - (end_width * font->render.text_height())) {
+		number = strtol(editor.text.c_str(), nullptr, 10);
+		number += y < pos.h * view.scale / 2 ? 1 : -1;
+
+		editor.text = std::to_string(number);
+		editor.set_cursor(editor.primary, 0);
+		editor.secondary = editor.primary;
+
+		if (key_action) {
+			Input blank = {};
+			key_action(this, blank);
+		}
+	}
 }
 
 void Number_Edit::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
-	//Rect box = make_ui_box(rect, pos, view.scale);
+	Rect back = make_ui_box(rect, pos, view.scale);
+	float font_h = font->render.text_height();
+	float end_w = font_h * end_width;
+	if (back.w <= end_w)
+		return;
+
+	Rect r = back;
+	r.w -= end_w - 1.0;
+	sdl_draw_rect(r, default_color, renderer);
+
+	float pad = font_h * 0.15;
+	float text_x = back.x + pad;
+	float text_y = back.y - pad;
+
+	clip.x_upper = back.x + back.w - end_w;
+	font->render.draw_text(renderer, editor.text.c_str(), text_x, text_y, clip);
+
+	float digit_w = font->render.digit_width();
+	if (parent->active_edit == &editor) {
+		Point p = {text_x, text_y};
+		editor.draw_cursor(renderer, arrow_color, editor.primary, p, digit_w, font_h, view.scale);
+	}
+
+	r.x = clip.x_upper;
+	r.w = end_w;
+	sdl_draw_rect(r, sel_color, renderer);
+
+	r.x += (r.w - (float)icon_w) / 2.0;
+	r.y += (r.h - (float)icon_h) / 2.0;
+	r.w = icon_w;
+	r.h = icon_h;
+	sdl_apply_texture(icon, r, nullptr, renderer);
 }
 
 void Scroll::set_maximum(double max, double span) {
@@ -1281,10 +1378,10 @@ void Scroll::engage(Point& p) {
 	else
 		hold_region = p.x - (pos.x + thumb_pos);
 
-if (hold_region < 0 || hold_region > thumb_frac * length)
-hold_region = 0;
+	if (hold_region < 0 || hold_region > thumb_frac * length)
+		hold_region = 0;
 
-parent->ui_held = true;
+	parent->ui_held = true;
 }
 
 void Scroll::scroll(double delta) {
@@ -1479,71 +1576,8 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 		float x = (cursor.x - pos.x) * view.scale;
 		float y = (cursor.y - pos.y) * view.scale;
 
-		float edge = border * view.scale;
-		float gl_w = font->render.digit_width();
-		float gl_h = font->render.text_height();
-
-		int line = (y - edge) / gl_h;
-		int col = (x - edge) / gl_w + 0.5;
-		if (line < 0) line = 0;
-		if (col < 0) col = 0;
-
-		editor.set_line(editor.primary, line);
-		editor.set_column(editor.primary, col);
-
-		if (input.lclick)
-			editor.secondary = editor.primary;
+		editor.update_cursor(x, y, font, view.scale, input.lclick);
 	}
-}
-
-void Text_Editor::draw_selection_box(Renderer renderer, Render_Clip& clip, float digit_w, float font_h, float line_pad) {
-	Editor::Cursor *first  = editor.primary.cursor < editor.secondary.cursor ? &editor.primary : &editor.secondary;
-	Editor::Cursor *second = editor.primary.cursor < editor.secondary.cursor ? &editor.secondary : &editor.primary;
-
-	float y = clip.y_lower + line_pad;
-	Rect r = {0};
-	if (first->line == second->line) {
-		r.x = clip.x_lower + first->column * digit_w;
-		r.y = y + first->line * font_h;
-		r.w = (second->column - first->column) * digit_w;
-		r.h = font_h + 1;
-		sdl_draw_rect(r, sel_color, renderer);
-	}
-	else {
-		float line_w = clip.x_upper - clip.x_lower;
-
-		float x = first->column * digit_w;
-		r.x = clip.x_lower + x;
-		r.y = y + first->line * font_h;
-		r.w = line_w - x;
-		r.h = font_h + 1;
-		sdl_draw_rect(r, sel_color, renderer);
-
-		int gulf = second->line - first->line - 1;
-		if (gulf > 0) {
-			r.x = clip.x_lower;
-			r.y += font_h;
-			r.w = line_w;
-			r.h = gulf * font_h + 1;
-			sdl_draw_rect(r, sel_color, renderer);
-		}
-
-		if (second->column > 0) {
-			r.x = clip.x_lower;
-			r.y = y + second->line * font_h;
-			r.w = second->column * digit_w;
-			r.h = font_h + 1;
-			sdl_draw_rect(r, sel_color, renderer);
-		}
-	}
-}
-
-void Text_Editor::draw_cursor(Renderer renderer, Editor::Cursor& cursor, Rect& back, float digit_w, float font_h, float line_pad, float edge, float scale) {
-	float caret_x = back.x + edge + ((float)cursor.column * digit_w);
-	float caret_y = back.y + edge + line_pad + ((float)cursor.line * font_h) + (line_pad / 2);
-
-	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
-	sdl_draw_rect(caret, caret_color, renderer);
 }
 
 void Text_Editor::update() {
@@ -1567,10 +1601,9 @@ void Text_Editor::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, 
 
 	float digit_w = font->render.digit_width();
 	float font_h = font->render.text_height();
-	float line_pad = font_h * 0.15f;
 
 	if (editor.secondary.cursor != editor.primary.cursor)
-		draw_selection_box(renderer, clip, digit_w, font_h, line_pad);
+		editor.draw_selection_box(renderer, sel_color, clip, digit_w, font_h);
 
 	font->render.draw_text(renderer, editor.text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, editor.tab_width, true);
 }
@@ -1581,14 +1614,13 @@ void Text_Editor::post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, boo
 
 	Rect back = make_ui_box(rect, pos, view.scale);
 
-	float edge = border * view.scale;
 	float digit_w = font->render.digit_width();
 	float font_h = font->render.text_height();
-	float line_pad = font_h * 0.15f;
 
 	if (editor.secondary.cursor != editor.primary.cursor || show_caret) {
-		draw_cursor(nullptr, editor.primary, back, digit_w, font_h, line_pad, edge, view.scale);
+		Point origin = {back.x, back.y};
+		editor.draw_cursor(nullptr, caret_color, editor.primary, origin, digit_w, font_h, view.scale);
 		if (editor.secondary.cursor != editor.primary.cursor)
-			draw_cursor(nullptr, editor.secondary, back, digit_w, font_h, line_pad, edge, view.scale);
+			editor.draw_cursor(nullptr, caret_color, editor.secondary, origin, digit_w, font_h, view.scale);
 	}
 }

@@ -175,6 +175,9 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 	ui->addr_box.pos.x = ui->hex_box.pos.x - ui->addr_box.pos.w;
 	ui->addr_box.pos.y = ui->hex_box.pos.y;
 
+	ui->columns.pos.x = ui->addr_box.pos.x - ui->columns.pos.w - 2*b.border;
+	ui->columns.pos.y = ui->addr_box.pos.y;
+
 	ui->hex.show_addrs = ui->addr_box.checked;
 	ui->hex.show_hex = ui->hex_box.checked;
 	ui->hex.show_ascii = ui->ascii_box.checked;
@@ -317,6 +320,11 @@ void region_search_handler(Edit_Box *edit, Input& input) {
 	ui->selected_region = 0;
 }
 
+void set_hex_columns(Number_Edit *edit, Input& input) {
+	auto ui = (View_Source*)edit->parent->markup;
+	ui->hex.columns = edit->number > 0 ? edit->number : 16;
+}
+
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Source*)b.markup;
 	if (ui->multiple_regions) {
@@ -347,6 +355,8 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 
 	if (ui->multiple_regions)
 		ui->div.make_icon(new_scale);
+
+	ui->columns.make_icon(new_scale);
 
 	float goto_h = ui->goto_box.font->render.text_height() * 1.4f / new_scale;
 	ui->goto_box.update_icon(IconGoto, goto_h, new_scale);
@@ -510,6 +520,15 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	ui->ascii_box.pos = ui->addr_box.pos;
 	ui->ascii_box.action = ui->addr_box.action;
 	b.ui.push_back(&ui->ascii_box);
+
+	ui->columns.font = ui->size_label.font;
+	ui->columns.default_color = ws.dark_color;
+	ui->columns.sel_color = ws.dark_color;
+	ui->columns.editor.text = "16";
+	ui->columns.pos.w = 40;
+	ui->columns.pos.h = ui->addr_box.pos.h;
+	ui->columns.key_action = set_hex_columns;
+	b.ui.push_back(&ui->columns);
 
 	b.markup = ui;
 	b.update_handler = update_view_source;

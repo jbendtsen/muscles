@@ -348,7 +348,7 @@ int Editor::handle_input(Input& input) {
 		set_line(primary, primary.line + 1);
 	}
 	else if (input.ch || input.last_key) {
-		if (ctrl) {
+		if (ctrl && use_clipboard) {
 			if (selected && secondary.cursor != primary.cursor && (input.last_key == 'x' || input.last_key == 'c')) {
 				auto span = get_text_span(primary.cursor, secondary.cursor);
 				std::string clip(text, span.first, span.second);
@@ -361,8 +361,14 @@ int Editor::handle_input(Input& input) {
 			else
 				end_selection = false;
 		}
-		else if (input.ch)
-			ch = input.ch;
+		else if (input.ch) {
+			if (numeric_only) {
+				if (input.ch >= '0' && input.ch <= '9')
+					ch = input.ch;
+			}
+			else
+				ch = input.ch;
+		}
 	}
 	else {
 		end_selection = false;
@@ -404,4 +410,73 @@ int Editor::handle_input(Input& input) {
 	flags |= end_selection ? 4 : 0;
 	flags |= esc ? 8 : 0;
 	return flags;
+}
+
+void Editor::update_cursor(float x, float y, Font *font, float scale, bool click) {
+	float edge = border * scale;
+	float gl_w = font->render.digit_width();
+	float gl_h = font->render.text_height();
+
+	int line = (y - edge) / gl_h;
+	int col = (x - edge) / gl_w + 0.5;
+	if (line < 0) line = 0;
+	if (col < 0) col = 0;
+
+	set_line(primary, line);
+	set_column(primary, col);
+
+	if (click)
+		secondary = primary;
+}
+
+void Editor::draw_selection_box(Renderer renderer, RGBA& color, Render_Clip& clip, float digit_w, float font_h) {
+	float line_pad = font_h * 0.15f;
+	Editor::Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
+	Editor::Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
+
+	float y = clip.y_lower + line_pad;
+	Rect r = {0};
+	if (first->line == second->line) {
+		r.x = clip.x_lower + first->column * digit_w;
+		r.y = y + first->line * font_h;
+		r.w = (second->column - first->column) * digit_w;
+		r.h = font_h + 1;
+		sdl_draw_rect(r, color, renderer);
+	}
+	else {
+		float line_w = clip.x_upper - clip.x_lower;
+
+		float x = first->column * digit_w;
+		r.x = clip.x_lower + x;
+		r.y = y + first->line * font_h;
+		r.w = line_w - x;
+		r.h = font_h + 1;
+		sdl_draw_rect(r, color, renderer);
+
+		int gulf = second->line - first->line - 1;
+		if (gulf > 0) {
+			r.x = clip.x_lower;
+			r.y += font_h;
+			r.w = line_w;
+			r.h = gulf * font_h + 1;
+			sdl_draw_rect(r, color, renderer);
+		}
+
+		if (second->column > 0) {
+			r.x = clip.x_lower;
+			r.y = y + second->line * font_h;
+			r.w = second->column * digit_w;
+			r.h = font_h + 1;
+			sdl_draw_rect(r, color, renderer);
+		}
+	}
+}
+
+void Editor::draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float digit_w, float font_h, float scale) {
+	float line_pad = font_h * 0.15f;
+	float caret_x = pos.x + ((float)cursor.column * digit_w);
+	float caret_y = pos.y + (line_pad * 1.5f) + ((float)cursor.line * font_h);
+
+	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
+	sdl_draw_rect(caret, color, renderer);
 }
