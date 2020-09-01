@@ -460,16 +460,9 @@ struct Map {
 		return data[get(str, 0)];
 	}
 
-	int get(const char *str, int len);
-	void insert(const char *str, int len, u64 value);
-	void insert(const char *str, int len, void *pointer);
-	void remove(const char *str, int len);
-
-	void assign(Bucket& buck, u64 value);
-	void assign(Bucket& buck, void *pointer);
-
-	void place_at(int idx, const char *str, int len, u64 value);
-	void place_at(int idx, const char *str, int len, void *pointer);
+	int get(const char *str, int len = 0);
+	Bucket& insert(const char *str, int len = 0);
+	void remove(const char *str, int len = 0);
 
 	void next_level();
 	void next_level_maybe();
@@ -593,11 +586,11 @@ void close_source(Source& source);
 #define FLAG_BITFIELD    0x0002
 #define FLAG_UNNAMED     0x0004
 #define FLAG_COMPOSITE   0x0008
-#define FLAG_SIGNED      0x0010
-#define FLAG_FLOAT       0x0020
-#define FLAG_BIG_ENDIAN  0x0040
-
-#define FLAG_UNION  0x0001
+#define FLAG_UNION       0x0010
+#define FLAG_SIGNED      0x0020
+#define FLAG_FLOAT       0x0040
+#define FLAG_BIG_ENDIAN  0x0080
+#define FLAG_PRIMITIVE   0x0100
 
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000
@@ -660,13 +653,7 @@ struct Struct {
 };
 
 void tokenize(String_Vector& tokens, const char *text, int sz);
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Struct *st = nullptr);
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
-
-struct Primitive {
-	std::string name;
-	int bit_size;
-	u32 flags;
-};

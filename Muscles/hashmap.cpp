@@ -7,6 +7,7 @@ u32 murmur3_32(const char* key, int len, u32 seed) {
 	u32 c2 = 0x1b873593;
 	u32 h = seed;
 	const u32 *p = (const u32*)key;
+	const u8 *tail = (const u8*)&p[(len & ~3)];
 
 	for (int i = 0; i < (len & ~3); i += sizeof(u32)) {
 		u32 k = *p++;
@@ -19,8 +20,6 @@ u32 murmur3_32(const char* key, int len, u32 seed) {
 		h = h * 5 + 0xe6546b64;
 	}
 
-	p--;
-	const u8 *tail = (const u8*)p;
 	u32 k = 0;
 	for (int i = len & 3; i > 0; i--) {
 		k <<= 8;
@@ -143,20 +142,25 @@ int Map::get(const char *str, int len) {
 		idx = (idx + 1) & mask;
 	}
 
+	data[idx].flags &= ~FLAG_NEW;
 	return idx;
 }
 
-void Map::insert(const char *str, int len, u64 value) {
+Bucket& Map::insert(const char *str, int len) {
 	next_level_maybe();
 
 	if (len <= 0) len = strlen(str);
-	place_at(get(str, len), str, len, value);
-}
-void Map::insert(const char *str, int len, void *pointer) {
-	next_level_maybe();
+	int idx = get(str, len);
 
-	if (len <= 0) len = strlen(str);
-	place_at(get(str, len), str, len, pointer);
+	Bucket& buck = data[idx];
+	if ((buck.flags & FLAG_OCCUPIED) == 0) {
+		buck.name_idx = sv->add_buffer(str, len);
+		buck.flags |= FLAG_NEW;
+		n_entries++;
+	}
+
+	buck.flags |= FLAG_OCCUPIED;
+	return buck;
 }
 
 void Map::remove(const char *str, int len) {
@@ -165,51 +169,6 @@ void Map::remove(const char *str, int len) {
 		n_entries--;
 
 	buck = {0};
-}
-
-void Map::assign(Bucket& buck, u64 value) {
-	buck.value = value;
-	buck.flags &= ~FLAG_POINTER;
-
-	if ((buck.flags & FLAG_OCCUPIED) == 0) {
-		buck.flags |= FLAG_OCCUPIED;
-		n_entries++;
-	}
-}
-void Map::assign(Bucket& buck, void *pointer) {
-	buck.pointer = pointer;
-	buck.flags |= FLAG_POINTER;
-
-	if ((buck.flags & FLAG_OCCUPIED) == 0) {
-		buck.flags |= FLAG_OCCUPIED;
-		n_entries++;
-	}
-}
-
-void Map::place_at(int idx, const char *str, int len, u64 value) {
-	int real_len = strlen(str);
-	if (len <= 0)
-		len = real_len;
-	else
-		len = real_len < len ? real_len : len;
-
-	data[idx].flags |= FLAG_OCCUPIED;
-	data[idx].flags &= ~FLAG_POINTER;
-	data[idx].name_idx = sv->add_buffer(str, len);
-	data[idx].value = value;
-	n_entries++;
-}
-void Map::place_at(int idx, const char *str, int len, void *pointer) {
-	int real_len = strlen(str);
-	if (len <= 0)
-		len = real_len;
-	else
-		len = real_len < len ? real_len : len;
-
-	data[idx].flags |= FLAG_OCCUPIED | FLAG_POINTER;
-	data[idx].name_idx = sv->add_buffer(str, len);
-	data[idx].pointer = pointer;
-	n_entries++;
 }
 
 void Map::next_level_maybe() {

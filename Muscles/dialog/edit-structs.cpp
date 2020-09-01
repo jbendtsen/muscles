@@ -125,7 +125,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
 
 	char *tokens_alias = ws->tokens.pool;
-	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector);
+	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector, ws->definitions);
 
 	for (auto& s : ws->structs) {
 		char *name = ws->name_vector.at(s->name_idx);

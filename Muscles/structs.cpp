@@ -3,22 +3,6 @@
 #define PADDING(offset, align) ((align) - ((offset) % (align))) % (align)
 
 // A list of primitive types in the form of a vector. This lets us potentially add new primitives at run-time.
-std::vector<Primitive> primitive_types = {
-	{"char", 8, FLAG_SIGNED},
-	{"int8_t", 8, FLAG_SIGNED},
-	{"uint8_t", 8},
-	{"short", 16, FLAG_SIGNED},
-	{"int16_t", 16, FLAG_SIGNED},
-	{"uint16_t", 16},
-	{"int", 32, FLAG_SIGNED},
-	{"int32_t", 32, FLAG_SIGNED},
-	{"uint32_t", 32},
-	{"long", 32, FLAG_SIGNED},
-	{"long long", 64, FLAG_SIGNED},
-	{"float", 32, FLAG_FLOAT},
-	{"double", 64, FLAG_FLOAT}
-};
-
 int pointer_size = 64; // bits
 
 bool is_symbol(char c) {
@@ -304,7 +288,7 @@ Struct *find_new_struct(std::vector<Struct*>& structs) {
 	return new_st;
 }
 
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Struct *st) {
+void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st) {
 	std::string type;
 
 	char *t = *tokens;
@@ -351,7 +335,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				new_st->name_idx = name_vector.add_string(name);
 
 				t += strlen(t) + 1;
-				parse_c_struct(structs, &t, name_vector, new_st);
+				parse_c_struct(structs, &t, name_vector, definitions, new_st);
 
 				add_struct_instances(st, new_st, &t, name_vector);
 				next = t + strlen(t) + 1;
@@ -457,13 +441,9 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			if (held_type < 0) {
 				// Determine if this field has a name (unnamed fields can be legal, eg. zero-width bitfields)
 				if (type_over) {
-					named_field = true;
-					for (auto& p : primitive_types) {
-						if (!strcmp(t, p.name.c_str())) {
-							named_field = false;
-							break;
-						}
-					}
+					//named_field = true;
+					u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+					named_field = (definitions[t].flags & prim_mask) != prim_mask;
 
 					if (named_field)
 						named_field = strcmp(t, "struct") && strcmp(t, "union");
@@ -489,21 +469,19 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		// This code may run multiple times per field,
 		//  as there some primitive types that use more than one keyword (eg. "long long")
 		if (f && type_over && type.size() > 0 && (f->flags & FLAG_COMPOSITE) == 0) {
-			bool found_primitive = false;
-			for (auto& p : primitive_types) {
-				if (p.name == type) {
-					f->flags |= p.flags;
-					f->default_bit_size = p.bit_size;
-					if ((f->flags & FLAG_BITFIELD) == 0 || f->bit_size > f->default_bit_size)
-						f->bit_size = f->default_bit_size;
+			Bucket& p = definitions[type.c_str()];
 
-					found_primitive = true;
-					break;
-				}
+			// If the type string matches a known primitive type
+			u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+			if ((p.flags & prim_mask) == prim_mask) {
+				f->flags |= p.flags & 0xff; // 0xff captures the relevant flags for a primitive
+				f->default_bit_size = p.value;
+				if ((f->flags & FLAG_BITFIELD) == 0 || f->bit_size > f->default_bit_size)
+					f->bit_size = f->default_bit_size;
 			}
 
 			// Check if the type refers to an existing struct/union
-			if (!found_primitive) {
+			else {
 				size_t last_space = type.find_last_of(' ');
 				std::string type_name = last_space == std::string::npos ? type : type.substr(last_space + 1);
 

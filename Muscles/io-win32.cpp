@@ -73,18 +73,13 @@ int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>&
 		else
 			p++;
 
-		int p_len = strlen(p);
-		int b_idx = icon_map.get(p, p_len);
-		Bucket& buck = icon_map.data[b_idx];
-
-		Texture icon = buck.pointer;
-		if ((buck.flags & FLAG_OCCUPIED) == 0) {
-			icon = load_icon(path);
-			icon_map.place_at(b_idx, p, p_len, load_icon(path));
-			icon_map.next_level_maybe();
+		Bucket& buck = icon_map.insert(p);
+		if (buck.flags & FLAG_NEW) {
+			buck.pointer = load_icon(path);
+			buck.flags |= FLAG_POINTER;
 		}
 
-		icons[idx] = icon;
+		icons[idx] = buck.pointer;
 		snprintf((char*)names[idx], count_per_cell, "%5d %s", pid, p);
 		idx++;
 	}
