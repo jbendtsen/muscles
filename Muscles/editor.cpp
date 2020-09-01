@@ -389,7 +389,7 @@ int Editor::handle_input(Input& input) {
 	}
 
 	if (paste) {
-		int advance = sdl_paste_into(text, primary.cursor);
+		int advance = sdl_paste_into(text, primary.cursor, multiline);
 		set_cursor(primary, primary.cursor + advance);
 		update = true;
 	}
@@ -404,6 +404,23 @@ int Editor::handle_input(Input& input) {
 
 	if (!selected)
 		secondary = primary;
+
+	if (update) {
+		lines = columns = 0;
+		int cols = 0;
+		for (auto& c : text) {
+			cols += c == '\t' ? tab_width : 1;
+			if (c == '\n') {
+				lines++;
+				if (cols > columns)
+					columns = cols;
+				cols = 0;
+			}
+		}
+
+		lines++;
+		columns++;
+	}
 
 	int flags = (update || enter) ? 1 : 0;
 	flags |= (key_press || update || selected != was_selected) ? 2 : 0;

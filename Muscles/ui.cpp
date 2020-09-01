@@ -294,7 +294,7 @@ int Data_View::get_table_index(int view_idx) {
 }
 
 bool Data_View::highlight(Camera& view, Point& inside) {
-	if (!font) {
+	if (!font || !data) {
 		hl_row = hl_col = -1;
 		return false;
 	}
@@ -393,6 +393,12 @@ void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect& back, fl
 }
 
 void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (!data) {
+		Rect back = make_ui_box(rect, pos, view.scale);
+		sdl_draw_rect(back, default_color, renderer);
+		return;
+	}
+
 	int n_rows = data->row_count();
 	int n_cols = data->column_count();
 	int tree_size = tree.size();
@@ -955,25 +961,7 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 	clip.y_lower = back.y;
 	clip.y_upper = back.y + back.h;
 	float offset = 0;
-/*
-	int first_col = editor.primary.column;
-	int second_col = editor.secondary.column;
-	if (first_col != second_col) {
-		if (first_col > second_col) {
-			int temp = first_col;
-			first_col = second_col;
-			second_col = temp;
-		}
-		float digit_w = fnt->render.digit_width();
-		Rect r = {
-			clip.x_lower + first_col * digit_w,
-			rect.y + text_y + caret_y,
-			(second_col - first_col) * digit_w,
-			height + 1
-		};
-		sdl_draw_rect(r, sel_color, renderer);
-	}
-*/
+
 	float digit_w = fnt->render.digit_width();
 	editor.draw_selection_box(renderer, sel_color, clip, digit_w, height);
 
@@ -1014,7 +1002,7 @@ void Hex_View::update(float scale) {
 
 	if (scroll) {
 		offset = (int)scroll->position;
-		offset -= offset % columns;
+		//offset -= offset % columns;
 		u64 size = region_size;
 		if (size % columns > 0)
 			size += columns - (size % columns);
@@ -1452,7 +1440,7 @@ void Scroll::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool 
 		h = bar.h - gap;
 	}
 
-	Rect_Int scroll_rect ={
+	Rect_Int scroll_rect = {
 		bar.x + (float)(x * view.scale + 0.5),
 		bar.y + (float)(y * view.scale + 0.5),
 		w,
@@ -1567,7 +1555,6 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 		parent->ui_held = true;
 		parent->active_edit = &editor;
 		mouse_held = true;
-		needs_redraw = true;
 	}
 	if (!input.lmouse)
 		mouse_held = false;
@@ -1578,6 +1565,8 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 
 		editor.update_cursor(x, y, font, view.scale, input.lclick);
 	}
+
+	needs_redraw = mouse_held;
 }
 
 void Text_Editor::update() {
@@ -1589,18 +1578,26 @@ void Text_Editor::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, 
 	Rect back = make_ui_box(rect, pos, view.scale);
 	sdl_draw_rect(back, default_color, renderer);
 
-	float scroll_x = hscroll ? hscroll->position : 0;
-	float scroll_y = vscroll ? vscroll->position : 0;
-
+	float digit_w = font->render.digit_width();
+	float font_h = font->render.text_height();
 	float edge = border * view.scale;
+
+	float scroll_x = 0, scroll_y = 0;
+	if (hscroll) {
+		float view_w = back.w - 2*edge;
+		hscroll->set_maximum((float)editor.columns * digit_w, view_w);
+		scroll_x = hscroll->position;
+	}
+	if (vscroll) {
+		float view_h = back.h - 2*edge;
+		vscroll->set_maximum((float)editor.lines * font_h, view_h);
+		scroll_y = vscroll->position;
+	}
 
 	clip.x_lower = back.x + edge;
 	clip.x_upper = back.x + back.w - edge;
 	clip.y_lower = back.y + edge;
 	clip.y_upper = back.y + back.h - edge;
-
-	float digit_w = font->render.digit_width();
-	float font_h = font->render.text_height();
 
 	if (editor.secondary.cursor != editor.primary.cursor)
 		editor.draw_selection_box(renderer, sel_color, clip, digit_w, font_h);
@@ -1614,11 +1611,12 @@ void Text_Editor::post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, boo
 
 	Rect back = make_ui_box(rect, pos, view.scale);
 
+	float edge = border * view.scale;
 	float digit_w = font->render.digit_width();
 	float font_h = font->render.text_height();
 
 	if (editor.secondary.cursor != editor.primary.cursor || show_caret) {
-		Point origin = {back.x, back.y};
+		Point origin = {back.x + edge, back.y + edge};
 		editor.draw_cursor(nullptr, caret_color, editor.primary, origin, digit_w, font_h, view.scale);
 		if (editor.secondary.cursor != editor.primary.cursor)
 			editor.draw_cursor(nullptr, caret_color, editor.secondary, origin, digit_w, font_h, view.scale);

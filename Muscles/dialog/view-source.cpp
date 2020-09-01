@@ -306,7 +306,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 	}
 
 	u64 offset = address - base;
-	offset -= offset % ui->hex.columns;
+	//offset -= offset % ui->hex.columns;
 	ui->hex_scroll.position = (double)offset;
 
 	edit->clear();
@@ -363,6 +363,11 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 
 	if (ui->multiple_regions)
 		ui->reg_search.update_icon(IconGlass, goto_h, new_scale);
+}
+
+static void delete_markup(Box *b) {
+	delete (View_Source*)b->markup;
+	b->markup = nullptr;
 }
 
 void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
@@ -531,6 +536,7 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 	b.ui.push_back(&ui->columns);
 
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_view_source;
 	b.scale_change_handler = scale_change_handler;
 	b.refresh_handler = refresh_handler;

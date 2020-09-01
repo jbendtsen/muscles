@@ -43,6 +43,8 @@ struct Editor {
 	secondary = {0};
 
 	std::string text;
+	int columns = 0;
+	int lines = 0;
 
 	float cursor_width = 1;
 	float border = 4;
@@ -108,6 +110,10 @@ struct UI_Element {
 
 	UI_Element() = default;
 	UI_Element(Element_Type t, Cursor_Type ct = CursorDefault) : elem_type(t), cursor_type(ct) {}
+
+	virtual ~UI_Element() {
+		sdl_destroy_texture(&tex_cache);
+	}
 };
 
 void (*get_delete_box(void))(UI_Element*, bool);
@@ -119,6 +125,9 @@ struct Scroll;
 
 struct Button : UI_Element {
 	Button() : UI_Element(ElemButton) {}
+	~Button() {
+		sdl_destroy_texture(&icon);
+	}
 
 	struct Theme {
 		RGBA back;
@@ -165,6 +174,10 @@ struct Checkbox : UI_Element {
 struct Data_View : UI_Element {
 	Data_View() : UI_Element(ElemDataView) {
 		use_sf_cache = true;
+	}
+	~Data_View() {
+		sdl_destroy_texture(&icon_plus);
+		sdl_destroy_texture(&icon_minus);
 	}
 
 	RGBA back_color = {};
@@ -221,6 +234,10 @@ struct Data_View : UI_Element {
 
 struct Divider : UI_Element {
 	Divider() : UI_Element(ElemDivider) {}
+	~Divider() {
+		sdl_destroy_texture(&icon_default);
+		sdl_destroy_texture(&icon_hl);
+	}
 
 	bool vertical = false;
 	bool moveable = false;
@@ -283,13 +300,12 @@ struct Edit_Box : UI_Element {
 		action = get_edit_box_action();
 		editor.multiline = false;
 	}
+	~Edit_Box() {
+		sdl_destroy_texture(&icon);
+	}
 
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
 
-	/*
-	float offset = 0;
-	float window_w = 0;
-	*/
 	bool text_changed = false;
 
 	Editor editor;
@@ -374,6 +390,9 @@ struct Hex_View : UI_Element {
 
 struct Image : UI_Element {
 	Image() : UI_Element(ElemImage) {}
+	~Image() {
+		//sdl_destroy_texture(&img);
+	}
 
 	Texture img = nullptr;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -403,6 +422,9 @@ struct Number_Edit : UI_Element {
 		action = get_number_edit_action();
 		editor.use_clipboard = false;
 		editor.numeric_only = true;
+	}
+	~Number_Edit() {
+		sdl_destroy_texture(&icon);
 	}
 
 	int number = 0;
@@ -511,7 +533,7 @@ struct Text_Editor : UI_Element {
 	Editor editor;
 
 	Render_Clip clip = {
-		CLIP_TOP | CLIP_BOTTOM | CLIP_LEFT | CLIP_RIGHT,
+		CLIP_ALL,
 		0, 0, 0, 0
 	};
 
@@ -536,7 +558,13 @@ enum BoxType {
 struct Workspace;
 
 struct Box {
+	~Box() {
+		if (delete_markup_handler)
+			delete_markup_handler(this);
+	}
+
 	BoxType type = BoxDefault;
+	bool expungable = false; // the expungables
 	bool visible = false;
 	bool moving = false;
 	bool ui_held = false;
@@ -554,6 +582,7 @@ struct Box {
 	void (*update_handler)(Box&, Camera&, Input&, Point&, Box*, bool) = nullptr;
 	void (*refresh_handler)(Box&, Point&) = nullptr;
 	void (*scale_change_handler)(Workspace& ws, Box&, float) = nullptr;
+	void (*delete_markup_handler)(Box*) = nullptr;
 
 	int edge = 0;
 
@@ -566,10 +595,6 @@ struct Box {
 	float cross_size = 16;
 	float border = 4;
 	float edge_size = 2;
-
-	Box() = default;
-	Box(const Box& b) = default;
-	Box(Box&& b) = default;
 
 	float min_width = 300;
 	float min_height = 200;
@@ -621,14 +646,25 @@ struct Workspace {
 	Font *inactive_font = nullptr;
 
 	std::vector<Box*> boxes;
-	Box *focus = nullptr;
 	Box *selected = nullptr;
 	Box *new_box = nullptr;
 	bool box_moving = false;
+	bool box_expunged = false;
 
 	bool cursor_set = false;
 
 	std::vector<Source*> sources;
+
+	Map definitions;
+
+	Arena object_arena;
+
+	String_Vector tokens;
+	String_Vector name_vector;
+
+	std::vector<Struct*> structs;
+	std::vector<char*> struct_names;
+	bool first_struct_run = true;
 
 	Workspace(Font_Face face);
 	~Workspace();

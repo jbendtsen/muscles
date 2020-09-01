@@ -77,6 +77,11 @@ void scale_search_bar(Source_Menu *ui, float new_scale) {
 	ui->search.update_icon(IconGlass, height, new_scale);
 }
 
+static void delete_markup(Box *b) {
+	delete (Source_Menu*)b->markup;
+	b->markup = nullptr;
+}
+
 Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void (*table_handler)(UI_Element*, bool)) {
 	Source_Menu *ui = new Source_Menu();
 
@@ -124,6 +129,7 @@ Source_Menu *make_source_menu(Workspace& ws, Box& b, const char *title_str, void
 
 	b.visible = true;
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_source_menu;
 	b.back = ws.back_color;
 

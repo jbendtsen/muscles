@@ -83,14 +83,7 @@ struct Edit_Structs {
 	Arena arena;
 	Table table;
 
-	String_Vector tokens;
-	String_Vector name_vector;
-
-	std::vector<Struct*> structs;
-	std::vector<char*> struct_names;
-
 	float min_width = 200;
-	bool first_run = true;
 };
 
 struct View_Object {
@@ -114,7 +107,6 @@ struct View_Object {
 	Button::Theme theme_on = {};
 	Button::Theme theme_off = {};
 
-	Arena arena;
 	Table table;
 
 	Struct *record = nullptr;
@@ -138,7 +130,6 @@ struct View_Definitions {
 
 	Table types;
 	Table enums;
-	Table typedefs;
 	Table constants;
 	std::vector<Table*> tables;
 

@@ -103,7 +103,7 @@ void sdl_acquire_mouse();
 void sdl_release_mouse();
 
 void sdl_copy(std::string& string);
-int sdl_paste_into(std::string& string, int offset);
+int sdl_paste_into(std::string& string, int offset, bool multiline);
 
 void sdl_apply_texture(Texture tex, Rect_Int& dst, Rect_Int *src, Renderer rdr);
 void sdl_apply_texture(Texture tex, Rect& dst, Rect_Int *src, Renderer rdr);
@@ -178,6 +178,10 @@ struct String_Vector {
 	int pool_size = 32;
 	int head = 0;
 
+	~String_Vector() {
+		if (pool) delete[] pool;
+	}
+
 	char *at(int idx);
 
 	void try_expand(int new_size = 0);
@@ -233,6 +237,7 @@ struct Table {
 	Table();
 	Table(const Table& t);
 	Table(Table&& t);
+	~Table();
 
 	int column_count() const {
 		return headers.size();
@@ -262,6 +267,7 @@ struct Table {
 #define CLIP_BOTTOM  2
 #define CLIP_LEFT    4
 #define CLIP_RIGHT   8
+#define CLIP_ALL    15
 
 struct Render_Clip {
 	u32 flags = 0;
@@ -457,6 +463,7 @@ struct Map {
 	int get(const char *str, int len);
 	void insert(const char *str, int len, u64 value);
 	void insert(const char *str, int len, void *pointer);
+	void remove(const char *str, int len);
 
 	void assign(Bucket& buck, u64 value);
 	void assign(Bucket& buck, void *pointer);

@@ -27,9 +27,6 @@ Workspace::~Workspace() {
 		for (auto& e : b->ui)
 			e->release();
 
-		if (b->markup)
-			delete b->markup;
-
 		delete b;
 	}
 
@@ -43,12 +40,13 @@ Workspace::~Workspace() {
 }
 
 Box *Workspace::box_under_cursor(Camera& view, Point& cur, Point& inside) {
-	for (int i = boxes.size()-1; i >= 0; i--) {
+	int n_boxes = boxes.size();
+	for (int i = n_boxes-1; i >= 0; i--) {
 		if (!boxes[i]->visible)
 			continue;
 
 		Rect& r = boxes[i]->box;
-		float e = boxes[i] == focus ? boxes[i]->border / view.scale : 0;
+		float e = i == n_boxes-1 ? boxes[i]->border / view.scale : 0;
 
 		if (cur.x >= r.x - e && cur.x < r.x+r.w + e && cur.y >= r.y - e && cur.y < r.y+r.h + e) {
 			inside.x = cur.x - r.x;
@@ -71,20 +69,17 @@ void Workspace::delete_box(int idx) {
 		return;
 
 	boxes[idx]->visible = false;
-	/*
-	boxes.erase(boxes.begin()+idx);
-	for (int i = 0; i < order.size(); i++) {
-		if (order[i] == idx) {
-			order.erase(order.begin()+i);
-			break;
-		}
-	}
+	if (!boxes[idx]->expungable)
+		return;
 
-	for (auto& o : order) {
-		if (o > idx)
-			o--;
-	}
-	*/
+	if (boxes[idx] == selected)
+		selected = nullptr;
+	if (boxes[idx] == new_box)
+		new_box = nullptr;
+
+	delete boxes[idx];
+	boxes.erase(boxes.begin()+idx);
+	box_expunged = true;
 }
 
 void Workspace::delete_box(Box *b) {
@@ -182,23 +177,12 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	if (input.lclick || input.rclick) {
 		if (!view.moving) {
 			sdl_acquire_mouse();
-			focus = hover;
 			if (hover)
-				bring_to_front(focus);
+				bring_to_front(hover);
 		}
 
 		if (hover && !input.rclick)
 			selected = hover;
-		/*
-		if (!hover || !hover->current_dd || hover->current_dd->sel < 0) {
-			for (auto& b : boxes) {
-				if (b->current_dd)
-					b->current_dd->dropped = false;
-
-				b->current_dd = nullptr;
-			}
-		}
-		*/
 	}
 
 	if (!input.lmouse) {
@@ -218,7 +202,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 	cursor_set = false;
 	for (int i = boxes.size() - 1; i >= 0; i--)
-		boxes[i]->update(*this, view, box_input, hover, focus == boxes[i]);
+		boxes[i]->update(*this, view, box_input, hover, i == boxes.size() - 1);
 
 	if (!cursor_set)
 		sdl_set_cursor(CursorDefault);
@@ -245,7 +229,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	for (int i = 0; i < boxes.size(); i++) {
 		if (boxes[i]->visible) {
 			bool hovered = hover == boxes[i];
-			boxes[i]->draw(*this, view, box_input.lmouse, hovered ? &inside : nullptr, hovered, focus == boxes[i]);
+			boxes[i]->draw(*this, view, box_input.lmouse, hovered ? &inside : nullptr, hovered, i == boxes.size() - 1);
 		}
 	}
 
@@ -432,8 +416,13 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *h
 			elem->deselect();
 
 		if (focussed && input.action && elem->active && elem->action && within) {
+			Workspace *ws = parent;
+			ws->box_expunged = false;
 			elem->action(elem, input.double_click);
 			input.action = false;
+
+			if (ws->box_expunged)
+				return;
 		}
 	}
 }
@@ -462,8 +451,15 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 	dropdown_set = false;
 
-	if (update_handler)
+	if (update_handler) {
+		Workspace *ws = parent;
 		update_handler(*this, view, input, p, hover, focussed);
+
+		if (ws->box_expunged) {
+			ws->box_expunged = false;
+			return;
+		}
+	}
 
 	if (input.lclick && !dropdown_set) {
 		if (current_dd)

@@ -198,6 +198,10 @@ Table::Table(Table&& t) :
 	arena(t.arena ? t.arena : get_default_arena())
 {}
 
+Table::~Table() {
+	clear_data();
+}
+
 void Table::resize(int n_rows) {
 	int n_cols = column_count();
 

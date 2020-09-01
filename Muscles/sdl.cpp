@@ -312,14 +312,29 @@ void sdl_copy(std::string& string) {
 	SDL_SetClipboardText(string.c_str());
 }
 
-int sdl_paste_into(std::string& string, int offset) {
+int sdl_paste_into(std::string& string, int offset, bool multiline) {
 	if (!SDL_HasClipboardText())
 		return 0;
 
-	char *text = SDL_GetClipboardText();
+	char *sdl_text = SDL_GetClipboardText();
+	int len = strlen(sdl_text);
+	char *text = new char[len + 1]();
+
+	char *in = sdl_text;
+	char *out = text;
+	for (int i = 0; i < len; i++) {
+		if (*in == '\n' && !multiline)
+			break;
+
+		if (*in != '\r')
+			*out++ = *in;
+		in++;
+	}
+
 	string.insert(offset, text);
-	int len = strlen(text);
-	SDL_free(text);
+
+	delete[] text;
+	SDL_free(sdl_text);
 
 	return len;
 }

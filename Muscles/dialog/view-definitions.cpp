@@ -50,6 +50,11 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	ui->cross.img = ws.cross;
 }
 
+static void delete_markup(Box *b) {
+	delete (View_Definitions*)b->markup;
+	b->markup = nullptr;
+}
+
 void make_view_definitions(Workspace& ws, Box& b) {
 	auto ui = new View_Definitions();
 
@@ -63,13 +68,13 @@ void make_view_definitions(Workspace& ws, Box& b) {
 	b.ui.push_back(&ui->title);
 
 	const char *tab_names[] = {
-		"Types", "Enums", "Typedefs", "Constants"
+		"Types", "Enums", "Constants", "All"
 	};
 
 	ui->tables.push_back(&ui->types);
 	ui->tables.push_back(&ui->enums);
-	ui->tables.push_back(&ui->typedefs);
 	ui->tables.push_back(&ui->constants);
+	ui->tables.push_back(nullptr);
 
 	ui->tabs.add(tab_names, 4);
 	ui->tabs.font = ws.default_font;
@@ -115,7 +120,7 @@ void make_view_definitions(Workspace& ws, Box& b) {
 
 	ui->constants.init(cols, &ui->arena, 0, 2);
 	ui->view.data = &ui->constants;
-	ui->tabs.sel = 3;
+	ui->tabs.sel = 2;
 
 	b.ui.push_back(&ui->view);
 	b.ui.push_back(&ui->vscroll);
@@ -123,6 +128,7 @@ void make_view_definitions(Workspace& ws, Box& b) {
 
 	b.type = BoxDefinitions;
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_defs_box;
 	b.scale_change_handler = scale_change_handler;
 	//b.refresh_handler = refresh_handler;
@@ -144,6 +150,4 @@ void open_view_definitions(Workspace& ws) {
 		make_view_definitions(ws, *b);
 		ws.add_box(b);
 	}
-
-	ws.focus = ws.boxes.back();
 }

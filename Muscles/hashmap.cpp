@@ -64,14 +64,7 @@ void Region_Map::insert(u64 key, Region& reg) {
 
 	int n_slots = 1 << log2_slots;
 	int idx = get(key);
-/*
-	if (data[idx].flags & FLAG_OCCUPIED) {
-		int mask = n_slots - 1;
-		int end = (idx + mask) & mask;
-		while (idx != end && (data[idx].flags & FLAG_OCCUPIED))
-			idx = (idx + 1) & mask;
-	}
-*/
+
 	place_at(idx, reg);
 }
 
@@ -164,6 +157,14 @@ void Map::insert(const char *str, int len, void *pointer) {
 
 	if (len <= 0) len = strlen(str);
 	place_at(get(str, len), str, len, pointer);
+}
+
+void Map::remove(const char *str, int len) {
+	Bucket& buck = data[get(str, len)];
+	if (buck.flags & FLAG_OCCUPIED)
+		n_entries--;
+
+	buck = {0};
 }
 
 void Map::assign(Bucket& buck, u64 value) {

@@ -167,14 +167,15 @@ void select_view_type(View_Object *ui, bool all) {
 	ui->sel_btn.inactive_theme = *theme_sel;
 
 	ui->view.condition_col = ui->all ? -1 : 0;
+	ui->view.needs_redraw = true;
 }
 
 void struct_edit_refresh(Edit_Box *edit, Input& input) {
 	Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
 	if (structs_box) {
 		auto ui = (View_Object*)edit->parent->markup;
-		auto es = (Edit_Structs*)structs_box->markup;
-		populate_object_table(ui, es->structs, es->name_vector);
+		Workspace *ws = edit->parent->parent;
+		populate_object_table(ui, ws->structs, ws->name_vector);
 	}
 }
 
@@ -200,15 +201,17 @@ void source_edit_refresh(Edit_Box *edit, Input& input) {
 		ui->source = src;
 		ui->span_idx = src->request_span();
 	}
+
+	ui->view.needs_redraw = true;
 }
 
 static void refresh_handler(Box& b, Point& cursor) {
 	auto ui = (View_Object*)b.markup;
-	Box *structs_box = b.parent->first_box_of_type(BoxStructs);
-	Edit_Structs *es = structs_box ? (Edit_Structs*)structs_box->markup : nullptr;
+	Workspace *ws = b.parent;
+	Box *structs_box = ws->first_box_of_type(BoxStructs);
 
-	ui->struct_dd.external = es ? &es->struct_names : nullptr;
-	if (!es || !ui->record || !ui->source)
+	ui->struct_dd.external = &ws->struct_names;
+	if (!ui->record || !ui->source)
 		return;
 
 	Span& span = ui->source->spans[ui->span_idx];
@@ -229,7 +232,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 
 		for (int i = 0; i < ui->record->fields.n_fields; i++) {
 			Field& field = ui->record->fields.data[i];
-			char *field_name = es->name_vector.at(field.field_name_idx);
+			char *field_name = ws->name_vector.at(field.field_name_idx);
 
 			if (!field_name || strcmp(field_name, name))
 				continue;
@@ -274,6 +277,11 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	float height = get_edit_height(ui, new_scale);
 	ui->struct_edit.update_icon(IconTriangle, height, new_scale);
 	ui->source_edit.update_icon(IconTriangle, height, new_scale);
+}
+
+static void delete_markup(Box *b) {
+	delete (View_Object*)b->markup;
+	b->markup = nullptr;
 }
 
 void make_view_object(Workspace& ws, Box& b) {
@@ -339,8 +347,9 @@ void make_view_object(Workspace& ws, Box& b) {
 		{ColumnString, 20, 0.45, 0, 0, "Value"}
 	};
 
-	ui->arena.set_rewind_point();
-	ui->table.init(cols, &ui->arena, 3, 0);
+	Arena *arena = &ws.object_arena;
+	arena->set_rewind_point();
+	ui->table.init(cols, arena, 3, 0);
 	ui->view.data = &ui->table;
 
 	b.ui.push_back(&ui->view);
@@ -435,6 +444,7 @@ void make_view_object(Workspace& ws, Box& b) {
 
 	b.type = BoxObject;
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_view_object;
 	b.scale_change_handler = scale_change_handler;
 	b.refresh_handler = refresh_handler;
@@ -444,6 +454,7 @@ void make_view_object(Workspace& ws, Box& b) {
 	b.box = {-200, -225, 400, 450};
 	b.min_width = 300;
 	b.min_height = 200;
+	b.expungable = true;
 	b.visible = true;
 }
 
@@ -480,4 +491,6 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, Strin
 		SET_TABLE_CHECKBOX(ui->view.data, 0, i, false);
 		ui->view.data->columns[1][i] = (void*)name_vector.at(ui->record->fields.data[i].field_name_idx);
 	}
+
+	ui->view.needs_redraw = true;
 }

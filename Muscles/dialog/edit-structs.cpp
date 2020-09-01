@@ -103,43 +103,43 @@ void update_struct_box(Box& b, Camera& view, Input& input, Point& inside, Box *h
 
 void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent->markup;
+	auto ws = (Workspace*)edit->parent->parent;
 
-	if (ui->first_run) {
+	if (ws->first_struct_run) {
 		int reserve = edit->editor.text.size() + 2;
-		ui->tokens.try_expand(reserve);
-		ui->name_vector.try_expand(reserve);
-		ui->first_run = false;
+		ws->tokens.try_expand(reserve);
+		ws->name_vector.try_expand(reserve);
+		ws->first_struct_run = false;
 	}
 	else {
-		ui->tokens.head = 0;
-		ui->name_vector.head = 0;
-		ui->struct_names.clear();
+		ws->tokens.head = 0;
+		ws->name_vector.head = 0;
+		ws->struct_names.clear();
 
-		for (auto& s : ui->structs) {
+		for (auto& s : ws->structs) {
 			s->flags |= FLAG_AVAILABLE;
 			s->fields.zero_out();
 		}
 	}
 
-	tokenize(ui->tokens, edit->editor.text.c_str(), edit->editor.text.size());
+	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
 
-	char *tokens_alias = ui->tokens.pool;
-	parse_c_struct(ui->structs, &tokens_alias, ui->name_vector);
+	char *tokens_alias = ws->tokens.pool;
+	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector);
 
-	for (auto& s : ui->structs) {
-		char *name = ui->name_vector.at(s->name_idx);
+	for (auto& s : ws->structs) {
+		char *name = ws->name_vector.at(s->name_idx);
 		if (name)
-			ui->struct_names.push_back(name);
+			ws->struct_names.push_back(name);
 	}
 
-	Workspace& ws = *edit->parent->parent;
-	for (auto& b : ws.boxes) {
+	for (auto& b : ws->boxes) {
 		if (b->type == BoxObject)
-			populate_object_table((View_Object*)b->markup, ui->structs, ui->name_vector);
+			populate_object_table((View_Object*)b->markup, ws->structs, ws->name_vector);
 	}
 
 	int n_rows = 0;
-	for (auto& s : ui->structs)
+	for (auto& s : ws->structs)
 		n_rows += s->fields.n_fields;
 
 	ui->output.branches.clear();
@@ -149,13 +149,13 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	ui->output.data->arena->rewind();
 
 	int idx = 0;
-	for (auto& s : ui->structs) {
+	for (auto& s : ws->structs) {
 		if (s->flags & FLAG_AVAILABLE)
 			continue;
 
 		int name_idx = -1;
 		if (s->name_idx >= 0) {
-			char *str = ui->name_vector.at(s->name_idx);
+			char *str = ws->name_vector.at(s->name_idx);
 			name_idx = ui->output.branch_name_vector.add_string(str);
 
 			ui->output.branches.push_back({
@@ -167,12 +167,13 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 			auto& f = s->fields.data[i];
 			auto& cols = ui->output.data->columns;
 
-			cols[0][idx] = format_field_name(*ui->output.data->arena, ui->name_vector, f);
-			cols[1][idx] = format_type_name(*ui->output.data->arena, ui->name_vector, f);
+			cols[0][idx] = format_field_name(*ui->output.data->arena, ws->name_vector, f);
+			cols[1][idx] = format_type_name(*ui->output.data->arena, ws->name_vector, f);
 		}
 	}
 
 	ui->output.update_tree();
+	ui->output.needs_redraw = true;
 }
 
 void show_cb_handler(UI_Element *elem, bool dbl_click) {
@@ -213,6 +214,11 @@ static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 	ui->output.icon_minus = make_plus_minus_icon(color, len, false);
 }
 
+static void delete_markup(Box *b) {
+	delete (Edit_Structs*)b->markup;
+	b->markup = nullptr;
+}
+
 void make_struct_box(Workspace& ws, Box& b) {
 	auto ui = new Edit_Structs();
 
@@ -231,6 +237,10 @@ void make_struct_box(Workspace& ws, Box& b) {
 	ui->edit.font = ws.make_font(10, ws.text_color);
 	ui->edit.editor.text = "struct Test {\n\tint a;\n\tint b;\n};";
 	ui->edit.key_action = structs_edit_handler;
+	ui->edit.hscroll = &ui->edit_hscroll;
+	ui->edit.hscroll->content = &ui->edit;
+	ui->edit.vscroll = &ui->edit_vscroll;
+	ui->edit.vscroll->content = &ui->edit;
 	b.ui.push_back(&ui->edit);
 
 	ui->edit_hscroll.back = ws.scroll_back;
@@ -305,6 +315,7 @@ void make_struct_box(Workspace& ws, Box& b) {
 
 	b.type = BoxStructs;
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_struct_box;
 	b.scale_change_handler = scale_change_handler;
 	//b.refresh_handler = refresh_handler;
@@ -328,8 +339,6 @@ void open_edit_structs(Workspace& ws) {
 		box->visible = true;
 		ws.bring_to_front(box);
 	}
-
-	ws.focus = ws.boxes.back();
 
 	Input blank = {0};
 	Text_Editor *edit = &((Edit_Structs*)box->markup)->edit;

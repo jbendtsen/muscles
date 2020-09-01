@@ -101,7 +101,6 @@ void open_view_source(Workspace& ws, int idx) {
 	Box *b = new Box();
 	make_view_source_menu(ws, (Source*)ws.sources[idx], *b);
 	ws.add_box(b);
-	ws.focus = ws.boxes.back();
 }
 
 void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
@@ -119,7 +118,6 @@ void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 			make_process_menu(*ws, *box);
 
 		ws->add_box(box);
-		ws->focus = ws->boxes.back();
 	}
 
 	dd->parent->set_dropdown(nullptr);
@@ -137,7 +135,6 @@ void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
 		Box *b = new Box();
 		make_view_object(*ws, *b);
 		ws->add_box(b);
-		ws->focus = ws->boxes.back();
 	}
 	else if (dd->sel == 1) {
 		open_edit_structs(*ws);
@@ -192,6 +189,11 @@ void main_scale_change_handler(Workspace& ws, Box& b, float new_scale) {
 		else if (type == SourceProcess)
 			icons[i] = ui->process_icon;
 	}
+}
+
+static void delete_markup(Box *b) {
+	delete (Main_Menu*)b->markup;
+	b->markup = nullptr;
 }
 
 void make_main_menu(Workspace& ws, Box& b) {
@@ -287,6 +289,7 @@ void make_main_menu(Workspace& ws, Box& b) {
 	b.type = BoxMain;
 	b.visible = true;
 	b.markup = ui;
+	b.delete_markup_handler = delete_markup;
 	b.update_handler = update_main_menu;
 	b.scale_change_handler = main_scale_change_handler;
 	b.refresh_handler = refresh_main_menu;
@@ -305,7 +308,6 @@ void opening_menu_handler(UI_Element *elem, bool dbl_click) {
 			Workspace *ws = table->parent->parent;
 			make_main_menu(*ws, *b);
 			ws->add_box(b);
-			ws->focus = ws->boxes.back();
 			break;
 		}
 	}
