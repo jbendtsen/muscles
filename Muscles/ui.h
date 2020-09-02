@@ -549,21 +549,25 @@ struct Text_Editor : UI_Element {
 
 enum BoxType {
 	BoxDefault = 0,
+	BoxOpening,
 	BoxMain,
+	BoxOpenSource,
+	BoxViewSource,
 	BoxStructs,
 	BoxObject,
 	BoxDefinitions
 };
 
+enum MenuType {
+	MenuDefault = 0,
+	MenuProcess,
+	MenuFile
+};
+
 struct Workspace;
 
 struct Box {
-	~Box() {
-		if (delete_markup_handler)
-			delete_markup_handler(this);
-	}
-
-	BoxType type = BoxDefault;
+	BoxType box_type;
 	bool expungable = false; // the expungables
 	bool visible = false;
 	bool moving = false;
@@ -577,12 +581,11 @@ struct Box {
 	Workspace *parent = nullptr;
 	Drop_Down *current_dd = nullptr;
 	Editor *active_edit = nullptr;
-	void *markup = nullptr;
 
-	void (*update_handler)(Box&, Camera&, Input&, Point&, Box*, bool) = nullptr;
-	void (*refresh_handler)(Box&, Point&) = nullptr;
-	void (*scale_change_handler)(Workspace& ws, Box&, float) = nullptr;
-	void (*delete_markup_handler)(Box*) = nullptr;
+	virtual void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) {}
+	virtual void refresh(Point& cursor) {}
+	virtual void handle_zoom(Workspace& ws, float new_scale) {}
+	virtual void wake_up() {}
 
 	int edge = 0;
 
@@ -669,6 +672,8 @@ struct Workspace {
 	Workspace(Font_Face face);
 	~Workspace();
 
+	Box *make_box(BoxType btype, MenuType mtype = MenuDefault);
+
 	Box *box_under_cursor(Camera& view, Point& cur, Point& inside);
 	void add_box(Box *b);
 	void delete_box(int idx);
@@ -684,5 +689,3 @@ struct Workspace {
 };
 
 float center_align_title(Label *title, Box& b, float scale, float y_offset);
-
-void make_opening_menu(Workspace& ws, Box& b);

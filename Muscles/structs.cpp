@@ -485,6 +485,8 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				size_t last_space = type.find_last_of(' ');
 				std::string type_name = last_space == std::string::npos ? type : type.substr(last_space + 1);
 
+				// TODO: Enum lookup goes here!!!
+
 				// If so, then add its following declaration list to this struct
 				Struct *record = lookup_struct(structs, st, f, name_vector.pool, (char*)type_name.c_str());
 				if (record) {

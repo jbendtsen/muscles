@@ -3,41 +3,39 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	b.update_elements(view, input, inside, hover, focussed);
+void View_Source::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+	update_elements(view, input, inside, hover, focussed);
 
-	auto ui = (View_Source*)b.markup;
+	cross.pos.y = cross_size * 0.5;
+	cross.pos.x = box.w - cross_size * 1.5;
+	cross.pos.w = cross_size;
+	cross.pos.h = cross_size;
 
-	ui->cross.pos.y = b.cross_size * 0.5;
-	ui->cross.pos.x = b.box.w - b.cross_size * 1.5;
-	ui->cross.pos.w = b.cross_size;
-	ui->cross.pos.h = b.cross_size;
-
-	float w = ui->title.font->render.text_width(ui->title.text.c_str()) / view.scale;
-	float max_title_w = b.box.w - 5 * b.cross_size;
+	float w = title.font->render.text_width(title.text.c_str()) / view.scale;
+	float max_title_w = box.w - 5 * cross_size;
 	w = w < max_title_w ? w : max_title_w;
 
-	ui->title.pos = {
-		(b.box.w - w) / 2,
+	title.pos = {
+		(box.w - w) / 2,
 		2,
 		w,
-		ui->title.font->render.text_height() * 1.1f / view.scale
+		title.font->render.text_height() * 1.1f / view.scale
 	};
-	ui->title.update_position(view.scale);
+	title.update_position(view.scale);
 
 	float scroll_w = 14;
 
-	float data_x = b.border;
-	float data_y = ui->title.pos.y + ui->title.pos.h + 8;
+	float data_x = border;
+	float data_y = title.pos.y + title.pos.h + 8;
 
-	float goto_w = (float)ui->goto_digits + 5.0f;
-	goto_w *= ui->goto_box.font->render.glyph_for('0')->box_w / view.scale;
+	float goto_w = (float)goto_digits + 5.0f;
+	goto_w *= goto_box.font->render.glyph_for('0')->box_w / view.scale;
 	float goto_x = data_x;
-	float goto_h = ui->goto_box.pos.h;
-	float goto_y = b.box.h - b.border - goto_h;
+	float goto_h = goto_box.pos.h;
+	float goto_y = box.h - border - goto_h;
 
-	if (!ui->multiple_regions) {
-		ui->goto_box.pos = {
+	if (menu_type == MenuFile) {
+		goto_box.pos = {
 			goto_x,
 			goto_y,
 			goto_w,
@@ -45,8 +43,8 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 		};
 	}
 	else {
-		goto_x = ui->div.position - goto_w / 2;
-		ui->goto_box.pos = {
+		goto_x = div.position - goto_w / 2;
+		goto_box.pos = {
 			goto_x,
 			goto_y,
 			goto_w,
@@ -55,206 +53,197 @@ void update_view_source(Box& b, Camera& view, Input& input, Point& inside, Box *
 
 		float y = data_y;
 
-		ui->div.pos = {
-			ui->div.position,
+		div.pos = {
+			div.position,
 			y,
-			ui->div.breadth,
-			goto_y - y - b.border
+			div.breadth,
+			goto_y - y - border
 		};
-		ui->div.maximum = b.box.w - ui->div.minimum;
+		div.maximum = box.w - div.minimum;
 
-		float pad = ui->div.padding;
-		data_x = ui->div.pos.x + ui->div.pos.w + pad;
+		float pad = div.padding;
+		data_x = div.pos.x + div.pos.w + pad;
 
-		ui->reg_title.pos = {
-			b.border,
+		reg_title.pos = {
+			border,
 			y,
-			ui->div.pos.x - b.border - pad,
-			ui->reg_title.font->render.text_height() * 1.1f / view.scale
+			div.pos.x - border - pad,
+			reg_title.font->render.text_height() * 1.1f / view.scale
 		};
-		ui->reg_title.update_position(view.scale);
+		reg_title.update_position(view.scale);
 
-		y += ui->reg_title.pos.h;
+		y += reg_title.pos.h;
 
-		ui->reg_scroll.pos = {
-			ui->reg_title.pos.x + ui->reg_title.pos.w - scroll_w,
+		reg_scroll.pos = {
+			reg_title.pos.x + reg_title.pos.w - scroll_w,
 			y,
 			scroll_w,
-			goto_y - y - scroll_w - 3*b.border
+			goto_y - y - scroll_w - 3*border
 		};
 
-		ui->reg_lat_scroll.pos = {
-			b.border,
-			goto_y - scroll_w - 2*b.border,
-			ui->reg_scroll.pos.x - 2*b.border,
+		reg_lat_scroll.pos = {
+			border,
+			goto_y - scroll_w - 2*border,
+			reg_scroll.pos.x - 2*border,
 			scroll_w
 		};
 
-		ui->reg_table.pos = {
-			ui->reg_lat_scroll.pos.x,
-			ui->reg_scroll.pos.y,
-			ui->reg_lat_scroll.pos.w,
-			ui->reg_scroll.pos.h
+		reg_table.pos = {
+			reg_lat_scroll.pos.x,
+			reg_scroll.pos.y,
+			reg_lat_scroll.pos.w,
+			reg_scroll.pos.h
 		};
 
-		ui->reg_search.pos = {
-			b.border,
+		reg_search.pos = {
+			border,
 			goto_y,
 			120,
 			goto_h
 		};
 	}
 
-	ui->hex_title.pos = {
+	hex_title.pos = {
 		data_x,
 		data_y,
-		b.box.w - data_x - b.border,
-		ui->hex_title.font->render.text_height() * 1.1f / view.scale
+		box.w - data_x - border,
+		hex_title.font->render.text_height() * 1.1f / view.scale
 	};
-	ui->hex_title.update_position(view.scale);
+	hex_title.update_position(view.scale);
 
-	float data_w = ui->hex_scroll.pos.x - ui->hex_title.pos.x - b.border;
+	float data_w = hex_scroll.pos.x - hex_title.pos.x - border;
 
-	float size_w = ui->size_label.font->render.text_width(ui->size_label.text.c_str()) * 1.1f / view.scale;
-	float size_font_h = ui->size_label.font->render.text_height();
+	float size_w = size_label.font->render.text_width(size_label.text.c_str()) * 1.1f / view.scale;
+	float size_font_h = size_label.font->render.text_height();
 	float size_h = size_font_h * 1.1f / view.scale;
 
 	float size_x, size_y;
-	if (ui->multiple_regions) {
+	if (menu_type == MenuProcess) {
 		size_x = data_x + data_w - size_w;
-		size_y = goto_y - size_h - b.border;
+		size_y = goto_y - size_h - border;
 	}
 	else {
-		size_x = goto_x + goto_w + b.border;
-		size_y = goto_y + ui->goto_box.text_off_y * size_font_h; //b.box.h - goto_h + (goto_h - size_h) - b.border;
+		size_x = goto_x + goto_w + border;
+		size_y = goto_y + goto_box.text_off_y * size_font_h; //box.h - goto_h + (goto_h - size_h) - border;
 	}
 
-	ui->size_label.pos = {
+	size_label.pos = {
 		size_x,
 		size_y,
 		size_w,
 		size_h
 	};
-	ui->size_label.update_position(view.scale);
+	size_label.update_position(view.scale);
 
-	if (ui->multiple_regions) {
-		ui->reg_name.pos = {
+	if (menu_type == MenuProcess) {
+		reg_name.pos = {
 			data_x,
-			goto_y - b.border - ui->hex_title.pos.h,
+			goto_y - border - hex_title.pos.h,
 			data_w - size_w,
-			ui->hex_title.pos.h
+			hex_title.pos.h
 		};
-		ui->reg_name.update_position(view.scale);
+		reg_name.update_position(view.scale);
 	}
 
-	data_y += ui->hex_title.pos.h;
+	data_y += hex_title.pos.h;
 
-	float data_h = ui->multiple_regions ? size_y : goto_y;
-	data_h -= data_y + b.border;
+	float data_h = menu_type == MenuProcess ? size_y : goto_y;
+	data_h -= data_y + border;
 
-	ui->hex_scroll.pos = {
-		b.box.w - b.border - scroll_w,
+	hex_scroll.pos = {
+		box.w - border - scroll_w,
 		data_y,
 		scroll_w,
 		data_h
 	};
 
-	ui->hex.pos = {
-		ui->hex_title.pos.x,
+	hex.pos = {
+		hex_title.pos.x,
 		data_y,
 		data_w,
 		data_h
 	};
 
-	ui->ascii_box.pos.x = b.box.w - b.border - ui->ascii_box.pos.w;
-	ui->ascii_box.pos.y = b.box.h - b.border - ui->ascii_box.pos.h;
+	ascii_box.pos.x = box.w - border - ascii_box.pos.w;
+	ascii_box.pos.y = box.h - border - ascii_box.pos.h;
 
-	ui->hex_box.pos.x = ui->ascii_box.pos.x - ui->hex_box.pos.w;
-	ui->hex_box.pos.y = ui->ascii_box.pos.y;
+	hex_box.pos.x = ascii_box.pos.x - hex_box.pos.w;
+	hex_box.pos.y = ascii_box.pos.y;
 
-	ui->addr_box.pos.x = ui->hex_box.pos.x - ui->addr_box.pos.w;
-	ui->addr_box.pos.y = ui->hex_box.pos.y;
+	addr_box.pos.x = hex_box.pos.x - addr_box.pos.w;
+	addr_box.pos.y = hex_box.pos.y;
 
-	ui->columns.pos.x = ui->addr_box.pos.x - ui->columns.pos.w - 2*b.border;
-	ui->columns.pos.y = ui->addr_box.pos.y;
+	columns.pos.x = addr_box.pos.x - columns.pos.w - 2*border;
+	columns.pos.y = addr_box.pos.y;
 
-	ui->hex.show_addrs = ui->addr_box.checked;
-	ui->hex.show_hex = ui->hex_box.checked;
-	ui->hex.show_ascii = ui->ascii_box.checked;
+	hex.show_addrs = addr_box.checked;
+	hex.show_hex = hex_box.checked;
+	hex.show_ascii = ascii_box.checked;
 
-	ui->hex.update(view.scale);
+	hex.update(view.scale);
 
-	if (ui->multiple_regions)
-		b.min_width = ui->div.position + b.box.w - ui->div.maximum;
+	if (menu_type == MenuProcess)
+		min_width = div.position + box.w - div.maximum;
 
 	char buf[20];
-	snprintf(buf, 19, "%#llx", ui->hex.region_address + ui->hex.offset);
-	ui->goto_box.placeholder = buf;
+	snprintf(buf, 19, "%#llx", hex.region_address + hex.offset);
+	goto_box.placeholder = buf;
 
-	b.post_update_elements(view, input, inside, hover, focussed);
+	post_update_elements(view, input, inside, hover, focussed);
 }
 
-void update_regions_table(View_Source *ui) {
-	int sel = ui->reg_table.sel_row;
+void View_Source::update_regions_table() {
+	int sel = reg_table.sel_row;
 	if (sel < 0) {
-		ui->reg_name.text = "";
+		reg_name.text = "";
 		return;
 	}
 
-	sel = ui->reg_table.data->index_from_filtered(sel);
+	sel = reg_table.data->index_from_filtered(sel);
 
-	char *name = (char*)ui->reg_table.data->columns[0][sel];
-	ui->reg_name.text = name ? name : "";
+	char *name = (char*)reg_table.data->columns[0][sel];
+	reg_name.text = name ? name : "";
 
-	u64 address = strtoull((char*)ui->reg_table.data->columns[1][sel], nullptr, 16);
-	u64 size = strtoull((char*)ui->reg_table.data->columns[2][sel], nullptr, 16);
+	u64 address = strtoull((char*)reg_table.data->columns[1][sel], nullptr, 16);
+	u64 size = strtoull((char*)reg_table.data->columns[2][sel], nullptr, 16);
 
-	ui->selected_region = address;
-	ui->hex.set_region(address, size);
-	ui->hex_scroll.position = 0;
+	selected_region = address;
+	hex.set_region(address, size);
+	hex_scroll.position = 0;
 }
 
-void regions_handler(UI_Element *elem, bool dbl_click) {
-	auto table = dynamic_cast<Data_View*>(elem);
-	table->sel_row = table->hl_row;
-
-	auto ui = (View_Source*)table->parent->markup;
-	ui->selected_region = 0;
-	update_regions_table(ui);
-}
-
-void refresh_region_list(View_Source *ui, Point& cursor) {
-	int n_rows = ui->table.row_count();
-	bool hovered = ui->reg_table.pos.contains(cursor);
-	ui->source->block_region_refresh = hovered;
+void View_Source::refresh_region_list(Point& cursor) {
+	int n_rows = table.row_count();
+	bool hovered = reg_table.pos.contains(cursor);
+	source->block_region_refresh = hovered;
 
 	if (!n_rows)
-		ui->needs_region_update = true;
+		needs_region_update = true;
 
-	if (!ui->needs_region_update && !ui->source->region_refreshed)
+	if (!needs_region_update && !source->region_refreshed)
 		return;
 
-	int n_sources = ui->source->regions.size();
-	if (n_sources != ui->region_list.size()) {
+	int n_sources = source->regions.size();
+	if (n_sources != region_list.size()) {
 		u64 sel_addr = 0;
 
-		ui->reg_table.data->resize(n_sources);
-		ui->region_list.resize(n_sources);
-		std::iota(ui->region_list.begin(), ui->region_list.end(), 0);
+		reg_table.data->resize(n_sources);
+		region_list.resize(n_sources);
+		std::iota(region_list.begin(), region_list.end(), 0);
 	}
 
 	// place a hex digit LUT on the stack
 	char hex[16];
 	memcpy(hex, "0123456789abcdef", 16);
 
-	auto& names = (std::vector<char*>&)ui->table.columns[0];
-	auto& addrs = (std::vector<char*>&)ui->table.columns[1];
-	auto& sizes = (std::vector<char*>&)ui->table.columns[2];
+	auto& names = (std::vector<char*>&)table.columns[0];
+	auto& addrs = (std::vector<char*>&)table.columns[1];
+	auto& sizes = (std::vector<char*>&)table.columns[2];
 
 	int idx = 0, sel = -1;
-	for (auto& r : ui->region_list) {
-		auto& reg = ui->source->regions[r];
-		if (ui->selected_region == reg.base)
+	for (auto& r : region_list) {
+		auto& reg = source->regions[r];
+		if (selected_region == reg.base)
 			sel = idx;
 
 		print_hex(hex, addrs[idx], reg.base, 16);
@@ -263,28 +252,35 @@ void refresh_region_list(View_Source *ui, Point& cursor) {
 		idx++;
 	}
 
-	ui->goto_digits = idx <= 0 ? 4 : count_digits(ui->source->regions[idx-1].base) + 2;
+	goto_digits = idx <= 0 ? 4 : count_digits(source->regions[idx-1].base) + 2;
 
-	if (ui->table.filtered > 0) {
-		ui->table.update_filter(ui->reg_search.editor.text);
-		sel = ui->table.filtered_from_index(sel);
+	if (table.filtered > 0) {
+		table.update_filter(reg_search.editor.text);
+		sel = table.filtered_from_index(sel);
 	}
 
-	ui->reg_table.sel_row = sel;
+	reg_table.sel_row = sel;
 
-	ui->needs_region_update = false;
+	needs_region_update = false;
+}
+
+void regions_handler(UI_Element *elem, bool dbl_click) {
+	auto ui = dynamic_cast<View_Source*>(elem->parent);
+	ui->reg_table.sel_row = ui->reg_table.hl_row;
+	ui->selected_region = 0;
+	ui->update_regions_table();
 }
 
 void goto_handler(Edit_Box *edit, Input& input) {
 	if (input.enter != 1 || !edit->editor.text.size())
 		return;
 
-	auto ui = (View_Source*)edit->parent->markup;
+	auto ui = dynamic_cast<View_Source*>(edit->parent);
 
 	u64 base = 0;
 	u64 address = strtoull(edit->editor.text.c_str(), nullptr, 16);
 
-	if (ui->multiple_regions) {
+	if (ui->menu_type == MenuProcess) {
 		int sel_row = -1;
 		for (auto& idx : ui->region_list) {
 			auto& reg = ui->source->regions[idx];
@@ -299,7 +295,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 			ui->reg_table.data->clear_filter();
 
 		ui->reg_table.sel_row = sel_row;
-		update_regions_table(ui);
+		ui->update_regions_table();
 
 		if (sel_row < 0)
 			return;
@@ -313,7 +309,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 }
 
 void region_search_handler(Edit_Box *edit, Input& input) {
-	auto ui = (View_Source*)edit->parent->markup;
+	auto ui = dynamic_cast<View_Source*>(edit->parent);
 	ui->reg_table.data->update_filter(edit->editor.text);
 	ui->reg_table.hl_row = ui->reg_table.sel_row = -1;
 	ui->reg_scroll.position = 0;
@@ -321,112 +317,107 @@ void region_search_handler(Edit_Box *edit, Input& input) {
 }
 
 void set_hex_columns(Number_Edit *edit, Input& input) {
-	auto ui = (View_Source*)edit->parent->markup;
+	auto ui = dynamic_cast<View_Source*>(edit->parent);
 	ui->hex.columns = edit->number > 0 ? edit->number : 16;
 }
 
-static void refresh_handler(Box& b, Point& cursor) {
-	auto ui = (View_Source*)b.markup;
-	if (ui->multiple_regions) {
-		refresh_region_list(ui, cursor);
+void View_Source::open_source(Source *s) {
+	title.text = "View Source - ";
+	title.text += s->name;
+	hex.source = s;
+	source = s;
+}
+
+void View_Source::refresh(Point& cursor) {
+	if (menu_type == MenuProcess) {
+		refresh_region_list(cursor);
 	}
 	else {
-		ui->hex.set_region(0, ui->hex.source->regions[0].size);
-		ui->goto_digits = count_digits(ui->hex.region_size) + 2;
+		hex.set_region(0, hex.source->regions[0].size);
+		goto_digits = count_digits(hex.region_size) + 2;
 	}
 
-	u64 n = ui->hex.region_size;
+	u64 n = hex.region_size;
 	if (n > 0) {
 		int n_digits = count_digits(n);
 
 		char buf[40];
-		if (ui->multiple_regions)
-			snprintf(buf, 40, "0x%0*llx/0x%0*llx", n_digits, (u64)ui->hex.offset, n_digits, ui->hex.region_size);
+		if (menu_type == MenuProcess)
+			snprintf(buf, 40, "0x%0*llx/0x%0*llx", n_digits, (u64)hex.offset, n_digits, hex.region_size);
 		else
-			snprintf(buf, 40, "/ 0x%0*llx", n_digits, ui->hex.region_size);
+			snprintf(buf, 40, "/ 0x%0*llx", n_digits, hex.region_size);
 
-		ui->size_label.text = buf;
+		size_label.text = buf;
 	}
 }
 
-static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	auto ui = (View_Source*)b.markup;
-	ui->cross.img = ws.cross;
+void View_Source::handle_zoom(Workspace& ws, float new_scale) {
+	cross.img = ws.cross;
 
-	if (ui->multiple_regions)
-		ui->div.make_icon(new_scale);
+	if (menu_type == MenuProcess)
+		div.make_icon(new_scale);
 
-	ui->columns.make_icon(new_scale);
+	columns.make_icon(new_scale);
 
-	float goto_h = ui->goto_box.font->render.text_height() * 1.4f / new_scale;
-	ui->goto_box.update_icon(IconGoto, goto_h, new_scale);
+	float goto_h = goto_box.font->render.text_height() * 1.4f / new_scale;
+	goto_box.update_icon(IconGoto, goto_h, new_scale);
 
-	if (ui->multiple_regions)
-		ui->reg_search.update_icon(IconGlass, goto_h, new_scale);
+	if (menu_type == MenuProcess)
+		reg_search.update_icon(IconGlass, goto_h, new_scale);
 }
 
-static void delete_markup(Box *b) {
-	delete (View_Source*)b->markup;
-	b->markup = nullptr;
-}
+View_Source::View_Source(Workspace& ws, MenuType mtype)
+	: menu_type(mtype)
+{
+	cross.action = get_delete_box();
+	cross.img = ws.cross;
+	ui.push_back(&cross);
 
-void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
-	auto ui = new View_Source();
-	ui->source = s;
+	title.font = ws.default_font;
+	title.padding = 0;
+	ui.push_back(&title);
 
-	ui->cross.action = get_delete_box();
-	ui->cross.img = ws.cross;
-	b.ui.push_back(&ui->cross);
+	if (menu_type == MenuProcess) {
+		div.default_color = ws.div_color;
+		div.breadth = 2;
+		div.vertical = true;
+		div.moveable = true;
+		div.minimum = 8 * title.font->render.text_height();
+		div.position = div.minimum + 100;
+		div.cursor_type = CursorResizeWestEast;
+		ui.push_back(&div);
 
-	ui->title.text = "View Source - ";
-	ui->title.text += s->name;
-	ui->title.font = ws.default_font;
-	ui->title.padding = 0;
-	b.ui.push_back(&ui->title);
+		reg_title.text = "Regions";
+		reg_title.font = ws.make_font(10, ws.text_color);
+		ui.push_back(&reg_title);
 
-	ui->multiple_regions = s->regions.size() > 1;
+		reg_scroll.back = ws.scroll_back;
+		reg_scroll.default_color = ws.scroll_color;
+		reg_scroll.hl_color = ws.scroll_hl_color;
+		reg_scroll.sel_color = ws.scroll_sel_color;
+		reg_scroll.breadth = 12;
+		ui.push_back(&reg_scroll);
 
-	if (ui->multiple_regions) {
-		ui->div.default_color = ws.div_color;
-		ui->div.breadth = 2;
-		ui->div.vertical = true;
-		ui->div.moveable = true;
-		ui->div.minimum = 8 * ui->title.font->render.text_height();
-		ui->div.position = ui->div.minimum + 100;
-		ui->div.cursor_type = CursorResizeWestEast;
-		b.ui.push_back(&ui->div);
+		reg_lat_scroll.back = reg_scroll.back;
+		reg_lat_scroll.default_color = reg_scroll.default_color;
+		reg_lat_scroll.hl_color = reg_scroll.hl_color;
+		reg_lat_scroll.sel_color = reg_scroll.sel_color;
+		reg_lat_scroll.vertical = false;
+		reg_lat_scroll.breadth = 12;
+		ui.push_back(&reg_lat_scroll);
 
-		ui->reg_title.text = "Regions";
-		ui->reg_title.font = ws.make_font(10, ws.text_color);
-		b.ui.push_back(&ui->reg_title);
+		reg_table.action = regions_handler;
+		reg_table.font = ws.make_font(9, ws.text_color);
+		reg_table.default_color = ws.dark_color;
+		reg_table.hl_color = ws.hl_color;
+		reg_table.sel_color = ws.light_color;
+		reg_table.column_spacing = 0.5;
+		reg_table.vscroll = &reg_scroll;
+		reg_table.vscroll->content = &reg_table;
+		reg_table.hscroll = &reg_lat_scroll;
+		reg_table.hscroll->content = &reg_table;
 
-		ui->reg_scroll.back = ws.scroll_back;
-		ui->reg_scroll.default_color = ws.scroll_color;
-		ui->reg_scroll.hl_color = ws.scroll_hl_color;
-		ui->reg_scroll.sel_color = ws.scroll_sel_color;
-		ui->reg_scroll.breadth = 12;
-		b.ui.push_back(&ui->reg_scroll);
-
-		ui->reg_lat_scroll.back = ui->reg_scroll.back;
-		ui->reg_lat_scroll.default_color = ui->reg_scroll.default_color;
-		ui->reg_lat_scroll.hl_color = ui->reg_scroll.hl_color;
-		ui->reg_lat_scroll.sel_color = ui->reg_scroll.sel_color;
-		ui->reg_lat_scroll.vertical = false;
-		ui->reg_lat_scroll.breadth = 12;
-		b.ui.push_back(&ui->reg_lat_scroll);
-
-		ui->reg_table.action = regions_handler;
-		ui->reg_table.font = ws.make_font(9, ws.text_color);
-		ui->reg_table.default_color = ws.dark_color;
-		ui->reg_table.hl_color = ws.hl_color;
-		ui->reg_table.sel_color = ws.light_color;
-		ui->reg_table.column_spacing = 0.5;
-		ui->reg_table.vscroll = &ui->reg_scroll;
-		ui->reg_table.vscroll->content = &ui->reg_table;
-		ui->reg_table.hscroll = &ui->reg_lat_scroll;
-		ui->reg_table.hscroll->content = &ui->reg_table;
-
-		float digit_units = (float)ui->reg_table.font->render.digit_width() / (float)ui->reg_table.font->render.text_height();
+		float digit_units = (float)reg_table.font->render.digit_width() / (float)reg_table.font->render.text_height();
 		float addr_w = 16 * digit_units;
 		float size_w = 8 * digit_units;
 
@@ -436,115 +427,109 @@ void make_view_source_menu(Workspace& ws, Source *s, Box& b) {
 			{ColumnString, 20, 0.1, size_w, 0, "Size"}
 		};
 
-		ui->table.init(cols, nullptr, 3, 0);
-		ui->reg_table.data = &ui->table;
-		b.ui.push_back(&ui->reg_table);
+		table.init(cols, nullptr, 3, 0);
+		reg_table.data = &table;
+		ui.push_back(&reg_table);
 
-		ui->reg_search.font = ui->reg_title.font;
-		ui->reg_search.caret = ws.caret_color;
-		ui->reg_search.default_color = ws.dark_color;
-		ui->reg_search.icon_color = ws.text_color;
-		ui->reg_search.icon_color.a = 0.6;
-		ui->reg_search.key_action = region_search_handler;
-		b.ui.push_back(&ui->reg_search);
+		reg_search.font = reg_title.font;
+		reg_search.caret = ws.caret_color;
+		reg_search.default_color = ws.dark_color;
+		reg_search.icon_color = ws.text_color;
+		reg_search.icon_color.a = 0.6;
+		reg_search.key_action = region_search_handler;
+		ui.push_back(&reg_search);
 
-		ui->reg_name.font = ui->reg_title.font;
-		b.ui.push_back(&ui->reg_name);
+		reg_name.font = reg_title.font;
+		ui.push_back(&reg_name);
 	}
 	else {
-		ui->div.visible = false;
-		ui->reg_title.visible = false;
-		ui->reg_scroll.visible = false;
-		ui->reg_lat_scroll.visible = false;
-		ui->reg_table.visible = false;
-		ui->reg_search.visible = false;
-		ui->reg_name.visible = false;
+		div.visible = false;
+		reg_title.visible = false;
+		reg_scroll.visible = false;
+		reg_lat_scroll.visible = false;
+		reg_table.visible = false;
+		reg_search.visible = false;
+		reg_name.visible = false;
 	}
 
 	float goto_font_size = 10;
-	ui->hex_title.text = "Data";
-	ui->hex_title.font = ws.make_font(goto_font_size, ws.text_color);
-	b.ui.push_back(&ui->hex_title);
+	hex_title.text = "Data";
+	hex_title.font = ws.make_font(goto_font_size, ws.text_color);
+	ui.push_back(&hex_title);
 
-	ui->size_label.font = ui->hex_title.font;
+	size_label.font = hex_title.font;
 
-	if (!ui->multiple_regions)
-		ui->size_label.padding = 0;
+	if (menu_type == MenuFile)
+		size_label.padding = 0;
 
-	b.ui.push_back(&ui->size_label);
+	ui.push_back(&size_label);
 
-	ui->hex_scroll.back = ws.scroll_back;
-	ui->hex_scroll.default_color = ws.scroll_color;
-	ui->hex_scroll.hl_color = ws.scroll_hl_color;
-	ui->hex_scroll.sel_color = ws.scroll_sel_color;
-	b.ui.push_back(&ui->hex_scroll);
+	hex_scroll.back = ws.scroll_back;
+	hex_scroll.default_color = ws.scroll_color;
+	hex_scroll.hl_color = ws.scroll_hl_color;
+	hex_scroll.sel_color = ws.scroll_sel_color;
+	ui.push_back(&hex_scroll);
 
-	ui->hex.font = ws.make_font(8, ws.text_color);
-	ui->hex.default_color = ws.dark_color;
-	ui->hex.back_color = ws.back_color;
-	ui->hex.caret = ws.caret_color;
-	ui->hex.source = ui->source;
-	ui->hex.scroll = &ui->hex_scroll;
-	b.ui.push_back(&ui->hex);
+	hex.font = ws.make_font(8, ws.text_color);
+	hex.default_color = ws.dark_color;
+	hex.back_color = ws.back_color;
+	hex.caret = ws.caret_color;
+	hex.scroll = &hex_scroll;
+	ui.push_back(&hex);
 
-	ui->goto_box.caret = ws.caret_color;
-	ui->goto_box.default_color = ws.dark_color;
-	ui->goto_box.font = ui->hex_title.font;
-	ui->goto_box.key_action = goto_handler;
+	goto_box.caret = ws.caret_color;
+	goto_box.default_color = ws.dark_color;
+	goto_box.font = hex_title.font;
+	goto_box.key_action = goto_handler;
 
-	ui->goto_box.icon_color = ws.text_color;
-	ui->goto_box.icon_color.a = 0.6;
-	ui->goto_box.ph_font = ws.make_font(goto_font_size, ui->goto_box.icon_color);
-	b.ui.push_back(&ui->goto_box);
+	goto_box.icon_color = ws.text_color;
+	goto_box.icon_color.a = 0.6;
+	goto_box.ph_font = ws.make_font(goto_font_size, goto_box.icon_color);
+	ui.push_back(&goto_box);
 
-	ui->addr_box.font = ui->size_label.font;
-	ui->addr_box.text = "O";
-	ui->addr_box.default_color = ws.scroll_back;
-	ui->addr_box.hl_color = ws.light_color;
-	ui->addr_box.sel_color = ws.cb_color;
-	ui->addr_box.pos.h = ui->addr_box.font->render.text_height() * 1.1f / ws.temp_scale;
-	ui->addr_box.pos.w = 2 * ui->addr_box.pos.h;
-	ui->addr_box.action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->toggle();};
-	b.ui.push_back(&ui->addr_box);
+	addr_box.font = size_label.font;
+	addr_box.text = "O";
+	addr_box.default_color = ws.scroll_back;
+	addr_box.hl_color = ws.light_color;
+	addr_box.sel_color = ws.cb_color;
+	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / ws.temp_scale;
+	addr_box.pos.w = 2 * addr_box.pos.h;
+	addr_box.action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->toggle();};
+	ui.push_back(&addr_box);
 
-	ui->hex_box.font = ui->size_label.font;
-	ui->hex_box.text = "H";
-	ui->hex_box.default_color = ui->addr_box.default_color;
-	ui->hex_box.hl_color = ui->addr_box.hl_color;
-	ui->hex_box.sel_color = ui->addr_box.sel_color;
-	ui->hex_box.pos = ui->addr_box.pos;
-	ui->hex_box.checked = true;
-	ui->hex_box.action = ui->addr_box.action;
-	b.ui.push_back(&ui->hex_box);
+	hex_box.font = size_label.font;
+	hex_box.text = "H";
+	hex_box.default_color = addr_box.default_color;
+	hex_box.hl_color = addr_box.hl_color;
+	hex_box.sel_color = addr_box.sel_color;
+	hex_box.pos = addr_box.pos;
+	hex_box.checked = true;
+	hex_box.action = addr_box.action;
+	ui.push_back(&hex_box);
 
-	ui->ascii_box.font = ui->size_label.font;
-	ui->ascii_box.text = "A";
-	ui->ascii_box.default_color = ui->hex_box.default_color;
-	ui->ascii_box.hl_color = ui->addr_box.hl_color;
-	ui->ascii_box.sel_color = ui->addr_box.sel_color;
-	ui->ascii_box.pos = ui->addr_box.pos;
-	ui->ascii_box.action = ui->addr_box.action;
-	b.ui.push_back(&ui->ascii_box);
+	ascii_box.font = size_label.font;
+	ascii_box.text = "A";
+	ascii_box.default_color = hex_box.default_color;
+	ascii_box.hl_color = addr_box.hl_color;
+	ascii_box.sel_color = addr_box.sel_color;
+	ascii_box.pos = addr_box.pos;
+	ascii_box.action = addr_box.action;
+	ui.push_back(&ascii_box);
 
-	ui->columns.font = ui->size_label.font;
-	ui->columns.default_color = ws.dark_color;
-	ui->columns.sel_color = ws.dark_color;
-	ui->columns.editor.text = "16";
-	ui->columns.pos.w = 40;
-	ui->columns.pos.h = ui->addr_box.pos.h;
-	ui->columns.key_action = set_hex_columns;
-	b.ui.push_back(&ui->columns);
+	columns.font = size_label.font;
+	columns.default_color = ws.dark_color;
+	columns.sel_color = ws.dark_color;
+	columns.editor.text = "16";
+	columns.pos.w = 40;
+	columns.pos.h = addr_box.pos.h;
+	columns.key_action = set_hex_columns;
+	ui.push_back(&columns);
 
-	b.markup = ui;
-	b.delete_markup_handler = delete_markup;
-	b.update_handler = update_view_source;
-	b.scale_change_handler = scale_change_handler;
-	b.refresh_handler = refresh_handler;
-	b.refresh_every = 1;
-	b.back = ws.back_color;
-	b.edge_color = ws.dark_color;
-	b.box = {-300, -200, 600, 400};
-	b.min_width = 400;
-	b.min_height = 300;
-	b.visible = true;
+	refresh_every = 1;
+	back = ws.back_color;
+	edge_color = ws.dark_color;
+	box = {-300, -200, 600, 400};
+	min_width = 400;
+	min_height = 300;
+	expungable = true;
 }

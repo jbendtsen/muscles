@@ -66,10 +66,13 @@
     <ClCompile Include="hashmap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="view-definitions.cpp">
+    <ClCompile Include="dialog\source-menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dialog\source-menu.cpp">
+    <ClCompile Include="dialog\view-definitions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="definitions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

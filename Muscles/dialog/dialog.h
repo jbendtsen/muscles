@@ -1,10 +1,26 @@
 #pragma once
 
-struct Main_Menu {
+struct Opening_Menu : Box {
+	Opening_Menu(Workspace& ws);
+
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+
+	Label title;
+	Data_View menu;
+	Table table;
+};
+
+struct Main_Menu : Box {
+	Main_Menu(Workspace& ws);
+
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void refresh(Point& cursor) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
 	Drop_Down sources_dd;
 	Drop_Down edit_dd;
 	Drop_Down view_dd;
-	Data_View sources;
+	Data_View sources_view;
 	Button button;
 
 	Table table;
@@ -19,7 +35,14 @@ struct Main_Menu {
 	RGBA file_line = {};
 };
 
-struct Source_Menu {
+struct Source_Menu : Box {
+	enum MenuType menu_type;
+	Source_Menu(Workspace& ws, MenuType mtype);
+
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void refresh(Point& cursor) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
 	Data_View menu;
 	Image cross;
 	Label title;
@@ -39,7 +62,19 @@ struct Source_Menu {
 	Map icon_map;
 };
 
-struct View_Source {
+struct View_Source : Box {
+	enum MenuType menu_type;
+	View_Source(Workspace& ws, MenuType mtype);
+
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void refresh(Point& cursor) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
+	void refresh_region_list(Point& cursor);
+	void update_regions_table();
+
+	void open_source(Source *s);
+
 	Image cross;
 	Label title;
 	Divider div;
@@ -64,11 +99,16 @@ struct View_Source {
 	std::vector<u64> region_list;
 	u64 selected_region = 0;
 	int goto_digits = 2;
-	bool multiple_regions = false;
 	bool needs_region_update = true;
 };
 
-struct Edit_Structs {
+struct Edit_Structs : Box {
+	Edit_Structs(Workspace& ws);
+	
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+	void wake_up() override;
+
 	Image cross;
 	Label title;
 	Text_Editor edit;
@@ -86,7 +126,17 @@ struct Edit_Structs {
 	float min_width = 200;
 };
 
-struct View_Object {
+struct View_Object : Box {
+	View_Object(Workspace& ws);
+	
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void refresh(Point& cursor) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
+	float get_edit_height(float scale);
+	void update_hide_meta_button(float scale);
+	void select_view_type(bool all);
+
 	Image cross;
 	Edit_Box title_edit;
 	Label struct_label;
@@ -120,7 +170,12 @@ struct View_Object {
 	bool all = true;
 };
 
-struct View_Definitions {
+struct View_Definitions : Box {
+	View_Definitions(Workspace& ws);
+	
+	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
 	Image cross;
 	Label title;
 	Tabs tabs;
@@ -135,12 +190,5 @@ struct View_Definitions {
 
 	Arena arena;
 };
-
-void make_file_menu(Workspace& ws, Box& b);
-void make_process_menu(Workspace& ws, Box& b);
-void make_view_source_menu(Workspace& ws, Source *s, Box& b);
-void make_view_object(Workspace& ws, Box& b);
-void open_edit_structs(Workspace& ws);
-void open_view_definitions(Workspace& ws);
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

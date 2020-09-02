@@ -657,3 +657,5 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
+
+void parse_definitions(Map& definitions, String_Vector& tokens);

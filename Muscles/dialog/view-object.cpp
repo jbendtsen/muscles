@@ -2,53 +2,47 @@
 #include "ui.h"
 #include "dialog.h"
 
-float get_edit_height(View_Object *ui, float scale) {
-	return ui->struct_edit.font->render.text_height() * 1.4f / scale;
-}
+void View_Object::update_ui(Camera& camera, Input& input, Point& inside, Box *hover, bool focussed) {
+	update_elements(camera, input, inside, hover, focussed);
 
-void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	b.update_elements(view, input, inside, hover, focussed);
-
-	auto ui = (View_Object*)b.markup;
-
-	ui->cross.pos.y = b.cross_size * 0.5;
-	ui->cross.pos.x = b.box.w - b.cross_size * 1.5;
-	ui->cross.pos.w = b.cross_size;
-	ui->cross.pos.h = b.cross_size;
+	cross.pos.y = cross_size * 0.5;
+	cross.pos.x = box.w - cross_size * 1.5;
+	cross.pos.w = cross_size;
+	cross.pos.h = cross_size;
 
 	float title_w = 200;
-	float title_x = (ui->cross.pos.x - title_w) / 2;
-	if (title_x < b.border) {
-		title_x = b.border;
-		title_w = ui->cross.pos.x - title_x - 2*b.border;
+	float title_x = (cross.pos.x - title_w) / 2;
+	if (title_x < border) {
+		title_x = border;
+		title_w = cross.pos.x - title_x - 2*border;
 	}
 
-	ui->title_edit.pos = {
+	title_edit.pos = {
 		title_x,
 		2,
 		title_w,
-		ui->title_edit.font->render.text_height() * 1.4f / view.scale
+		title_edit.font->render.text_height() * 1.4f / camera.scale
 	};
 
-	float meta_y = ui->title_edit.pos.h + 4*b.border;
-	ui->hide_meta.pos = {
-		ui->cross.pos.x + (ui->cross.pos.w - ui->meta_btn_width),
+	float meta_y = title_edit.pos.h + 4*border;
+	hide_meta.pos = {
+		cross.pos.x + (cross.pos.w - meta_btn_width),
 		meta_y,
-		ui->meta_btn_width,
-		ui->meta_btn_height
+		meta_btn_width,
+		meta_btn_height
 	};
 
-	float label_x = 2*b.border;
+	float label_x = 2*border;
 	float y = meta_y;
 
-	if (!ui->meta_hidden) {
-		float label_h = ui->struct_label.font->render.text_height() * 1.2f / view.scale;
+	if (!meta_hidden) {
+		float label_h = struct_label.font->render.text_height() * 1.2f / camera.scale;
 
-		float edit_h = get_edit_height(ui, view.scale);
-		float edit_gap = edit_h + b.border;
+		float edit_h = get_edit_height(camera.scale);
+		float edit_gap = edit_h + border;
 		float edit_y = meta_y - (edit_h - label_h) / 2;
 
-		ui->struct_label.pos = {
+		struct_label.pos = {
 			label_x,
 			y,
 			80,
@@ -56,7 +50,7 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 		};
 		y += edit_gap;
 
-		ui->source_label.pos = {
+		source_label.pos = {
 			label_x,
 			y,
 			80,
@@ -64,123 +58,127 @@ void update_view_object(Box& b, Camera& view, Input& input, Point& inside, Box *
 		};
 		y += edit_gap;
 
-		ui->addr_label.pos = {
+		addr_label.pos = {
 			label_x,
 			y,
 			100,
 			label_h
 		};
 
-		ui->struct_label.update_position(view.scale);
-		ui->source_label.update_position(view.scale);
-		ui->addr_label.update_position(view.scale);
+		struct_label.update_position(camera.scale);
+		source_label.update_position(camera.scale);
+		addr_label.update_position(camera.scale);
 
 		y = edit_y;
-		ui->struct_edit.pos = {
-			label_x + ui->struct_label.pos.w + b.border,
+		struct_edit.pos = {
+			label_x + struct_label.pos.w + border,
 			y,
 			160,
 			edit_h
 		};
 		y += edit_gap;
 
-		ui->source_edit.pos = {
-			label_x + ui->source_label.pos.w + b.border,
+		source_edit.pos = {
+			label_x + source_label.pos.w + border,
 			y,
 			160,
 			edit_h
 		};
 		y += edit_gap;
 
-		ui->addr_edit.pos = {
-			label_x + ui->addr_label.pos.w + b.border,
+		addr_edit.pos = {
+			label_x + addr_label.pos.w + border,
 			y,
 			140,
 			edit_h
 		};
 
-		y += edit_gap + b.border;
+		y += edit_gap + border;
 	}
 	else
-		y += ui->meta_btn_height + 2*b.border;
+		y += meta_btn_height + 2*border;
 
 	float scroll_w = 14;
-	float view_w = b.box.w - 2*label_x - scroll_w - b.border;
-	float view_h = b.box.h - y - scroll_w - ui->all_btn.height - 4*b.border;
+	float view_w = box.w - 2*label_x - scroll_w - border;
+	float view_h = box.h - y - scroll_w - all_btn.height - 4*border;
 
-	ui->vscroll.pos = {
-		label_x + view_w + b.border,
+	vscroll.pos = {
+		label_x + view_w + border,
 		y,
 		scroll_w,
 		view_h
 	};
 
-	ui->hscroll.pos = {
+	hscroll.pos = {
 		label_x,
-		y + view_h + b.border,
+		y + view_h + border,
 		view_w,
 		scroll_w
 	};
 
-	ui->view.pos = {
+	view.pos = {
 		label_x,
 		y,
 		view_w,
 		view_h
 	};
 
-	ui->all_btn.pos = {
+	all_btn.pos = {
 		label_x,
-		b.box.h - 2*b.border - ui->all_btn.height,
-		ui->all_btn.width,
-		ui->all_btn.height
+		box.h - 2*border - all_btn.height,
+		all_btn.width,
+		all_btn.height
 	};
 
-	ui->sel_btn.pos = {
-		ui->all_btn.pos.x + ui->all_btn.pos.w,
-		ui->all_btn.pos.y,
-		ui->sel_btn.width,
-		ui->sel_btn.height
+	sel_btn.pos = {
+		all_btn.pos.x + all_btn.pos.w,
+		all_btn.pos.y,
+		sel_btn.width,
+		sel_btn.height
 	};
 
-	b.post_update_elements(view, input, inside, hover, focussed);
+	post_update_elements(camera, input, inside, hover, focussed);
 }
 
-void update_hide_meta_button(View_Object *ui, float scale) {
-	float pad = ui->hide_meta.padding;
-	int meta_w = 0.5 + (ui->meta_btn_width - 2*pad) * scale;
-	int meta_h = 0.5 + (ui->meta_btn_height - 2*pad) * scale;
-
-	sdl_destroy_texture(&ui->hide_meta.icon);
-	ui->hide_meta.icon = make_triangle(ui->hide_meta.default_color, meta_w, meta_h, !ui->meta_hidden);
+float View_Object::get_edit_height(float scale) {
+	return struct_edit.font->render.text_height() * 1.4f / scale;
 }
 
-void select_view_type(View_Object *ui, bool all) {
-	ui->all = all;
+void View_Object::update_hide_meta_button(float scale) {
+	float pad = hide_meta.padding;
+	int meta_w = 0.5 + (meta_btn_width - 2*pad) * scale;
+	int meta_h = 0.5 + (meta_btn_height - 2*pad) * scale;
 
-	auto theme_all = ui->all ? &ui->theme_on : &ui->theme_off;
-	auto theme_sel = ui->all ? &ui->theme_off : &ui->theme_on;
-
-	ui->all_btn.active_theme = *theme_all;
-	ui->all_btn.inactive_theme = *theme_all;
-	ui->sel_btn.active_theme = *theme_sel;
-	ui->sel_btn.inactive_theme = *theme_sel;
-
-	ui->view.condition_col = ui->all ? -1 : 0;
-	ui->view.needs_redraw = true;
+	sdl_destroy_texture(&hide_meta.icon);
+	hide_meta.icon = make_triangle(hide_meta.default_color, meta_w, meta_h, !meta_hidden);
 }
 
-void struct_edit_refresh(Edit_Box *edit, Input& input) {
-	Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
-	if (structs_box) {
-		auto ui = (View_Object*)edit->parent->markup;
+void View_Object::select_view_type(bool all) {
+	all = all;
+
+	auto theme_all = all ? &theme_on : &theme_off;
+	auto theme_sel = all ? &theme_off : &theme_on;
+
+	all_btn.active_theme = *theme_all;
+	all_btn.inactive_theme = *theme_all;
+	sel_btn.active_theme = *theme_sel;
+	sel_btn.inactive_theme = *theme_sel;
+
+	view.condition_col = all ? -1 : 0;
+	view.needs_redraw = true;
+}
+
+void struct_edit_handler(Edit_Box *edit, Input& input) {
+	//Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
+	/*if (structs_box)*/ {
+		auto ui = dynamic_cast<View_Object*>(edit->parent);
 		Workspace *ws = edit->parent->parent;
 		populate_object_table(ui, ws->structs, ws->name_vector);
 	}
 }
 
-void source_edit_refresh(Edit_Box *edit, Input& input) {
-	auto ui = (View_Object*)edit->parent->markup;
+void source_edit_handler(Edit_Box *edit, Input& input) {
+	auto ui = dynamic_cast<View_Object*>(edit->parent);
 
 	Source *src = nullptr;
 
@@ -205,33 +203,32 @@ void source_edit_refresh(Edit_Box *edit, Input& input) {
 	ui->view.needs_redraw = true;
 }
 
-static void refresh_handler(Box& b, Point& cursor) {
-	auto ui = (View_Object*)b.markup;
-	Workspace *ws = b.parent;
+void View_Object::refresh(Point& cursor) {
+	Workspace *ws = parent;
 	Box *structs_box = ws->first_box_of_type(BoxStructs);
 
-	ui->struct_dd.external = &ws->struct_names;
-	if (!ui->record || !ui->source)
+	struct_dd.external = &ws->struct_names;
+	if (!record || !source)
 		return;
 
-	Span& span = ui->source->spans[ui->span_idx];
+	Span& span = source->spans[span_idx];
 
-	span.address = strtoull(ui->addr_edit.editor.text.c_str(), nullptr, 16);
-	span.size = (ui->record->total_size + 7) / 8;
+	span.address = strtoull(addr_edit.editor.text.c_str(), nullptr, 16);
+	span.size = (record->total_size + 7) / 8;
 
 	char hex[16];
 	memcpy(hex, "0123456789abcdef", 16);
 
 	int idx = 0;
-	for (auto& row : ui->view.data->columns[1]) {
+	for (auto& row : view.data->columns[1]) {
 		auto name = (const char*)row;
 		if (!name) {
 			idx++;
 			continue;
 		}
 
-		for (int i = 0; i < ui->record->fields.n_fields; i++) {
-			Field& field = ui->record->fields.data[i];
+		for (int i = 0; i < record->fields.n_fields; i++) {
+			Field& field = record->fields.data[i];
 			char *field_name = ws->name_vector.at(field.field_name_idx);
 
 			if (!field_name || strcmp(field_name, name))
@@ -240,7 +237,7 @@ static void refresh_handler(Box& b, Point& cursor) {
 			if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
 				break;
 
-			auto& cell = (char*&)ui->view.data->columns[2][idx];
+			auto& cell = (char*&)view.data->columns[2][idx];
 
 			int offset = (field.bit_offset + 7) / 8;
 			if (offset >= span.retrieved) {
@@ -268,78 +265,70 @@ static void refresh_handler(Box& b, Point& cursor) {
 	}
 }
 
-static void scale_change_handler(Workspace& ws, Box& b, float new_scale) {
-	auto ui = (View_Object*)b.markup;
-	ui->cross.img = ws.cross;
+void View_Object::handle_zoom(Workspace& ws, float new_scale) {
+	cross.img = ws.cross;
 
-	update_hide_meta_button(ui, new_scale);
+	update_hide_meta_button(new_scale);
 
-	float height = get_edit_height(ui, new_scale);
-	ui->struct_edit.update_icon(IconTriangle, height, new_scale);
-	ui->source_edit.update_icon(IconTriangle, height, new_scale);
+	float height = get_edit_height(new_scale);
+	struct_edit.update_icon(IconTriangle, height, new_scale);
+	source_edit.update_icon(IconTriangle, height, new_scale);
 }
 
-static void delete_markup(Box *b) {
-	delete (View_Object*)b->markup;
-	b->markup = nullptr;
-}
+View_Object::View_Object(Workspace& ws) {
+	cross.action = get_delete_box();
+	cross.img = ws.cross;
+	ui.push_back(&cross);
 
-void make_view_object(Workspace& ws, Box& b) {
-	auto ui = new View_Object();
+	title_edit.placeholder = "<instance>";
+	title_edit.ph_font = ws.make_font(12, ws.ph_text_color);
+	title_edit.font = ws.default_font;
+	title_edit.caret = ws.caret_color;
+	title_edit.caret.a = 0.6;
+	title_edit.default_color = ws.dark_color;
+	ui.push_back(&title_edit);
 
-	ui->cross.action = get_delete_box();
-	ui->cross.img = ws.cross;
-	b.ui.push_back(&ui->cross);
-
-	ui->title_edit.placeholder = "<instance>";
-	ui->title_edit.ph_font = ws.make_font(12, ws.ph_text_color);
-	ui->title_edit.font = ws.default_font;
-	ui->title_edit.caret = ws.caret_color;
-	ui->title_edit.caret.a = 0.6;
-	ui->title_edit.default_color = ws.dark_color;
-	b.ui.push_back(&ui->title_edit);
-
-	ui->hide_meta.padding = 0;
-	ui->hide_meta.action = [](UI_Element *elem, bool dbl_click) {
-		auto ui = (View_Object*)elem->parent->markup;
+	hide_meta.padding = 0;
+	hide_meta.action = [](UI_Element *elem, bool dbl_click) {
+		auto ui = dynamic_cast<View_Object*>(elem->parent);
 		ui->meta_hidden = !ui->meta_hidden;
 		ui->struct_label.visible = ui->struct_edit.visible = !ui->meta_hidden;
 		ui->source_label.visible = ui->source_edit.visible = !ui->meta_hidden;
 		ui->addr_label.visible = ui->addr_edit.visible = !ui->meta_hidden;
-		update_hide_meta_button(ui, elem->parent->parent->temp_scale);
+		ui->update_hide_meta_button(elem->parent->parent->temp_scale);
 	};
-	ui->hide_meta.active_theme = {
+	hide_meta.active_theme = {
 		ws.light_color,
 		ws.light_hl_color,
 		ws.light_hl_color,
 		nullptr
 	};
-	ui->hide_meta.inactive_theme = ui->hide_meta.active_theme;
-	ui->hide_meta.default_color = ws.text_color;
-	ui->hide_meta.default_color.a = 0.8;
-	b.ui.push_back(&ui->hide_meta);
+	hide_meta.inactive_theme = hide_meta.active_theme;
+	hide_meta.default_color = ws.text_color;
+	hide_meta.default_color.a = 0.8;
+	ui.push_back(&hide_meta);
 
-	ui->hscroll.back = ws.scroll_back;
-	ui->hscroll.default_color = ws.scroll_color;
-	ui->hscroll.hl_color = ws.scroll_hl_color;
-	ui->hscroll.sel_color = ws.scroll_sel_color;
-	ui->hscroll.vertical = false;
-	b.ui.push_back(&ui->hscroll);
+	hscroll.back = ws.scroll_back;
+	hscroll.default_color = ws.scroll_color;
+	hscroll.hl_color = ws.scroll_hl_color;
+	hscroll.sel_color = ws.scroll_sel_color;
+	hscroll.vertical = false;
+	ui.push_back(&hscroll);
 
-	ui->vscroll.back = ws.scroll_back;
-	ui->vscroll.default_color = ws.scroll_color;
-	ui->vscroll.hl_color = ws.scroll_hl_color;
-	ui->vscroll.sel_color = ws.scroll_sel_color;
-	b.ui.push_back(&ui->vscroll);
+	vscroll.back = ws.scroll_back;
+	vscroll.default_color = ws.scroll_color;
+	vscroll.hl_color = ws.scroll_hl_color;
+	vscroll.sel_color = ws.scroll_sel_color;
+	ui.push_back(&vscroll);
 
-	ui->view.font = ws.default_font;
-	ui->view.default_color = ws.dark_color;
-	ui->view.hl_color = ws.dark_color;
-	ui->view.consume_box_scroll = true;
-	ui->view.hscroll = &ui->hscroll;
-	ui->view.hscroll->content = &ui->view;
-	ui->view.vscroll = &ui->vscroll;
-	ui->view.vscroll->content = &ui->view;
+	view.font = ws.default_font;
+	view.default_color = ws.dark_color;
+	view.hl_color = ws.dark_color;
+	view.consume_box_scroll = true;
+	view.hscroll = &hscroll;
+	view.hscroll->content = &view;
+	view.vscroll = &vscroll;
+	view.vscroll->content = &view;
 
 	Column cols[] = {
 		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
@@ -349,113 +338,106 @@ void make_view_object(Workspace& ws, Box& b) {
 
 	Arena *arena = &ws.object_arena;
 	arena->set_rewind_point();
-	ui->table.init(cols, arena, 3, 0);
-	ui->view.data = &ui->table;
+	table.init(cols, arena, 3, 0);
+	view.data = &table;
 
-	b.ui.push_back(&ui->view);
+	ui.push_back(&view);
 
-	ui->struct_label.font = ws.make_font(11, ws.text_color);
-	ui->struct_label.text = "Struct:";
-	ui->struct_label.padding = 0;
-	b.ui.push_back(&ui->struct_label);
+	struct_label.font = ws.make_font(11, ws.text_color);
+	struct_label.text = "Struct:";
+	struct_label.padding = 0;
+	ui.push_back(&struct_label);
 
-	ui->source_label.font = ui->struct_label.font;
-	ui->source_label.text = "Source:";
-	ui->source_label.padding = 0;
-	b.ui.push_back(&ui->source_label);
+	source_label.font = struct_label.font;
+	source_label.text = "Source:";
+	source_label.padding = 0;
+	ui.push_back(&source_label);
 
-	ui->addr_label.font = ui->struct_label.font;
-	ui->addr_label.text = "Address:";
-	ui->addr_label.padding = 0;
-	b.ui.push_back(&ui->addr_label);
+	addr_label.font = struct_label.font;
+	addr_label.text = "Address:";
+	addr_label.padding = 0;
+	ui.push_back(&addr_label);
 
-	auto mm = (Main_Menu*)ws.first_box_of_type(BoxMain)->markup;
+	auto mm = dynamic_cast<Main_Menu*>(ws.first_box_of_type(BoxMain));
 	RGBA icon_color = ws.text_color;
 	icon_color.a = 0.7;
 
-	ui->addr_edit.font = ui->addr_label.font;
-	ui->addr_edit.caret = ws.caret_color;
-	ui->addr_edit.default_color = ws.dark_color;
-	b.ui.push_back(&ui->addr_edit);
+	addr_edit.font = addr_label.font;
+	addr_edit.caret = ws.caret_color;
+	addr_edit.default_color = ws.dark_color;
+	ui.push_back(&addr_edit);
 
-	ui->source_dd.visible = false;
-	ui->source_dd.font = ui->source_label.font;
-	ui->source_dd.default_color = ws.back_color;
-	ui->source_dd.hl_color = ws.hl_color;
-	ui->source_dd.sel_color = ws.active_color;
-	ui->source_dd.width = 250;
-	ui->source_dd.external = (std::vector<char*>*)&mm->sources.data->columns[2];
-	b.ui.push_back(&ui->source_dd);
+	source_dd.visible = false;
+	source_dd.font = source_label.font;
+	source_dd.default_color = ws.back_color;
+	source_dd.hl_color = ws.hl_color;
+	source_dd.sel_color = ws.active_color;
+	source_dd.width = 250;
+	source_dd.external = (std::vector<char*>*)&mm->sources_view.data->columns[2];
+	ui.push_back(&source_dd);
 
-	ui->source_edit.font = ui->source_label.font;
-	ui->source_edit.caret = ws.caret_color;
-	ui->source_edit.default_color = ws.dark_color;
-	ui->source_edit.icon_color = icon_color;
-	ui->source_edit.icon_right = true;
-	ui->source_edit.dropdown = &ui->source_dd;
-	ui->source_edit.key_action = source_edit_refresh;
-	b.ui.push_back(&ui->source_edit);
+	source_edit.font = source_label.font;
+	source_edit.caret = ws.caret_color;
+	source_edit.default_color = ws.dark_color;
+	source_edit.icon_color = icon_color;
+	source_edit.icon_right = true;
+	source_edit.dropdown = &source_dd;
+	source_edit.key_action = source_edit_handler;
+	ui.push_back(&source_edit);
 
-	ui->struct_dd.visible = false;
-	ui->struct_dd.font = ui->struct_label.font;
-	ui->struct_dd.default_color = ws.back_color;
-	ui->struct_dd.hl_color = ws.hl_color;
-	ui->struct_dd.sel_color = ws.active_color;
-	ui->struct_dd.width = 250;
-	b.ui.push_back(&ui->struct_dd);
+	struct_dd.visible = false;
+	struct_dd.font = struct_label.font;
+	struct_dd.default_color = ws.back_color;
+	struct_dd.hl_color = ws.hl_color;
+	struct_dd.sel_color = ws.active_color;
+	struct_dd.width = 250;
+	ui.push_back(&struct_dd);
 
-	ui->struct_edit.font = ui->struct_label.font;
-	ui->struct_edit.caret = ws.caret_color;
-	ui->struct_edit.default_color = ws.dark_color;
-	ui->struct_edit.icon_color = icon_color;
-	ui->struct_edit.icon_right = true;
-	ui->struct_edit.dropdown = &ui->struct_dd;
-	ui->struct_edit.key_action = struct_edit_refresh;
-	b.ui.push_back(&ui->struct_edit);
+	struct_edit.font = struct_label.font;
+	struct_edit.caret = ws.caret_color;
+	struct_edit.default_color = ws.dark_color;
+	struct_edit.icon_color = icon_color;
+	struct_edit.icon_right = true;
+	struct_edit.dropdown = &struct_dd;
+	struct_edit.key_action = struct_edit_handler;
+	ui.push_back(&struct_edit);
 
-	ui->theme_on = {
+	theme_on = {
 		ws.dark_color,
 		ws.light_color,
 		ws.light_color,
 		ws.make_font(10, ws.text_color)
 	};
-	ui->theme_off = {
+	theme_off = {
 		ws.back_color,
 		ws.light_color,
 		ws.light_color,
-		ui->theme_on.font
+		theme_on.font
 	};
 
-	ui->all_btn.padding = 0;
-	ui->all_btn.text = "All";
-	ui->all_btn.active_theme = ui->theme_on;
-	ui->all_btn.inactive_theme = ui->theme_on;
-	ui->all_btn.update_size(ws.temp_scale);
-	ui->all_btn.action = [](UI_Element *elem, bool dbl_click) { select_view_type((View_Object*)elem->parent->markup, true); };
-	b.ui.push_back(&ui->all_btn);
+	all_btn.padding = 0;
+	all_btn.text = "All";
+	all_btn.active_theme = theme_on;
+	all_btn.inactive_theme = theme_on;
+	all_btn.update_size(ws.temp_scale);
+	all_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(true); };
+	ui.push_back(&all_btn);
 
-	ui->sel_btn.padding = 0;
-	ui->sel_btn.text = "Selected";
-	ui->sel_btn.active_theme = ui->theme_off;
-	ui->sel_btn.inactive_theme = ui->theme_off;
-	ui->sel_btn.update_size(ws.temp_scale);
-	ui->sel_btn.action = [](UI_Element *elem, bool dbl_click) { select_view_type((View_Object*)elem->parent->markup, false); };
-	b.ui.push_back(&ui->sel_btn);
+	sel_btn.padding = 0;
+	sel_btn.text = "Selected";
+	sel_btn.active_theme = theme_off;
+	sel_btn.inactive_theme = theme_off;
+	sel_btn.update_size(ws.temp_scale);
+	sel_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
+	ui.push_back(&sel_btn);
 
-	b.type = BoxObject;
-	b.markup = ui;
-	b.delete_markup_handler = delete_markup;
-	b.update_handler = update_view_object;
-	b.scale_change_handler = scale_change_handler;
-	b.refresh_handler = refresh_handler;
-	b.refresh_every = 1;
-	b.back = ws.back_color;
-	b.edge_color = ws.dark_color;
-	b.box = {-200, -225, 400, 450};
-	b.min_width = 300;
-	b.min_height = 200;
-	b.expungable = true;
-	b.visible = true;
+	refresh_every = 1;
+	back = ws.back_color;
+	edge_color = ws.dark_color;
+	box = {-200, -225, 400, 450};
+	min_width = 300;
+	min_height = 200;
+	expungable = true;
 }
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {

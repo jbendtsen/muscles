@@ -1,5 +1,6 @@
 #include "muscles.h"
 #include "ui.h"
+#include "dialog/dialog.h"
 
 Workspace::Workspace(Font_Face face) {
 	this->face = face;
@@ -35,9 +36,7 @@ Workspace::Workspace(Font_Face face) {
 	set(definitions.insert("float"), FLAG_FLOAT, 32);
 	set(definitions.insert("double"), FLAG_FLOAT, 64);
 
-	Box *opening = new Box();
-	make_opening_menu(*this, *opening);
-	add_box(opening);
+	make_box(BoxOpening);
 }
 
 Workspace::~Workspace() {
@@ -59,28 +58,57 @@ Workspace::~Workspace() {
 	}
 }
 
-Box *Workspace::box_under_cursor(Camera& view, Point& cur, Point& inside) {
-	int n_boxes = boxes.size();
-	for (int i = n_boxes-1; i >= 0; i--) {
-		if (!boxes[i]->visible)
-			continue;
-
-		Rect& r = boxes[i]->box;
-		float e = i == n_boxes-1 ? boxes[i]->border / view.scale : 0;
-
-		if (cur.x >= r.x - e && cur.x < r.x+r.w + e && cur.y >= r.y - e && cur.y < r.y+r.h + e) {
-			inside.x = cur.x - r.x;
-			inside.y = cur.y - r.y;
-			return boxes[i];
+Box *Workspace::make_box(BoxType btype, MenuType mtype) {
+	// 1
+	Box *box = first_box_of_type(btype);
+	if (box && !box->expungable) {
+		box->visible = true;
+		bring_to_front(box);
+	}
+	else {
+		Box *b = nullptr;
+		switch (btype) {
+			case BoxOpening:
+				b = new Opening_Menu(*this);
+				break;
+			case BoxMain:
+				b = new Main_Menu(*this);
+				break;
+			case BoxOpenSource:
+				b = new Source_Menu(*this, mtype);
+				break;
+			case BoxViewSource:
+				b = new View_Source(*this, mtype);
+				break;
+			case BoxStructs:
+				b = new Edit_Structs(*this);
+				break;
+			case BoxObject:
+				b = new View_Object(*this);
+				break;
+			case BoxDefinitions:
+				b = new View_Definitions(*this);
+				break;
 		}
+
+		if (b) {
+			b->box_type = btype;
+			b->parent = this;
+			b->visible = true;
+			add_box(b);
+		}
+
+		box = b;
 	}
 
-	return nullptr;
+	if (box)
+		box->wake_up();
+
+	return box;
 }
 
 void Workspace::add_box(Box *b) {
 	boxes.push_back(b);
-	b->edge_color = dark_color;
 	new_box = b;
 }
 
@@ -109,6 +137,25 @@ void Workspace::delete_box(Box *b) {
 			return;
 		}
 	}
+}
+
+Box *Workspace::box_under_cursor(Camera& view, Point& cur, Point& inside) {
+	int n_boxes = boxes.size();
+	for (int i = n_boxes-1; i >= 0; i--) {
+		if (!boxes[i]->visible)
+			continue;
+
+		Rect& r = boxes[i]->box;
+		float e = i == n_boxes-1 ? boxes[i]->border / view.scale : 0;
+
+		if (cur.x >= r.x - e && cur.x < r.x+r.w + e && cur.y >= r.y - e && cur.y < r.y+r.h + e) {
+			inside.x = cur.x - r.x;
+			inside.y = cur.y - r.y;
+			return boxes[i];
+		}
+	}
+
+	return nullptr;
 }
 
 void Workspace::bring_to_front(Box *b) {
@@ -149,7 +196,7 @@ Font *Workspace::make_font(float size, RGBA& color) {
 
 Box *Workspace::first_box_of_type(BoxType type) {
 	for (auto& b : boxes) {
-		if (b->type == type)
+		if (b->box_type == type)
 			return b;
 	}
 	return nullptr;
@@ -162,10 +209,8 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 	sdl_destroy_texture(&cross);
 	cross = make_cross_icon(text_color, cross_size * new_scale);
 
-	for (auto& b : boxes) {
-		if (b->scale_change_handler)
-			b->scale_change_handler(*this, *b, new_scale);
-	}
+	for (auto& b : boxes)
+		b->handle_zoom(*this, new_scale);
 }
 
 void Workspace::refresh_sources() {
@@ -229,16 +274,9 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 	if (new_box) {
 		new_box->parent = this;
-
-		if (new_box->refresh_handler)
-			new_box->refresh_handler(*new_box, inside);
-
-		if (new_box->scale_change_handler)
-			new_box->scale_change_handler(*this, *new_box, view.scale);
-
-		if (new_box->update_handler)
-			new_box->update(*this, view, box_input, nullptr, false);
-
+		new_box->refresh(inside);
+		new_box->handle_zoom(*this, view.scale);
+		new_box->update(*this, view, box_input, nullptr, false);
 		new_box = nullptr;
 	}
 
@@ -465,20 +503,17 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	if (current_dd)
 		current_dd->highlight(view, p);
 
-	if (refresh_handler && ticks % refresh_every == 0)
-		refresh_handler(*this, p);
+	if (ticks % refresh_every == 0)
+		refresh(p);
 	ticks++;
 
 	dropdown_set = false;
 
-	if (update_handler) {
-		Workspace *ws = parent;
-		update_handler(*this, view, input, p, hover, focussed);
+	update_ui(view, input, p, hover, focussed);
 
-		if (ws->box_expunged) {
-			ws->box_expunged = false;
-			return;
-		}
+	if (ws.box_expunged) {
+		ws.box_expunged = false;
+		return;
 	}
 
 	if (input.lclick && !dropdown_set) {
