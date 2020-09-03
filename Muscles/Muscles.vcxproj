@@ -123,6 +123,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\Jack\source\SDL2-2.0.12\include;C:\Users\Jack\source\SDL2_ttf-2.0.15\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalOptions>-ffast-math</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

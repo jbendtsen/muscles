@@ -27,7 +27,7 @@ int run();
 
 std::pair<int, int> next_power_of_2(int num);
 int count_digits(u64 num);
-void print_hex(const char *hex, char *out, u64 n, int n_digits);
+void print_hex(char *out, u64 n, int n_digits);
 
 struct Glyph {
 	int atlas_x;
@@ -409,6 +409,8 @@ struct Input {
 	int tab = 0;
 	int home = 0;
 	int end = 0;
+	int pgup = 0;
+	int pgdown = 0;
 
 	int left = 0;
 	int down = 0;

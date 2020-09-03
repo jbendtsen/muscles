@@ -2,102 +2,94 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void reposition_struct_box(Edit_Structs& b, float scale) {
-	b.cross.pos = {
-		b.box.w - b.cross_size * 1.5f,
-		b.cross_size * 0.5f,
-		b.cross_size,
-		b.cross_size
+void Edit_Structs::update_ui(Camera& view) {
+	cross.pos = {
+		box.w - cross_size * 1.5f,
+		cross_size * 0.5f,
+		cross_size,
+		cross_size
 	};
 
-	float w = b.title.font->render.text_width(b.title.text.c_str()) / scale;
-	float max_title_w = b.box.w - 5 * b.cross_size;
+	float w = title.font->render.text_width(title.text.c_str()) / view.scale;
+	float max_title_w = box.w - 5 * cross_size;
 	w = w < max_title_w ? w : max_title_w;
 
-	b.title.pos = {
-		(b.box.w - w) / 2,
+	title.pos = {
+		(box.w - w) / 2,
 		2,
 		w,
-		b.title.font->render.text_height() * 1.1f / scale
+		title.font->render.text_height() * 1.1f / view.scale
 	};
-	b.title.update_position(scale);
+	title.update_position(view.scale);
 
-	b.show_cb.pos.x = b.border;
-	b.show_cb.pos.y = b.box.h - b.show_cb.pos.h - b.border;
+	show_cb.pos.x = border;
+	show_cb.pos.y = box.h - show_cb.pos.h - border;
 
 	float scroll_w = 14;
-	float edit_y = 2*b.cross_size;
-	float end_x = b.box.w - b.border;
-	float cb_y = b.show_cb.pos.y;
-	float win_h = cb_y - 2*b.border - scroll_w - edit_y;
+	float edit_y = 2*cross_size;
+	float end_x = box.w - border;
+	float cb_y = show_cb.pos.y;
+	float win_h = cb_y - 2*border - scroll_w - edit_y;
 
-	if (b.show_cb.checked) {
-		b.div.pos = {
-			b.div.position,
+	if (show_cb.checked) {
+		div.pos = {
+			div.position,
 			edit_y,
-			b.div.breadth,
-			cb_y - b.border - edit_y
+			div.breadth,
+			cb_y - border - edit_y
 		};
-		b.div.maximum = b.box.w - b.div.minimum;
+		div.maximum = box.w - div.minimum;
 
-		float pad = b.div.padding;
-		float data_x = b.div.pos.x + b.div.pos.w + pad;
+		float pad = div.padding;
+		float data_x = div.pos.x + div.pos.w + pad;
 
-		b.output.pos = {
+		output.pos = {
 			data_x,
 			edit_y,
-			b.box.w - data_x - 2*b.border - scroll_w,
+			box.w - data_x - 2*border - scroll_w,
 			win_h
 		};
 
-		b.out_vscroll.pos = {
-			b.box.w - b.border - scroll_w,
+		out_vscroll.pos = {
+			box.w - border - scroll_w,
 			edit_y,
 			scroll_w,
-			b.output.pos.h
+			output.pos.h
 		};
 
-		b.out_hscroll.pos = {
+		out_hscroll.pos = {
 			data_x,
-			b.show_cb.pos.y - b.border - scroll_w,
-			b.output.pos.w,
+			show_cb.pos.y - border - scroll_w,
+			output.pos.w,
 			scroll_w
 		};
 
-		end_x = b.div.pos.x - pad;
-		b.min_width = b.div.position + b.box.w - b.div.maximum;
+		end_x = div.pos.x - pad;
+		min_width = div.position + box.w - div.maximum;
 	}
 	else
-		b.min_width = b.min_width;
+		min_width = min_width;
 
-	b.edit.pos = {
-		b.border,
+	edit.pos = {
+		border,
 		edit_y,
-		end_x - 2*b.border - scroll_w,
+		end_x - 2*border - scroll_w,
 		win_h
 	};
 
-	b.edit_vscroll.pos = {
+	edit_vscroll.pos = {
 		end_x - scroll_w,
 		edit_y,
 		scroll_w,
-		b.edit.pos.h
+		edit.pos.h
 	};
 
-	b.edit_hscroll.pos = {
-		b.edit.pos.x,
-		b.show_cb.pos.y - b.border - scroll_w,
-		b.edit.pos.w,
+	edit_hscroll.pos = {
+		edit.pos.x,
+		show_cb.pos.y - border - scroll_w,
+		edit.pos.w,
 		scroll_w
 	};
-}
-
-void Edit_Structs::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(view, input, inside, hover, focussed);
-
-	reposition_struct_box(*this, view.scale);
-
-	post_update_elements(view, input, inside, hover, focussed);
 }
 
 void structs_edit_handler(Text_Editor *edit, Input& input) {
@@ -196,7 +188,9 @@ void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	if (ui->box.w < ui->min_width)
 		ui->box.w = ui->min_width;
 
-	reposition_struct_box(*ui, ui->parent->temp_scale);
+	Camera just_scale = {0};
+	just_scale.scale = ui->parent->temp_scale;
+	ui->update_ui(just_scale);
 }
 
 void Edit_Structs::handle_zoom(Workspace& ws, float new_scale) {

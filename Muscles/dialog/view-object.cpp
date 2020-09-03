@@ -2,9 +2,7 @@
 #include "ui.h"
 #include "dialog.h"
 
-void View_Object::update_ui(Camera& camera, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(camera, input, inside, hover, focussed);
-
+void View_Object::update_ui(Camera& camera) {
 	cross.pos.y = cross_size * 0.5;
 	cross.pos.x = box.w - cross_size * 1.5;
 	cross.pos.w = cross_size;
@@ -136,8 +134,6 @@ void View_Object::update_ui(Camera& camera, Input& input, Point& inside, Box *ho
 		sel_btn.width,
 		sel_btn.height
 	};
-
-	post_update_elements(camera, input, inside, hover, focussed);
 }
 
 float View_Object::get_edit_height(float scale) {
@@ -216,9 +212,6 @@ void View_Object::refresh(Point& cursor) {
 	span.address = strtoull(addr_edit.editor.text.c_str(), nullptr, 16);
 	span.size = (record->total_size + 7) / 8;
 
-	char hex[16];
-	memcpy(hex, "0123456789abcdef", 16);
-
 	int idx = 0;
 	for (auto& row : view.data->columns[1]) {
 		auto name = (const char*)row;
@@ -257,7 +250,7 @@ void View_Object::refresh(Point& cursor) {
 			strcpy(cell, "0x");
 
 			int digits = count_digits(n);
-			print_hex(hex, &cell[2], n, digits);
+			print_hex(&cell[2], n, digits);
 
 			break;
 		}

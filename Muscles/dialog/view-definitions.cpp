@@ -2,9 +2,7 @@
 #include "ui.h"
 #include "dialog.h"
 
-void View_Definitions::update_ui(Camera& camera, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(camera, input, inside, hover, focussed);
-
+void View_Definitions::update_ui(Camera& camera) {
 	cross.pos = {
 		box.w - cross_size * 1.5f,
 		cross_size * 0.5f,
@@ -40,8 +38,6 @@ void View_Definitions::update_ui(Camera& camera, Input& input, Point& inside, Bo
 		tabs.pos.w,
 		box.h - border - y
 	};
-
-	post_update_elements(camera, input, inside, hover, focussed);
 }
 
 void View_Definitions::handle_zoom(Workspace& ws, float new_scale) {

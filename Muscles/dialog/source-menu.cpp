@@ -2,14 +2,12 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void Source_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(view, input, inside, hover, focussed);
-
+void Source_Menu::update_ui(Camera& view) {
 	float y = border;
 
 	y += center_align_title(&title, *this, view.scale, y);
 
-	if (focussed && search.text_changed)
+	if (/*focussed && */search.text_changed)
 		scroll.position = 0;
 
 	float x2 = box.w - scroll.padding;
@@ -66,8 +64,6 @@ void Source_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hove
 			up.height
 		};
 	}
-
-	post_update_elements(view, input, inside, hover, focussed);
 }
 
 void notify_main_box(Workspace *ws) {

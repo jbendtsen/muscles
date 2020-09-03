@@ -1,6 +1,15 @@
 #include "muscles.h"
 #include "ui.h"
 
+void Editor::refresh(Render_Clip& clip, Font *font, float scroll_x, float scroll_y) {
+	this->clip = clip;
+	this->font = font;
+	font_h = font->render.text_height();
+	digit_w = font->render.digit_width();
+	x_offset = scroll_x;
+	y_offset = scroll_y;
+}
+
 void Editor::erase(Cursor& cursor, bool is_back) {
 	if (is_back) {
 		if (cursor.cursor <= 0)
@@ -219,8 +228,12 @@ int Editor::handle_input(Input& input) {
 	char ch = 0;
 	bool ctrl = input.lctrl || input.rctrl;
 	bool shift = input.lshift || input.rshift;
+	bool pgup = input.strike(input.pgup);
+	bool pgdown = input.strike(input.pgdown);
+
 	bool esc = false;
 	bool enter = false;
+	bool page_move = false;
 	bool key_press = true;
 	bool end_selection = true;
 	bool erased = false;
@@ -325,6 +338,20 @@ int Editor::handle_input(Input& input) {
 			set_line(primary, -1);
 		set_column(primary, -1);
 	}
+	else if (multiline && (pgup || pgdown)) {
+		float h = clip.y_upper - clip.y_lower;
+		int visible = h / font_h;
+		int delta = pgup ? -visible : visible;
+
+		int req_line = primary.line + delta;
+		if (req_line < 0)
+			req_line = 0;
+
+		set_line(primary, req_line);
+
+		scroll_delta = (float)delta * font_h;
+		page_move = true;
+	}
 	else if (input.strike(input.left)) {
 		int cur = primary.cursor - 1;
 		if (ctrl)
@@ -354,9 +381,16 @@ int Editor::handle_input(Input& input) {
 				std::string clip(text, span.first, span.second);
 				sdl_copy(clip);
 				erased = input.last_key == 'x';
+				end_selection = erased;
 			}
 			else if (input.last_key == 'v') {
 				paste = true;
+			}
+			else if (input.last_key == 'a') {
+				set_cursor(primary, 0);
+				set_cursor(secondary, text.size());
+				selected = true;
+				end_selection = false;
 			}
 			else
 				end_selection = false;
@@ -426,6 +460,7 @@ int Editor::handle_input(Input& input) {
 	flags |= (key_press || update || selected != was_selected) ? 2 : 0;
 	flags |= end_selection ? 4 : 0;
 	flags |= esc ? 8 : 0;
+	flags |= page_move ? 16 : 0;
 	return flags;
 }
 
@@ -434,8 +469,11 @@ void Editor::update_cursor(float x, float y, Font *font, float scale, bool click
 	float gl_w = font->render.digit_width();
 	float gl_h = font->render.text_height();
 
-	int line = (y - edge) / gl_h;
-	int col = (x - edge) / gl_w + 0.5;
+	x += x_offset - edge;
+	y += y_offset - edge;
+
+	int line = y / gl_h;
+	int col = x / gl_w + 0.5;
 	if (line < 0) line = 0;
 	if (col < 0) col = 0;
 
@@ -446,7 +484,7 @@ void Editor::update_cursor(float x, float y, Font *font, float scale, bool click
 		secondary = primary;
 }
 
-void Editor::draw_selection_box(Renderer renderer, RGBA& color, Render_Clip& clip, float digit_w, float font_h) {
+void Editor::draw_selection_box(Renderer renderer, RGBA& color) {
 	float line_pad = font_h * 0.15f;
 	Editor::Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
 	Editor::Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
@@ -489,10 +527,10 @@ void Editor::draw_selection_box(Renderer renderer, RGBA& color, Render_Clip& cli
 	}
 }
 
-void Editor::draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float digit_w, float font_h, float scale) {
+void Editor::draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float scale) {
 	float line_pad = font_h * 0.15f;
-	float caret_x = pos.x + ((float)cursor.column * digit_w);
-	float caret_y = pos.y + (line_pad * 1.5f) + ((float)cursor.line * font_h);
+	float caret_x = pos.x - x_offset + ((float)cursor.column * digit_w);
+	float caret_y = pos.y - y_offset + (line_pad * 1.5f) + ((float)cursor.line * font_h);
 
 	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
 	sdl_draw_rect(caret, color, renderer);

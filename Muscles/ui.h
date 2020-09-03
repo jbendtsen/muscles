@@ -46,6 +46,16 @@ struct Editor {
 	int columns = 0;
 	int lines = 0;
 
+	float scroll_delta = 0;
+
+	Render_Clip clip = {0};
+	Font *font = nullptr;
+
+	float digit_w = 0;
+	float font_h = 0;
+	float x_offset = 0;
+	float y_offset = 0;
+
 	float cursor_width = 1;
 	float border = 4;
 
@@ -57,8 +67,10 @@ struct Editor {
 	int handle_input(Input& input);
 	void update_cursor(float x, float y, Font *font, float scale, bool click);
 
-	void draw_selection_box(Renderer renderer, RGBA& color, Render_Clip& clip, float digit_w, float font_h);
-	void draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float digit_w, float font_h, float scale);
+	void refresh(Render_Clip& clip, Font *font, float scroll_x, float scroll_y);
+
+	void draw_selection_box(Renderer renderer, RGBA& color);
+	void draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float scale);
 };
 
 struct UI_Element {
@@ -582,7 +594,7 @@ struct Box {
 	Drop_Down *current_dd = nullptr;
 	Editor *active_edit = nullptr;
 
-	virtual void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) {}
+	virtual void update_ui(Camera& view) {}
 	virtual void refresh(Point& cursor) {}
 	virtual void handle_zoom(Workspace& ws, float new_scale) {}
 	virtual void wake_up() {}
@@ -609,8 +621,7 @@ struct Box {
 	void move(float dx, float dy, Camera& view, Input& input);
 
 	void set_dropdown(Drop_Down *dd);
-	void update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed);
-	void post_update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed);
+	void update_focussed(Camera& view, Input& input, Point& inside, Box *hover);
 	void update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed);
 };
 

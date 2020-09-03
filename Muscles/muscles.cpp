@@ -31,11 +31,11 @@ int count_digits(u64 num) {
 	return n_digits;
 }
 
-void print_hex(const char *hex, char *out, u64 n, int n_digits) {
+void print_hex(char *out, u64 n, int n_digits) {
 	int shift = (n_digits-1) * 4;
 	char *p = out;
 	for (int i = 0; i < n_digits; i++) {
-		*p++ = hex[(n >> shift) & 0xf];
+		*p++ = "0123456789abcdef"[(n >> shift) & 0xf];
 		shift -= 4;
 	}
 	*p = 0;

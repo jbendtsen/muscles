@@ -3,9 +3,7 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void View_Source::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(view, input, inside, hover, focussed);
-
+void View_Source::update_ui(Camera& view) {
 	cross.pos.y = cross_size * 0.5;
 	cross.pos.x = box.w - cross_size * 1.5;
 	cross.pos.w = cross_size;
@@ -188,8 +186,6 @@ void View_Source::update_ui(Camera& view, Input& input, Point& inside, Box *hove
 	char buf[20];
 	snprintf(buf, 19, "%#llx", hex.region_address + hex.offset);
 	goto_box.placeholder = buf;
-
-	post_update_elements(view, input, inside, hover, focussed);
 }
 
 void View_Source::update_regions_table() {
@@ -232,10 +228,6 @@ void View_Source::refresh_region_list(Point& cursor) {
 		std::iota(region_list.begin(), region_list.end(), 0);
 	}
 
-	// place a hex digit LUT on the stack
-	char hex[16];
-	memcpy(hex, "0123456789abcdef", 16);
-
 	auto& names = (std::vector<char*>&)table.columns[0];
 	auto& addrs = (std::vector<char*>&)table.columns[1];
 	auto& sizes = (std::vector<char*>&)table.columns[2];
@@ -246,8 +238,8 @@ void View_Source::refresh_region_list(Point& cursor) {
 		if (selected_region == reg.base)
 			sel = idx;
 
-		print_hex(hex, addrs[idx], reg.base, 16);
-		print_hex(hex, sizes[idx], reg.size, 8);
+		print_hex(addrs[idx], reg.base, 16);
+		print_hex(sizes[idx], reg.size, 8);
 		names[idx] = reg.name;
 		idx++;
 	}

@@ -3,7 +3,7 @@
 struct Opening_Menu : Box {
 	Opening_Menu(Workspace& ws);
 
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 
 	Label title;
 	Data_View menu;
@@ -13,7 +13,7 @@ struct Opening_Menu : Box {
 struct Main_Menu : Box {
 	Main_Menu(Workspace& ws);
 
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
@@ -39,7 +39,7 @@ struct Source_Menu : Box {
 	enum MenuType menu_type;
 	Source_Menu(Workspace& ws, MenuType mtype);
 
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
@@ -66,7 +66,7 @@ struct View_Source : Box {
 	enum MenuType menu_type;
 	View_Source(Workspace& ws, MenuType mtype);
 
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
@@ -105,7 +105,7 @@ struct View_Source : Box {
 struct Edit_Structs : Box {
 	Edit_Structs(Workspace& ws);
 	
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 	void wake_up() override;
 
@@ -129,7 +129,7 @@ struct Edit_Structs : Box {
 struct View_Object : Box {
 	View_Object(Workspace& ws);
 	
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
@@ -173,7 +173,7 @@ struct View_Object : Box {
 struct View_Definitions : Box {
 	View_Definitions(Workspace& ws);
 	
-	void update_ui(Camera& view, Input& input, Point& cursor, Box *hover, bool focussed) override;
+	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	Image cross;

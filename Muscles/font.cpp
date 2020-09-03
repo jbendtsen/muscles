@@ -189,6 +189,8 @@ void Font_Render::draw_text(void *renderer, const char *text, float x, float y, 
 		src.y = gl->atlas_y;
 		src.w = gl->img_w;
 		src.h = gl->img_h;
+
+		float y_off = 0;
 		
 		if (clip_left) {
 			if (x + gl->img_w < clip.x_lower) {
@@ -208,15 +210,15 @@ void Font_Render::draw_text(void *renderer, const char *text, float x, float y, 
 				x += advance;
 				continue;
 			}
-			float delta = (float)y - clip.y_lower;
+			float delta = (float)y - gl->top - clip.y_lower;
 			if (delta < 0) {
 				src.y = ((float)src.y - delta + 0.5);
 				src.h = ((float)src.h + delta + 0.5);
-				y -= delta;
+				y_off = -delta;
 			}
 		}
 		dst.x = x + gl->left;
-		dst.y = y - gl->top;
+		dst.y = y + y_off - gl->top;
 
 		if (clip_right) {
 			int w = clip.x_upper - dst.x;

@@ -2,7 +2,7 @@
 #include "../ui.h"
 #include "dialog.h"
 
-void Main_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+void Main_Menu::update_ui(Camera& view) {
 	if (sources_view.sel_row >= 0) {
 		button.set_active(true);
 		view_dd.content[0] = (char*)sources_view.data->columns[2][sources_view.sel_row];
@@ -11,8 +11,6 @@ void Main_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hover,
 		button.set_active(false);
 		view_dd.content[0] = (char*)"<source>";
 	}
-
-	update_elements(view, input, inside, hover, focussed);
 
 	float x = border;
 	float y = border;
@@ -46,8 +44,6 @@ void Main_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hover,
 		box.w - 2*x,
 		box.h - y - 2*border - view_h
 	};
-
-	post_update_elements(view, input, inside, hover, focussed);
 }
 
 void Main_Menu::refresh(Point& cursor) {
@@ -281,9 +277,7 @@ void opening_menu_handler(UI_Element *elem, bool dbl_click) {
 		table->parent->visible = false;
 }
 
-void Opening_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
-	update_elements(view, input, inside, hover, focussed);
-
+void Opening_Menu::update_ui(Camera& view) {
 	float y = border;
 	y += center_align_title(&title, *this, view.scale, y);
 
@@ -291,8 +285,6 @@ void Opening_Menu::update_ui(Camera& view, Input& input, Point& inside, Box *hov
 	menu.pos.y = y;
 	menu.pos.w = box.w - border * 2;
 	menu.pos.h = box.h - y - border;
-
-	post_update_elements(view, input, inside, hover, focussed);
 }
 
 Opening_Menu::Opening_Menu(Workspace& ws) {

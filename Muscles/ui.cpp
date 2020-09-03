@@ -960,10 +960,11 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 	clip.x_upper = clip.x_lower + window_w;
 	clip.y_lower = back.y;
 	clip.y_upper = back.y + back.h;
-	float offset = 0;
 
-	float digit_w = fnt->render.digit_width();
-	editor.draw_selection_box(renderer, sel_color, clip, digit_w, height);
+	float offset = 0;
+	editor.refresh(clip, font, offset, 0);
+
+	editor.draw_selection_box(renderer, sel_color);
 
 	fnt->render.draw_text(renderer, str, rect.x + text_x - offset, rect.y + text_y, clip);
 
@@ -1027,7 +1028,7 @@ float Hex_View::print_address(Renderer renderer, u64 address, float x, float y, 
 	float text_x = x + (addr_digits - n_digits) * digit_w;
 
 	char buf[20];
-	print_hex("0123456789abcdef", buf, address, n_digits);
+	print_hex(buf, address, n_digits);
 	font->render.draw_text(renderer, buf, box.x + text_x, box.y + y, clip);
 
 	return x + addr_digits * digit_w + 2*pad;
@@ -1328,12 +1329,15 @@ void Number_Edit::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, 
 	float text_y = back.y - pad;
 
 	clip.x_upper = back.x + back.w - end_w;
+
+	editor.refresh(clip, font, 0, 0);
+
 	font->render.draw_text(renderer, editor.text.c_str(), text_x, text_y, clip);
 
 	float digit_w = font->render.digit_width();
 	if (parent->active_edit == &editor) {
 		Point p = {text_x, text_y};
-		editor.draw_cursor(renderer, arrow_color, editor.primary, p, digit_w, font_h, view.scale);
+		editor.draw_cursor(renderer, arrow_color, editor.primary, p, view.scale);
 	}
 
 	r.x = clip.x_upper;
@@ -1377,7 +1381,7 @@ void Scroll::scroll(double delta) {
 	position = clamp(position + delta, 0, maximum - view_span);
 	needs_redraw = position != old_pos;
 	if (content)
-		content->needs_redraw = needs_redraw;
+		content->needs_redraw = content->needs_redraw || needs_redraw;
 }
 
 void Scroll::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1547,14 +1551,30 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 			ticks = 0;
 		if (res & 8)
 			parent->active_edit = nullptr;
+		if ((res & 16) && vscroll)
+			vscroll->scroll(editor.scroll_delta);
+
+		needs_redraw = needs_redraw || res != 0;
 	}
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (hovered && input.lclick && pos.contains(cursor)) {
-		parent->ui_held = true;
-		parent->active_edit = &editor;
-		mouse_held = true;
+	if (pos.contains(cursor)) {
+		Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
+		if (scroll && input.scroll_y > 0) {
+			scroll->scroll(-font->render.text_height());
+			needs_redraw = true;
+		}
+		if (scroll && input.scroll_y < 0) {
+			scroll->scroll(font->render.text_height());
+			needs_redraw = true;
+		}
+
+		if (hovered && input.lclick) {
+			parent->ui_held = true;
+			parent->active_edit = &editor;
+			mouse_held = true;
+		}
 	}
 	if (!input.lmouse)
 		mouse_held = false;
@@ -1566,7 +1586,7 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 		editor.update_cursor(x, y, font, view.scale, input.lclick);
 	}
 
-	needs_redraw = mouse_held;
+	needs_redraw = needs_redraw || mouse_held;
 }
 
 void Text_Editor::update() {
@@ -1599,8 +1619,10 @@ void Text_Editor::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, 
 	clip.y_lower = back.y + edge;
 	clip.y_upper = back.y + back.h - edge;
 
+	editor.refresh(clip, font, scroll_x, scroll_y);
+
 	if (editor.secondary.cursor != editor.primary.cursor)
-		editor.draw_selection_box(renderer, sel_color, clip, digit_w, font_h);
+		editor.draw_selection_box(renderer, sel_color);
 
 	font->render.draw_text(renderer, editor.text.c_str(), back.x + edge - scroll_x, back.y + edge - scroll_y, clip, editor.tab_width, true);
 }
@@ -1617,8 +1639,8 @@ void Text_Editor::post_draw(Camera& view, Rect_Int& rect, bool elem_hovered, boo
 
 	if (editor.secondary.cursor != editor.primary.cursor || show_caret) {
 		Point origin = {back.x + edge, back.y + edge};
-		editor.draw_cursor(nullptr, caret_color, editor.primary, origin, digit_w, font_h, view.scale);
+		editor.draw_cursor(nullptr, caret_color, editor.primary, origin, view.scale);
 		if (editor.secondary.cursor != editor.primary.cursor)
-			editor.draw_cursor(nullptr, caret_color, editor.secondary, origin, digit_w, font_h, view.scale);
+			editor.draw_cursor(nullptr, caret_color, editor.secondary, origin, view.scale);
 	}
 }

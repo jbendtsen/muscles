@@ -239,14 +239,14 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	Point inside = {0};
 	Box *hover = box_under_cursor(view, cursor, inside);
 
-	if (input.lclick || input.rclick) {
-		if (!view.moving) {
-			sdl_acquire_mouse();
-			if (hover)
-				bring_to_front(hover);
-		}
+	// There are three main ways for a box to be distinguished a any time: if it's hovered, focussed or held with the mouse.
+	if (hover && (input.lclick || input.rclick) && !view.moving) {
+		sdl_acquire_mouse();
 
-		if (hover && !input.rclick)
+		// This function makes it so the given box is the last to be rendered, making it the box at the front.
+		// The box at the front is the focussed box.
+		bring_to_front(hover);
+		if (!input.rclick)
 			selected = hover;
 	}
 
@@ -402,24 +402,13 @@ void Box::set_dropdown(Drop_Down *dd) {
 	dropdown_set = true;
 }
 
-void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
+void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover) {
 	if (input.lclick) {
 		if (active_edit) {
 			if (active_edit->parent->disengage(input, true))
 				input.lclick = false;
 		}
 		active_edit = nullptr;
-	}
-
-	for (auto& elem : ui) {
-		elem->parent = this;
-		if (!elem->visible)
-			continue;
-
-		elem->mouse_handler(view, input, inside, this == hover);
-
-		if (focussed)
-			elem->key_handler(view, input);
 	}
 
 	if (!hover || this == hover) {
@@ -448,9 +437,7 @@ void Box::update_elements(Camera& view, Input& input, Point& inside, Box *hover,
 			}
 		}
 	}
-}
 
-void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *hover, bool focussed) {
 	bool hovered = this == hover;
 	if (hovered && input.action && current_dd && current_dd->action) {
 		current_dd->action(current_dd, input.double_click);
@@ -461,6 +448,8 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *h
 	for (auto& elem : ui) {
 		if (!elem->visible)
 			continue;
+
+		elem->key_handler(view, input);
 
 		bool within = elem->pos.contains(inside);
 		if (!hl && hovered && !moving) {
@@ -473,7 +462,7 @@ void Box::post_update_elements(Camera& view, Input& input, Point& inside, Box *h
 		else
 			elem->deselect();
 
-		if (focussed && input.action && elem->active && elem->action && within) {
+		if (input.action && elem->active && elem->action && within) {
 			Workspace *ws = parent;
 			ws->box_expunged = false;
 			elem->action(elem, input.double_click);
@@ -498,18 +487,29 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	}
 
 	Point cursor = view.to_world(input.mouse_x, input.mouse_y);
-	Point p = {cursor.x - box.x, cursor.y - box.y};
+	Point inside = {cursor.x - box.x, cursor.y - box.y};
 
 	if (current_dd)
-		current_dd->highlight(view, p);
+		current_dd->highlight(view, inside);
 
 	if (ticks % refresh_every == 0)
-		refresh(p);
+		refresh(inside);
 	ticks++;
 
 	dropdown_set = false;
 
-	update_ui(view, input, p, hover, focussed);
+	for (auto& elem : ui) {
+		elem->parent = this;
+		if (!elem->visible)
+			continue;
+
+		elem->mouse_handler(view, input, inside, this == hover);
+	}
+
+	update_ui(view);
+
+	if (focussed)
+		update_focussed(view, input, inside, hover);
 
 	if (ws.box_expunged) {
 		ws.box_expunged = false;

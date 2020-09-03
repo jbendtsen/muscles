@@ -1,5 +1,7 @@
 #include "muscles.h"
 
+// TODO merge clear_word() and advance_word() into String_Vector
+
 void clear_word(char* word) {
 	int len = strlen(word);
 	memset(word, 0xff, len);
