@@ -80,7 +80,7 @@ struct UI_Element {
 	bool use_default_cursor = false;
 
 	enum Element_Type elem_type;
-	enum Cursor_Type cursor_type = CursorDefault;
+	enum CursorType cursor_type = CursorDefault;
 
 	Box *parent = nullptr;
 
@@ -115,13 +115,14 @@ struct UI_Element {
 	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
 	virtual void key_handler(Camera& view, Input& input) {}
 
+	virtual void scroll_handler(Camera& view, Input& input, Point& inside) {}
 	virtual bool highlight(Camera& view, Point& inside) { return false; }
 	virtual void deselect() {}
 	virtual bool disengage(Input& input, bool try_select) { return false; }
 	virtual void release() {}
 
 	UI_Element() = default;
-	UI_Element(Element_Type t, Cursor_Type ct = CursorDefault) : elem_type(t), cursor_type(ct) {}
+	UI_Element(Element_Type t, CursorType ct = CursorDefault) : elem_type(t), cursor_type(ct) {}
 
 	virtual ~UI_Element() {
 		sdl_destroy_texture(&tex_cache);
@@ -224,7 +225,6 @@ struct Data_View : UI_Element {
 	float scroll_total = 0.2;
 
 	bool show_column_names = false;
-	bool consume_box_scroll = false;
 
 	Render_Clip clip = {
 		CLIP_LEFT | CLIP_RIGHT | CLIP_BOTTOM,
@@ -237,9 +237,11 @@ struct Data_View : UI_Element {
 	float column_width(float total_width, float min_width, float font_height, float scale, int idx);
 	void draw_item_backing(Renderer renderer, RGBA& color, Rect& back, float scale, int idx);
 
-	bool highlight(Camera& view, Point& inside) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+
+	void scroll_handler(Camera& view, Input& input, Point& inside) override;
+	bool highlight(Camera& view, Point& inside) override;
 	void deselect() override;
 	void release() override;
 };
@@ -349,7 +351,7 @@ struct Edit_Box : UI_Element {
 
 	void clear();
 
-	void update_icon(Icon_Type type, float height, float scale);
+	void update_icon(IconType type, float height, float scale);
 
 	bool disengage(Input& input, bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
@@ -398,6 +400,7 @@ struct Hex_View : UI_Element {
 
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 };
 
 struct Image : UI_Element {
@@ -459,9 +462,11 @@ struct Number_Edit : UI_Element {
 	int icon_h = 0;
 
 	void make_icon(float scale);
+	void affect_number(int delta);
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -553,6 +558,7 @@ struct Text_Editor : UI_Element {
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 	void update() override;
 
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;

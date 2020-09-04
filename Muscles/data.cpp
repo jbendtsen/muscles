@@ -267,7 +267,7 @@ void Table::update_filter(std::string& filter) {
 
 	filtered = 0;
 	for (int i = 0; i < n_cols; i++) {
-		Column_Type type = headers[i].type;
+		ColumnType type = headers[i].type;
 		if (headers[i].type == ColumnString || headers[i].type == ColumnFile) {
 			for (int j = 0; j < n_rows; j++) {
 				char *name = type == ColumnFile ? ((File_Entry*)columns[i][j])->name : (char*)columns[i][j];

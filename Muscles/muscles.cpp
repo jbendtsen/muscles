@@ -17,7 +17,7 @@ std::pair<int, int> next_power_of_2(int num) {
 	return std::make_pair(power, exp);
 }
 
-int count_digits(u64 num) {
+int count_hex_digits(u64 num) {
 	if (num == 0)
 		return 1;
 
@@ -31,7 +31,7 @@ int count_digits(u64 num) {
 	return n_digits;
 }
 
-void print_hex(char *out, u64 n, int n_digits) {
+void write_hex(char *out, u64 n, int n_digits) {
 	int shift = (n_digits-1) * 4;
 	char *p = out;
 	for (int i = 0; i < n_digits; i++) {
@@ -39,6 +39,31 @@ void print_hex(char *out, u64 n, int n_digits) {
 		shift -= 4;
 	}
 	*p = 0;
+}
+
+void write_dec(char *out, s64 n) {
+	if (n == 0) {
+		*out++ = '0'; *out++ = 0;
+		return;
+	}
+
+	if (n < 0) {
+		*out++ = '-';
+		n = -n;
+	}
+
+	char temp[32];
+	int len = 0;
+	while (n) {
+		s64 digit = n % 10;
+		temp[len++] = '0' + digit;
+		n /= 10;
+	}
+
+	for (int i = len-1; i >= 0; i--)
+		*out++ = temp[i];
+
+	*out++ = 0;
 }
 
 int run() {

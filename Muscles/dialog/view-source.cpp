@@ -200,8 +200,8 @@ void View_Source::update_regions_table() {
 	char *name = (char*)reg_table.data->columns[0][sel];
 	reg_name.text = name ? name : "";
 
-	u64 address = strtoull((char*)reg_table.data->columns[1][sel], nullptr, 16);
-	u64 size = strtoull((char*)reg_table.data->columns[2][sel], nullptr, 16);
+	u64 address = (u64)reg_table.data->columns[1][sel];
+	u64 size = (u64)reg_table.data->columns[2][sel];
 
 	selected_region = address;
 	hex.set_region(address, size);
@@ -229,8 +229,8 @@ void View_Source::refresh_region_list(Point& cursor) {
 	}
 
 	auto& names = (std::vector<char*>&)table.columns[0];
-	auto& addrs = (std::vector<char*>&)table.columns[1];
-	auto& sizes = (std::vector<char*>&)table.columns[2];
+	auto& addrs = (std::vector<u64>&)table.columns[1];
+	auto& sizes = (std::vector<u64>&)table.columns[2];
 
 	int idx = 0, sel = -1;
 	for (auto& r : region_list) {
@@ -238,13 +238,13 @@ void View_Source::refresh_region_list(Point& cursor) {
 		if (selected_region == reg.base)
 			sel = idx;
 
-		print_hex(addrs[idx], reg.base, 16);
-		print_hex(sizes[idx], reg.size, 8);
+		addrs[idx] = reg.base;
+		sizes[idx] = reg.size;
 		names[idx] = reg.name;
 		idx++;
 	}
 
-	goto_digits = idx <= 0 ? 4 : count_digits(source->regions[idx-1].base) + 2;
+	goto_digits = idx <= 0 ? 4 : count_hex_digits(source->regions[idx-1].base) + 2;
 
 	if (table.filtered > 0) {
 		table.update_filter(reg_search.editor.text);
@@ -326,12 +326,12 @@ void View_Source::refresh(Point& cursor) {
 	}
 	else {
 		hex.set_region(0, hex.source->regions[0].size);
-		goto_digits = count_digits(hex.region_size) + 2;
+		goto_digits = count_hex_digits(hex.region_size) + 2;
 	}
 
 	u64 n = hex.region_size;
 	if (n > 0) {
-		int n_digits = count_digits(n);
+		int n_digits = count_hex_digits(n);
 
 		char buf[40];
 		if (menu_type == MenuProcess)
@@ -415,8 +415,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 		Column cols[] = {
 			{ColumnString, 0, 0, 0, 0, "Name"},
-			{ColumnString, 20, 0.2, addr_w, 0, "Address"},
-			{ColumnString, 20, 0.1, size_w, 0, "Size"}
+			{ColumnHex, 16, 0.2, addr_w, 0, "Address"},
+			{ColumnHex, 8, 0.1, size_w, 0, "Size"}
 		};
 
 		table.init(cols, nullptr, 3, 0);

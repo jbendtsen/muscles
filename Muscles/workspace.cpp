@@ -32,7 +32,7 @@ Workspace::Workspace(Font_Face face) {
 	set(definitions.insert("int32_t"), FLAG_SIGNED, 32);
 	set(definitions.insert("uint32_t"), 0, 32);
 	set(definitions.insert("long"), FLAG_SIGNED, 32);
-	set(definitions.insert("long long"), FLAG_SIGNED, 64);
+	set(definitions.insert("s64"), FLAG_SIGNED, 64);
 	set(definitions.insert("float"), FLAG_FLOAT, 32);
 	set(definitions.insert("double"), FLAG_FLOAT, 64);
 
@@ -412,10 +412,10 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 	}
 
 	if (!hover || this == hover) {
-		if (!input.lmouse)
+		if (!moving)
 			select_edge(view, inside);
 
-		Cursor_Type ct = CursorDefault;
+		CursorType ct = CursorDefault;
 		if (edge == 5 || edge == 10)
 			ct = CursorResizeNWSE;
 		else if (edge == 6 || edge == 9)
@@ -444,25 +444,14 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 		input.action = false;
 	}
 
-	bool hl = false;
 	for (auto& elem : ui) {
 		if (!elem->visible)
 			continue;
 
+		elem->mouse_handler(view, input, inside, this == hover);
 		elem->key_handler(view, input);
 
-		bool within = elem->pos.contains(inside);
-		if (!hl && hovered && !moving) {
-			hl = elem->highlight(view, inside);
-			if (within && !elem->use_default_cursor && !parent->cursor_set) {
-				sdl_set_cursor(elem->cursor_type);
-				parent->cursor_set = true;
-			}
-		}
-		else
-			elem->deselect();
-
-		if (input.action && elem->active && elem->action && within) {
+		if (input.action && elem->active && elem->action && elem->pos.contains(inside)) {
 			Workspace *ws = parent;
 			ws->box_expunged = false;
 			elem->action(elem, input.double_click);
@@ -485,6 +474,8 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 		float dy = (input.mouse_y - input.prev_y) / view.scale;
 		move(dx, dy, view, input);
 	}
+	else
+		edge = 0;
 
 	Point cursor = view.to_world(input.mouse_x, input.mouse_y);
 	Point inside = {cursor.x - box.x, cursor.y - box.y};
@@ -498,12 +489,27 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 	dropdown_set = false;
 
+	bool hl = false;
 	for (auto& elem : ui) {
 		elem->parent = this;
 		if (!elem->visible)
 			continue;
 
-		elem->mouse_handler(view, input, inside, this == hover);
+		if (!hl && this == hover && !moving) {
+			hl = elem->highlight(view, inside);
+
+			if (elem->pos.contains(inside)) {
+				Point p = {inside.x - elem->pos.x, inside.x - elem->pos.y};
+				elem->scroll_handler(view, input, p);
+
+				if (!elem->use_default_cursor && !parent->cursor_set) {
+					sdl_set_cursor(elem->cursor_type);
+					parent->cursor_set = true;
+				}
+			}
+		}
+		else
+			elem->deselect();
 	}
 
 	update_ui(view);

@@ -92,7 +92,6 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	view.default_color = ws.scroll_back;
 	view.hl_color = ws.hl_color;
 	view.back_color = ws.back_color;
-	view.consume_box_scroll = true;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;
 	view.vscroll = &vscroll;

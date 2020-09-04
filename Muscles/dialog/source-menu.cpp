@@ -80,16 +80,20 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (menu->hl_row < 0)
 		return;
 
+	// Copy the information we need
 	int idx = menu->data->index_from_filtered(menu->hl_row);
-	char *process = (char*)menu->data->columns[1][idx];
 
+	s64 pid_long = (s64)menu->data->columns[1][idx];
+	int pid = pid_long;
+
+	std::string name = (char*)menu->data->columns[2][idx];
+
+	// THEN delete this box
 	Workspace *ws = elem->parent->parent;
 	ws->delete_box(elem->parent);
 
-	char *name_ptr = nullptr;
-	int pid = strtol(process, &name_ptr, 0);
+	// Then check to see if we've already opened this process
 	auto& sources = (std::vector<Source*>&)ws->sources;
-
 	for (auto& s : sources) {
 		if (s->type == SourceProcess && s->pid == pid)
 			return;
@@ -98,7 +102,7 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	Source *s = new Source();
 	s->type = SourceProcess;
 	s->pid = pid;
-	s->name = name_ptr+1;
+	s->name = name;
 	s->refresh_span_rate = 1;
 
 	sources.push_back(s);
@@ -213,12 +217,12 @@ void Source_Menu::refresh(Point& cursor) {
 		return;
 
 	if (menu_type == MenuProcess) {
-		std::vector<int> pids;
+		std::vector<s64> pids;
 		get_process_id_list(pids);
 
 		menu.data->resize(pids.size());
 
-		int n_procs = get_process_names(pids, icon_map, menu.data->columns[0], menu.data->columns[1], 64);
+		int n_procs = get_process_names(&pids, icon_map, menu.data->columns[0], menu.data->columns[1], menu.data->columns[2], 64);
 		menu.data->resize(n_procs);
 	}
 	else {
@@ -237,11 +241,7 @@ void Source_Menu::refresh(Point& cursor) {
 }
 
 void Source_Menu::handle_zoom(Workspace& ws, float new_scale) {
-	if (menu_type == MenuProcess) {
-		menu.data->release();
-		icon_map.release();
-	}
-	else {
+	if (menu_type == MenuFile) {
 		sdl_destroy_texture(&up.icon);
 		sdl_destroy_texture(&folder_icon);
 
@@ -285,7 +285,6 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	menu.default_color = ws.back_color;
 	menu.hl_color = ws.hl_color;
 	menu.font = ws.default_font;
-	menu.consume_box_scroll = true;
 	menu.vscroll = &scroll;
 	menu.vscroll->content = &menu;
 
@@ -315,9 +314,10 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 
 		Column col[] = {
 			{ColumnImage, 0, 0.1, 0, 1.5, ""},
-			{ColumnString, 64, 0.9, 0, 0, ""}
+			{ColumnDec, 0, 0.2, 0, 3, ""},
+			{ColumnString, 64, 0.7, 0, 0, ""}
 		};
-		menu.data->init(col, nullptr, 2, 0);
+		menu.data->init(col, nullptr, 3, 0);
 	}
 	else {
 		title.text = "Open File";

@@ -467,7 +467,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 		// Determine the type of the current field.
 		// This code may run multiple times per field,
-		//  as there some primitive types that use more than one keyword (eg. "long long")
+		//  as there some primitive types that use more than one keyword (eg. "s64")
 		if (f && type_over && type.size() > 0 && (f->flags & FLAG_COMPOSITE) == 0) {
 			Bucket& p = definitions[type.c_str()];
 

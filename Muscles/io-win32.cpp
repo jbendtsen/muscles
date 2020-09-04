@@ -34,23 +34,30 @@ bool is_folder(const char *name) {
 
 Texture load_icon(const char *path);
 
-void get_process_id_list(std::vector<int>& list) {
+void get_process_id_list(std::vector<s64>& list) {
 	const int max_pids = 1024;
-	list.resize(max_pids);
+	auto pids = std::make_unique<DWORD[]>(max_pids);
 	DWORD size = 0;
-	EnumProcesses((DWORD*)list.data(), max_pids * sizeof(int), &size);
-	list.resize(size / sizeof(int));
+	EnumProcesses(pids.get(), max_pids * sizeof(int), &size);
+
+	int n_pids = size / sizeof(DWORD);
+	list.resize(n_pids);
+
+	for (int i = 0; i < n_pids; i++)
+		list[i] = (s64)pids[i];
 }
 
-int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& names, int count_per_cell) {
+int get_process_names(std::vector<s64> *full_list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& pids, std::vector<void*>& names, int count_per_cell) {
 	const int proc_path_len = 1024;
 	auto proc_path = std::make_unique<char[]>(proc_path_len);
-	int size = list.size() < names.size() ? list.size() : names.size();
+
+	std::vector<s64> *list = full_list ? full_list : (std::vector<s64>*)&pids;
+	int size = list->size() < names.size() ? list->size() : names.size();
 
 	int idx = 0;
 	for (int i = 0; i < size; i++) {
 		// Many of the PIDs provided by EnumProcesses can't be opened, so we filter them out here
-		int pid = list[i];
+		int pid = (*list)[i];
 		HANDLE proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid);
 		if (!proc)
 			continue;
@@ -80,7 +87,14 @@ int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>&
 		}
 
 		icons[idx] = buck.pointer;
-		snprintf((char*)names[idx], count_per_cell, "%5d %s", pid, p);
+
+		s64 pid_long = (s64)pid;
+		pids[idx] = (void*)pid_long;
+
+		char *name = (char*)names[idx];
+		strncpy(name, p, count_per_cell-1);
+		name[strlen(p)] = 0;
+
 		idx++;
 	}
 

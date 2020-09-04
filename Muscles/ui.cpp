@@ -491,12 +491,29 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 
 	auto draw_cell =
 	[this, &renderer, &dst, &src, y_max, line_off, sp_half, font_height]
-	(void *cell, Column_Type type, float x, float y) {
-		if (type == ColumnString)
-			font->render.draw_text(renderer, (const char*)cell, x, y - line_off, clip);
-		else if (type == ColumnFile) {
-			auto name = (const char*)((File_Entry*)cell)->name;
-			font->render.draw_text(renderer, name, x, y - line_off, clip);
+	(void *cell, Column& header, float x, float y) {
+		auto type = header.type;
+		if (type == ColumnString || type == ColumnDec || type == ColumnHex || type == ColumnFile || type == ColumnStdString) {
+			char *str = nullptr;
+			char buf[24];
+
+			if (type == ColumnString)
+				str = (char*)cell;
+			else if (type == ColumnDec) {
+				write_dec(buf, (s64)cell);
+				str = buf;
+			}
+			else if (type == ColumnHex) {
+				write_hex(buf, (u64)cell, header.count_per_cell);
+				str = buf;
+			}
+			else if (type == ColumnFile)
+				str = ((File_Entry*)cell)->name;
+			else if (type == ColumnStdString)
+				str = (char*)((std::string*)cell)->c_str();
+
+			if (str)
+				font->render.draw_text(renderer, (const char*)str, x, y - line_off, clip);
 		}
 		else if (type == ColumnImage) {
 			sdl_get_texture_size(cell, &src.w, &src.h);
@@ -547,8 +564,6 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 		clip.x_upper = x+w < x_max ? x+w : x_max;
 
-		Column_Type type = data->headers[i].type;
-
 		if (data->filtered >= 0) {
 			int n = -1;
 			for (auto& idx : data->list) {
@@ -568,7 +583,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 
 				auto thing = data->columns[i][idx];
 				if (thing && !skip_draw)
-					draw_cell(thing, type, x, y);
+					draw_cell(thing, data->headers[i], x, y);
 
 				y += line_h;
 			}
@@ -587,7 +602,9 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 				if (idx < 0 && i == 0) {
 					int branch = -idx - 1;
 					Texture icon = branches[branch].closed ? icon_plus : icon_minus;
-					draw_cell(icon, ColumnImage, x, y + font_height * 0.025);
+					Column temp;
+					temp.type = ColumnImage;
+					draw_cell(icon, temp, x, y + font_height * 0.025);
 
 					int name_idx = branches[branch].name_idx;
 					if (name_idx >= 0)
@@ -604,7 +621,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 
 					auto thing = data->columns[i][idx];
 					if (thing && !skip_draw)
-						draw_cell(thing, type, x, y);
+						draw_cell(thing, data->headers[i], x, y);
 				}
 
 				y += line_h;
@@ -617,30 +634,30 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bo
 }
 
 void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (hovered) {
-		if (consume_box_scroll || pos.contains(cursor)) {
-			Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
-			if (scroll && input.scroll_y > 0) {
-				scroll->scroll(-1);
-				needs_redraw = true;
-			}
-			if (scroll && input.scroll_y < 0) {
-				scroll->scroll(1);
-				needs_redraw = true;
-			}
-		}
-		int row = get_table_index(hl_row);
-		if (input.lclick) {
-			if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
-				TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
-			}
-			else if (hl_row >= 0 && row < 0 && tree.size() > 0) {
-				int b = -row - 1;
-				branches[b].closed = !branches[b].closed;
-				update_tree();
-			}
-			needs_redraw = true;
-		}
+	if (!hovered || !input.lclick)
+		return;
+
+	int row = get_table_index(hl_row);
+	if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
+		TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+	}
+	else if (hl_row >= 0 && row < 0 && tree.size() > 0) {
+		int b = -row - 1;
+		branches[b].closed = !branches[b].closed;
+		update_tree();
+	}
+	needs_redraw = true;
+}
+
+void Data_View::scroll_handler(Camera& view, Input& input, Point& inside) {
+	Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
+	if (scroll && input.scroll_y > 0) {
+		scroll->scroll(-1);
+		needs_redraw = true;
+	}
+	if (scroll && input.scroll_y < 0) {
+		scroll->scroll(1);
+		needs_redraw = true;
 	}
 }
 
@@ -898,7 +915,7 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 	}
 }
 
-void Edit_Box::update_icon(Icon_Type type, float height, float scale) {
+void Edit_Box::update_icon(IconType type, float height, float scale) {
 	pos.h = height;
 	icon_length = 0.5 + height * scale - 2 * text_off_y * font->render.text_height();
 
@@ -1011,7 +1028,7 @@ void Hex_View::update(float scale) {
 		scroll->set_maximum(size, rows * columns);
 	}
 
-	addr_digits = count_digits(region_address + region_size - 1);
+	addr_digits = count_hex_digits(region_address + region_size - 1);
 
 	if (alive) {
 		if (span_idx < 0)
@@ -1024,11 +1041,11 @@ void Hex_View::update(float scale) {
 }
 
 float Hex_View::print_address(Renderer renderer, u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float pad) {
-	int n_digits = count_digits(address);
+	int n_digits = count_hex_digits(address);
 	float text_x = x + (addr_digits - n_digits) * digit_w;
 
 	char buf[20];
-	print_hex(buf, address, n_digits);
+	write_hex(buf, address, n_digits);
 	font->render.draw_text(renderer, buf, box.x + text_x, box.y + y, clip);
 
 	return x + addr_digits * digit_w + 2*pad;
@@ -1195,51 +1212,52 @@ void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 		draw_cursors(renderer, sel - offset, back, x_start, pad, view.scale);
 }
 
-void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (!hovered || !pos.contains(cursor))
+void Hex_View::scroll_handler(Camera& view, Input& input, Point& inside) {
+	if (!scroll)
 		return;
 
-	if (scroll) {
-		int delta = columns;
-		if (input.lshift || input.rshift)
-			delta *= rows;
+	int delta = columns;
+	if (input.lshift || input.rshift)
+		delta *= rows;
 
-		if (input.scroll_y > 0) {
-			scroll->scroll(-delta);
-			needs_redraw = true;
-		}
-		if (input.scroll_y < 0) {
-			scroll->scroll(delta);
-			needs_redraw = true;
-		}
-	}
-
-	if (input.lclick) {
-		sel = -1;
-
-		float font_h = font_height / view.scale;
-		float pad = padding * font_h;
-		float row_height = rows > 0 ? (pos.h - pad) / (float)rows : font_h;
-
-		float digit_w = font->render.digit_width() / view.scale;
-		float byte_w = 2*digit_w + pad;
-		float hex_w = (float)columns * byte_w;
-
-		float x_start = x_offset;
-		if (show_addrs)
-			x_start += addr_digits * digit_w + 2*pad;
-
-		float x = cursor.x - pos.x - x_start + (pad / 2);
-		float y = cursor.y - pos.y - (pad / 2);
-
-		if (x >= 0 && x < hex_w) {
-			int row = y / row_height;
-			int col = x / byte_w;
-			sel = offset + (row * columns) + col;
-		}
-
+	if (input.scroll_y > 0) {
+		scroll->scroll(-delta);
 		needs_redraw = true;
 	}
+	if (input.scroll_y < 0) {
+		scroll->scroll(delta);
+		needs_redraw = true;
+	}
+}
+
+void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
+	if (!hovered || !input.lclick || !pos.contains(cursor))
+		return;
+
+	sel = -1;
+
+	float font_h = font_height / view.scale;
+	float pad = padding * font_h;
+	float row_height = rows > 0 ? (pos.h - pad) / (float)rows : font_h;
+
+	float digit_w = font->render.digit_width() / view.scale;
+	float byte_w = 2*digit_w + pad;
+	float hex_w = (float)columns * byte_w;
+
+	float x_start = x_offset;
+	if (show_addrs)
+		x_start += addr_digits * digit_w + 2*pad;
+
+	float x = cursor.x - pos.x - x_start + (pad / 2);
+	float y = cursor.y - pos.y - (pad / 2);
+
+	if (x >= 0 && x < hex_w) {
+		int row = y / row_height;
+		int col = x / byte_w;
+		sel = offset + (row * columns) + col;
+	}
+
+	needs_redraw = true;
 }
 
 void Image::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
@@ -1289,6 +1307,30 @@ void Number_Edit::key_handler(Camera& view, Input& input) {
 	}
 }
 
+void Number_Edit::affect_number(int delta) {
+	number = strtol(editor.text.c_str(), nullptr, 10) + delta;
+
+	editor.text = std::to_string(number);
+	editor.set_cursor(editor.primary, 0);
+	editor.secondary = editor.primary;
+	editor.selected = false;
+
+	if (key_action) {
+		Input blank = {};
+		key_action(this, blank);
+	}
+}
+
+void Number_Edit::scroll_handler(Camera& view, Input& input, Point& inside) {
+	int delta = 0;
+	if (input.scroll_y > 0)
+		delta = -1;
+	if (input.scroll_y < 0)
+		delta = 1;
+
+	affect_number(delta);
+}
+
 void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	if (!hovered || !input.lclick || !pos.contains(cursor))
 		return;
@@ -1299,17 +1341,8 @@ void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 	editor.update_cursor(x, y, font, view.scale, input.lclick);
 
 	if (x >= (pos.w * view.scale) - (end_width * font->render.text_height())) {
-		number = strtol(editor.text.c_str(), nullptr, 10);
-		number += y < pos.h * view.scale / 2 ? 1 : -1;
-
-		editor.text = std::to_string(number);
-		editor.set_cursor(editor.primary, 0);
-		editor.secondary = editor.primary;
-
-		if (key_action) {
-			Input blank = {};
-			key_action(this, blank);
-		}
+		int delta = y < pos.h * view.scale / 2 ? 1 : -1;
+		affect_number(delta);
 	}
 }
 
@@ -1559,24 +1592,12 @@ void Text_Editor::key_handler(Camera& view, Input& input) {
 }
 
 void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (pos.contains(cursor)) {
-		Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
-		if (scroll && input.scroll_y > 0) {
-			scroll->scroll(-font->render.text_height());
-			needs_redraw = true;
-		}
-		if (scroll && input.scroll_y < 0) {
-			scroll->scroll(font->render.text_height());
-			needs_redraw = true;
-		}
-
-		if (hovered && input.lclick) {
-			parent->ui_held = true;
-			parent->active_edit = &editor;
-			mouse_held = true;
-		}
+	if (hovered && input.lclick && pos.contains(cursor)) {
+		parent->ui_held = true;
+		parent->active_edit = &editor;
+		mouse_held = true;
 	}
-	if (!input.lmouse)
+	else if (!input.lmouse)
 		mouse_held = false;
 
 	if (mouse_held) {
@@ -1587,6 +1608,18 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 	}
 
 	needs_redraw = needs_redraw || mouse_held;
+}
+
+void Text_Editor::scroll_handler(Camera& view, Input& input, Point& inside) {
+	Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
+	if (scroll && input.scroll_y > 0) {
+		scroll->scroll(-font->render.text_height());
+		needs_redraw = true;
+	}
+	if (scroll && input.scroll_y < 0) {
+		scroll->scroll(font->render.text_height());
+		needs_redraw = true;
+	}
 }
 
 void Text_Editor::update() {

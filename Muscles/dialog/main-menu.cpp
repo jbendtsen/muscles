@@ -56,16 +56,12 @@ void Main_Menu::refresh(Point& cursor) {
 
 	auto& icons = sources_view.data->columns[0];
 	auto& pids = (std::vector<char*>&)sources_view.data->columns[1];
-	auto& names = (std::vector<char*>&)sources_view.data->columns[2];
+	auto& names = (std::vector<std::string*>&)sources_view.data->columns[2];
 
-	Arena *arena = get_default_arena();
 	for (int i = 0; i < n_sources; i++) {
-		if (!pids[i])
-			pids[i] = (char*)arena->allocate(8);
-
 		if (sources[i]->type == SourceProcess) {
 			icons[i] = process_icon;
-			snprintf(pids[i], 7, "%d", sources[i]->pid);
+			write_dec(pids[i], sources[i]->pid);
 		}
 		else if (sources[i]->type == SourceFile) {
 			icons[i] = file_icon;
@@ -78,14 +74,8 @@ void Main_Menu::refresh(Point& cursor) {
 	}
 
 	int idx = 0;
-	for (auto& n : names) {
-		int len = sources[idx]->name.size();
-		if (!n || strlen(n) != len)
-			n = (char*)arena->allocate(len + 1);
-
-		strcpy(n, sources[idx]->name.c_str());
-		idx++;
-	}
+	for (auto& n : names)
+		n = &sources[idx]->name;
 }
 
 void open_view_source(Workspace& ws, int idx) {
@@ -159,7 +149,7 @@ void Main_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	int n_rows = sources_view.data->row_count();
 	auto& icons = (std::vector<Texture>&)sources_view.data->columns[0];
 	for (int i = 0; i < n_rows; i++) {
-		Source_Type type = ((Source*)ws.sources[i])->type;
+		SourceType type = ((Source*)ws.sources[i])->type;
 		if (type == SourceFile)
 			icons[i] = file_icon;
 		else if (type == SourceProcess)
@@ -223,8 +213,8 @@ Main_Menu::Main_Menu(Workspace& ws) {
 
 	Column sources_cols[] = {
 		{ColumnImage, 0, 0.1, 0, 1.2, ""},
-		{ColumnString, 0, 0.2, 0, 3, "PID"},
-		{ColumnString, 0, 0.7, 0, 0, "Name"},
+		{ColumnString, 16, 0.2, 0, 3, "PID"},
+		{ColumnStdString, 0, 0.7, 0, 0, "Name"},
 	};
 	table.init(sources_cols, nullptr, 3, 0);
 	sources_view.data = &table;

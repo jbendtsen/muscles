@@ -289,7 +289,6 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	output.default_color = ws.dark_color;
 	output.hl_color = ws.hl_color;
 	output.back_color = ws.back_color;
-	output.consume_box_scroll = true;
 	output.hscroll = &out_hscroll;
 	output.hscroll->content = &output;
 	output.vscroll = &out_vscroll;

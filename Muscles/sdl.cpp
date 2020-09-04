@@ -19,7 +19,7 @@ static SDL_Surface *sf_cache = nullptr;
 static SDL_Renderer *soft_renderer = nullptr;
 
 std::vector<SDL_Cursor*> cursors;
-Cursor_Type cursor = CursorDefault;
+CursorType cursor = CursorDefault;
 
 bool capture = false;
 int dpi_w = 0, dpi_h = 0;
@@ -28,7 +28,7 @@ void *sdl_get_hw_renderer() {
 	return renderer;
 }
 
-void sdl_set_cursor(Cursor_Type type) {
+void sdl_set_cursor(CursorType type) {
 	if (type == cursor)
 		return;
 

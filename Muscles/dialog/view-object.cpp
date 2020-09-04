@@ -249,8 +249,8 @@ void View_Object::refresh(Point& cursor) {
 
 			strcpy(cell, "0x");
 
-			int digits = count_digits(n);
-			print_hex(&cell[2], n, digits);
+			int digits = count_hex_digits(n);
+			write_hex(&cell[2], n, digits);
 
 			break;
 		}
@@ -317,7 +317,6 @@ View_Object::View_Object(Workspace& ws) {
 	view.font = ws.default_font;
 	view.default_color = ws.dark_color;
 	view.hl_color = ws.dark_color;
-	view.consume_box_scroll = true;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;
 	view.vscroll = &vscroll;

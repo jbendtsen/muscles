@@ -12,6 +12,7 @@
 typedef unsigned char u8;
 typedef unsigned int u32;
 typedef unsigned long long u64;
+typedef signed long long s64;
 
 typedef void* Texture;
 typedef void* Surface;
@@ -26,8 +27,9 @@ void destroy_font_face(Font_Face face);
 int run();
 
 std::pair<int, int> next_power_of_2(int num);
-int count_digits(u64 num);
-void print_hex(char *out, u64 n, int n_digits);
+int count_hex_digits(u64 num);
+void write_hex(char *out, u64 n, int n_digits);
+void write_dec(char *out, s64 n);
 
 struct Glyph {
 	int atlas_x;
@@ -71,7 +73,7 @@ struct Rect_Int {
 struct Input;
 struct Camera;
 
-enum Cursor_Type {
+enum CursorType {
 	CursorDefault = 0,
 	CursorClick,
 	CursorEdit,
@@ -84,7 +86,7 @@ enum Cursor_Type {
 };
 
 void *sdl_get_hw_renderer();
-void sdl_set_cursor(Cursor_Type type);
+void sdl_set_cursor(CursorType type);
 void sdl_get_dpi(int& w, int& h);
 
 void sdl_log_string(const char *msg);
@@ -122,7 +124,7 @@ void *sdl_lock_texture(Texture tex);
 void sdl_unlock_texture(Texture tex);
 void sdl_destroy_texture(Texture *tex);
 
-enum Icon_Type {
+enum IconType {
 	IconNone = 0,
 	IconGoto,
 	IconGlass,
@@ -210,21 +212,24 @@ struct File_Entry {
 #define TABLE_CHECKBOX_CHECKED(table, col, row) \
 	(*(u8*)&table->columns[col][row] == 2)
 
-enum Column_Type {
+enum ColumnType {
 	ColumnNone = 0,
 	ColumnString,
-	ColumnImage,
 	ColumnFile,
+	ColumnDec,
+	ColumnHex,
+	ColumnStdString,
+	ColumnImage,
 	ColumnCheckbox
 };
 
 struct Column {
-	Column_Type type;
-	int count_per_cell;  // Number of elements (eg. chars) to allocate per cell
-	float width;         // Fraction of the width of the whole table
-	float min_size;      // Minimum column width in font height units (ie. 1.0 == the height of the current font in pixels)
-	float max_size;
-	const char *name;    // Used as the column header text
+	ColumnType type = ColumnNone;
+	int count_per_cell = 0;        // Number of elements (eg. chars or digits) to allocate or print per cell
+	float width = 0;               // Fraction of the width of the whole table
+	float min_size = 0;            // Minimum column width in font height units (ie. 1.0 == the height of the current font in pixels)
+	float max_size = 0;
+	const char *name;              // Used as the column header text
 };
 
 struct Table {
@@ -532,14 +537,14 @@ struct Region_Map {
 	void next_level_maybe();
 };
 
-enum Source_Type {
+enum SourceType {
 	SourceNone = 0,
 	SourceFile,
 	SourceProcess
 };
 
 struct Source {
-	Source_Type type = SourceNone;
+	SourceType type = SourceNone;
 	std::string name;
 
 	int pid = 0;
@@ -567,8 +572,8 @@ struct Source {
 	void gather_data(Arena& arena);
 };
 
-void get_process_id_list(std::vector<int>& list);
-int get_process_names(std::vector<int>& list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& names, int count_per_cell);
+void get_process_id_list(std::vector<s64>& list);
+int get_process_names(std::vector<s64> *list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& pids, std::vector<void*>& names, int count_per_cell);
 
 const char *get_folder_separator();
 const char *get_root_folder();
