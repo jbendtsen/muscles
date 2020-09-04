@@ -392,8 +392,8 @@ void Box::move(float dx, float dy, Camera& view, Input& input) {
 }
 
 void Box::set_dropdown(Drop_Down *dd) {
-	if (current_dd)
-		current_dd->dropped = false;
+	if (current_dd && dd != current_dd)
+		current_dd->cancel();
 
 	current_dd = dd;
 	if (current_dd)

@@ -791,6 +791,11 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	return false;
 }
 
+void Drop_Down::cancel() {
+	dropped = false;
+	sel = -1;
+}
+
 void Drop_Down::draw_menu(Renderer renderer, Camera& view, Rect_Int& rect) {
 	float font_height = font->render.text_height();
 	auto lines = get_content();

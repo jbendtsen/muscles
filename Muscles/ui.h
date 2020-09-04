@@ -303,6 +303,7 @@ struct Drop_Down : UI_Element {
 	}
 
 	void draw_menu(Renderer renderer, Camera& view, Rect_Int& rect);
+	void cancel();
 
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
