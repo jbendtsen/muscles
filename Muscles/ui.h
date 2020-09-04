@@ -365,8 +365,9 @@ struct Hex_View : UI_Element {
 
 	bool alive = false;
 	int offset = 0;
+	int col_offset = 0;
 	int sel = -1;
-	int rows = 0;
+	int vis_rows = 0;
 	int columns = 16;
 	int addr_digits = 0;
 
@@ -392,6 +393,7 @@ struct Hex_View : UI_Element {
 	Scroll *scroll = nullptr;
 
 	void set_region(u64 address, u64 size);
+	void set_offset(u64 offset);
 	void update(float scale);
 
 	float print_address(Renderer renderer, u64 address, float x, float y, float digit_w, Render_Clip& clip, Rect& box, float padding);
@@ -400,6 +402,7 @@ struct Hex_View : UI_Element {
 	void draw_cursors(Renderer renderer, int idx, Rect& back, float x_start, float pad, float scale);
 
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) override;
+	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 };

@@ -293,10 +293,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 			return;
 	}
 
-	u64 offset = address - base;
-	//offset -= offset % ui->hex.columns;
-	ui->hex_scroll.position = (double)offset;
-
+	ui->hex.set_offset(address - base);
 	edit->clear();
 }
 

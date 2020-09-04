@@ -5,7 +5,8 @@
 void Main_Menu::update_ui(Camera& view) {
 	if (sources_view.sel_row >= 0) {
 		button.set_active(true);
-		view_dd.content[0] = (char*)sources_view.data->columns[2][sources_view.sel_row];
+		auto str = (std::string*)sources_view.data->columns[2][sources_view.sel_row];
+		view_dd.content[0] = (char*)str->c_str();
 	}
 	else {
 		button.set_active(false);

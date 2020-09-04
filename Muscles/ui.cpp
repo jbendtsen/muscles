@@ -1015,22 +1015,34 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 void Hex_View::set_region(u64 address, u64 size) {
 	region_address = address;
 	region_size = size;
+	col_offset = 0;
+	offset = 0;
 	sel = -1;
 	alive = true;
 }
 
+void Hex_View::set_offset(u64 offset) {
+	if (scroll)
+		scroll->position = (double)offset;
+
+	col_offset = offset % columns;
+	this->offset = offset - col_offset;
+}
+
 void Hex_View::update(float scale) {
 	float font_height = font->render.text_height();
-	rows = pos.h * scale / font_height;
+	vis_rows = pos.h * scale / font_height;
 
 	if (scroll) {
 		offset = (int)scroll->position;
-		//offset -= offset % columns;
+		offset -= offset % columns;
+		offset += col_offset;
+
 		u64 size = region_size;
 		if (size % columns > 0)
 			size += columns - (size % columns);
 
-		scroll->set_maximum(size, rows * columns);
+		scroll->set_maximum(size, vis_rows * columns);
 	}
 
 	addr_digits = count_hex_digits(region_address + region_size - 1);
@@ -1041,7 +1053,7 @@ void Hex_View::update(float scale) {
 
 		Span& s = source->spans[span_idx];
 		s.address = region_address + offset;
-		s.size = rows * columns;
+		s.size = vis_rows * columns;
 	}
 }
 
@@ -1158,7 +1170,7 @@ void Hex_View::draw_cursors(Renderer renderer, int idx, Rect& back, float x_star
 void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	Rect box = make_ui_box(rect, pos, view.scale);
 
-	if (!alive || span_idx < 0 || rows <= 0 || columns <= 0) {
+	if (!alive || span_idx < 0 || vis_rows <= 0 || columns <= 0) {
 		sdl_draw_rect(box, default_color, renderer);
 		return;
 	}
@@ -1193,7 +1205,7 @@ void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 		CLIP_RIGHT, 0, 0, box.x + box.w - pad, 0
 	};
 
-	row_height = rows > 0 ? (box.h - pad) / (float)rows : font_height;
+	row_height = vis_rows > 0 ? (box.h - pad) / (float)vis_rows : font_height;
 
 	auto& span = source->spans[span_idx];
 	int left = span.size;
@@ -1217,13 +1229,25 @@ void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& rect, boo
 		draw_cursors(renderer, sel - offset, back, x_start, pad, view.scale);
 }
 
+void Hex_View::key_handler(Camera& view, Input& input) {
+	bool pg_down = input.strike(input.pgdown);
+	bool pg_up = input.strike(input.pgup);
+
+	if ((pg_up || pg_down) && scroll) {
+		int delta = pg_up ? -1 : 1;
+		delta *= columns * vis_rows;
+		scroll->scroll(delta);
+		needs_redraw = true;
+	}
+}
+
 void Hex_View::scroll_handler(Camera& view, Input& input, Point& inside) {
 	if (!scroll)
 		return;
 
 	int delta = columns;
 	if (input.lshift || input.rshift)
-		delta *= rows;
+		delta *= vis_rows;
 
 	if (input.scroll_y > 0) {
 		scroll->scroll(-delta);
@@ -1243,7 +1267,7 @@ void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 
 	float font_h = font_height / view.scale;
 	float pad = padding * font_h;
-	float row_height = rows > 0 ? (pos.h - pad) / (float)rows : font_h;
+	float row_height = vis_rows > 0 ? (pos.h - pad) / (float)vis_rows : font_h;
 
 	float digit_w = font->render.digit_width() / view.scale;
 	float byte_w = 2*digit_w + pad;
@@ -1329,9 +1353,9 @@ void Number_Edit::affect_number(int delta) {
 void Number_Edit::scroll_handler(Camera& view, Input& input, Point& inside) {
 	int delta = 0;
 	if (input.scroll_y > 0)
-		delta = -1;
-	if (input.scroll_y < 0)
 		delta = 1;
+	if (input.scroll_y < 0)
+		delta = -1;
 
 	affect_number(delta);
 }

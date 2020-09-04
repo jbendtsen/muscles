@@ -426,7 +426,7 @@ struct Input {
 	char ch = 0;
 
 	bool strike(int t) {
-		return t == 1 || (t >= 20 && (t % 10 == 0));
+		return t == 1 || (t >= 20 && (t % 5 == 1));
 	}
 };
 
