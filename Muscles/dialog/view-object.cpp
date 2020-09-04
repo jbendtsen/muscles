@@ -193,7 +193,7 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 			ui->source->deactivate_span(ui->span_idx);
 
 		ui->source = src;
-		ui->span_idx = src->request_span();
+		ui->span_idx = src ? src->request_span() : -1;
 	}
 
 	ui->view.needs_redraw = true;
@@ -201,7 +201,12 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 
 void View_Object::refresh(Point& cursor) {
 	Workspace *ws = parent;
-	Box *structs_box = ws->first_box_of_type(BoxStructs);
+	//Box *structs_box = ws->first_box_of_type(BoxStructs);
+
+	int n_sources = ws->sources.size();
+	source_dd.content.resize(n_sources);
+	for (int i = 0; i < n_sources; i++)
+		source_dd.content[i] = (char*)ws->sources[i]->name.c_str();
 
 	struct_dd.external = &ws->struct_names;
 	if (!record || !source)
@@ -268,6 +273,10 @@ void View_Object::handle_zoom(Workspace& ws, float new_scale) {
 	source_edit.update_icon(IconTriangle, height, new_scale);
 }
 
+void View_Object::on_close() {
+	source->deactivate_span(span_idx);
+}
+
 View_Object::View_Object(Workspace& ws) {
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
@@ -317,6 +326,7 @@ View_Object::View_Object(Workspace& ws) {
 	view.font = ws.default_font;
 	view.default_color = ws.dark_color;
 	view.hl_color = ws.dark_color;
+	view.use_sf_cache = false;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;
 	view.vscroll = &vscroll;
@@ -365,7 +375,6 @@ View_Object::View_Object(Workspace& ws) {
 	source_dd.hl_color = ws.hl_color;
 	source_dd.sel_color = ws.active_color;
 	source_dd.width = 250;
-	source_dd.external = (std::vector<char*>*)&mm->sources_view.data->columns[2];
 	ui.push_back(&source_dd);
 
 	source_edit.font = source_label.font;

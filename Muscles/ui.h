@@ -608,6 +608,7 @@ struct Box {
 	virtual void refresh(Point& cursor) {}
 	virtual void handle_zoom(Workspace& ws, float new_scale) {}
 	virtual void wake_up() {}
+	virtual void on_close() {}
 
 	int edge = 0;
 
@@ -631,6 +632,7 @@ struct Box {
 	void move(float dx, float dy, Camera& view, Input& input);
 
 	void set_dropdown(Drop_Down *dd);
+	void update_hovered(Camera& view, Input& input, Point& inside);
 	void update_focussed(Camera& view, Input& input, Point& inside, Box *hover);
 	void update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed);
 };

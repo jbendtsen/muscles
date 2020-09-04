@@ -211,15 +211,15 @@ void View_Source::update_regions_table() {
 void View_Source::refresh_region_list(Point& cursor) {
 	int n_rows = table.row_count();
 	bool hovered = reg_table.pos.contains(cursor);
-	source->block_region_refresh = hovered;
+	hex.source->block_region_refresh = hovered;
 
 	if (!n_rows)
 		needs_region_update = true;
 
-	if (!needs_region_update && !source->region_refreshed)
+	if (!needs_region_update && !hex.source->region_refreshed)
 		return;
 
-	int n_sources = source->regions.size();
+	int n_sources = hex.source->regions.size();
 	if (n_sources != region_list.size()) {
 		u64 sel_addr = 0;
 
@@ -234,7 +234,7 @@ void View_Source::refresh_region_list(Point& cursor) {
 
 	int idx = 0, sel = -1;
 	for (auto& r : region_list) {
-		auto& reg = source->regions[r];
+		auto& reg = hex.source->regions[r];
 		if (selected_region == reg.base)
 			sel = idx;
 
@@ -244,7 +244,7 @@ void View_Source::refresh_region_list(Point& cursor) {
 		idx++;
 	}
 
-	goto_digits = idx <= 0 ? 4 : count_hex_digits(source->regions[idx-1].base) + 2;
+	goto_digits = idx <= 0 ? 4 : count_hex_digits(hex.source->regions[idx-1].base) + 2;
 
 	if (table.filtered > 0) {
 		table.update_filter(reg_search.editor.text);
@@ -275,7 +275,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 	if (ui->menu_type == MenuProcess) {
 		int sel_row = -1;
 		for (auto& idx : ui->region_list) {
-			auto& reg = ui->source->regions[idx];
+			auto& reg = ui->hex.source->regions[idx];
 			if (address >= reg.base && address < reg.base + reg.size) {
 				sel_row = idx;
 				base = reg.base;
@@ -314,7 +314,6 @@ void View_Source::open_source(Source *s) {
 	title.text = "View Source - ";
 	title.text += s->name;
 	hex.source = s;
-	source = s;
 }
 
 void View_Source::refresh(Point& cursor) {
@@ -353,6 +352,10 @@ void View_Source::handle_zoom(Workspace& ws, float new_scale) {
 
 	if (menu_type == MenuProcess)
 		reg_search.update_icon(IconGlass, goto_h, new_scale);
+}
+
+void View_Source::on_close() {
+	hex.source->deactivate_span(hex.span_idx);
 }
 
 View_Source::View_Source(Workspace& ws, MenuType mtype)
@@ -412,8 +415,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 		Column cols[] = {
 			{ColumnString, 0, 0, 0, 0, "Name"},
-			{ColumnHex, 16, 0.2, addr_w, 0, "Address"},
-			{ColumnHex, 8, 0.1, size_w, 0, "Size"}
+			{ColumnHex, 16, 0.2, addr_w, addr_w, "Address"},
+			{ColumnHex, 8, 0.1, size_w, size_w, "Size"}
 		};
 
 		table.init(cols, nullptr, 3, 0);

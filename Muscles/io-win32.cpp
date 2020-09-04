@@ -38,7 +38,7 @@ void get_process_id_list(std::vector<s64>& list) {
 	const int max_pids = 1024;
 	auto pids = std::make_unique<DWORD[]>(max_pids);
 	DWORD size = 0;
-	EnumProcesses(pids.get(), max_pids * sizeof(int), &size);
+	EnumProcesses(pids.get(), max_pids * sizeof(DWORD), &size);
 
 	int n_pids = size / sizeof(DWORD);
 	list.resize(n_pids);

@@ -37,13 +37,30 @@ void Source::gather_data(Arena& arena) {
 		return this->spans[a].address < this->spans[b].address;
 	});
 
-	std::vector<Span> io = {{0}};
-	io[0].address = spans[index[0]].address;
-	io[0].size = spans[index[0]].size;
-	spans[index[0]].offset = 0;
+	int first = -1;
+	for (int i = 0; i < spans.size(); i++) {
+		auto &s = spans[index[i]];
+		if ((s.flags & FLAG_AVAILABLE) == 0 && s.size > 0) {
+			first = i;
+			s.tag = 0;
+			break;
+		}
 
-	for (int i = 1; i < spans.size(); i++) {
+		s.tag = -1;
+	}
+
+	if (first < 0)
+		return;
+
+	std::vector<Span> io = {{0}};
+	io[0].address = spans[index[first]].address;
+	io[0].size = spans[index[first]].size;
+	io[0].tag = index[first];
+	spans[index[first]].offset = 0;
+
+	for (int i = first+1; i < spans.size(); i++) {
 		Span& virt = spans[index[i]];
+		virt.tag = -1;
 		if ((virt.flags & FLAG_AVAILABLE) || virt.size <= 0)
 			continue;
 
@@ -59,14 +76,17 @@ void Source::gather_data(Arena& arena) {
 			virt.offset = offset;
 
 			io.push_back({
-				virt.address,
-				virt.size,
-				0,
-				virt.offset,
-				0,
-				nullptr
+				.data = nullptr,
+				.address = virt.address,
+				.size = virt.size,
+				.retrieved = 0,
+				.offset = virt.offset,
+				.tag = index[i],
+				.flags = 0
 			});
 		}
+
+		virt.tag = io.size() - 1;
 	}
 
 	auto& end = io.back();
@@ -98,18 +118,17 @@ void Source::gather_data(Arena& arena) {
 	else if (type == SourceProcess)
 		refresh_process_spans(*this, io, arena);
 
-	int real_idx = 0;
 	int n_spans = io.size();
 	for (auto& idx : index) {
 		auto& s = spans[idx];
+		s.retrieved = 0;
+		if (s.tag < 0)
+			continue;
+
 		s.data = &buffer[s.offset];
 
-		while (real_idx < n_spans && !(s.offset >= io[real_idx].offset && s.offset < io[real_idx].offset + io[real_idx].size))
-			real_idx++;
-		if (real_idx >= n_spans)
-			real_idx = n_spans-1;
-
-		s.retrieved = io[real_idx].retrieved - s.offset;
-		if (s.retrieved < 0) s.retrieved = 0;
+		s.retrieved = io[s.tag].retrieved - s.offset;
+		if (s.retrieved < 0)
+			s.retrieved = 0;
 	}
 }

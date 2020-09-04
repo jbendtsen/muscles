@@ -116,7 +116,9 @@ void Workspace::delete_box(int idx) {
 	if (idx < 0)
 		return;
 
+	boxes[idx]->on_close();
 	boxes[idx]->visible = false;
+
 	if (!boxes[idx]->expungable)
 		return;
 
@@ -276,7 +278,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		new_box->parent = this;
 		new_box->refresh(inside);
 		new_box->handle_zoom(*this, view.scale);
-		new_box->update(*this, view, box_input, nullptr, false);
+		new_box->update_ui(view);
 		new_box = nullptr;
 	}
 
@@ -314,6 +316,7 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	sdl_draw_rect(rect, back, nullptr);
 
 	for (auto& e : ui) {
+		e->parent = this;
 		if (e->visible)
 			e->draw(view, rect, inside ? e->pos.contains(*inside) : false, hovered, focussed);
 	}
@@ -402,6 +405,33 @@ void Box::set_dropdown(Drop_Down *dd) {
 	dropdown_set = true;
 }
 
+void Box::update_hovered(Camera& view, Input& input, Point& inside) {
+	if (!moving)
+		select_edge(view, inside);
+
+	CursorType ct = CursorDefault;
+	if (edge == 5 || edge == 10)
+		ct = CursorResizeNWSE;
+	else if (edge == 6 || edge == 9)
+		ct = CursorResizeNESW;
+	else if (edge & 3)
+		ct = CursorResizeWestEast;
+	else if (edge & 12)
+		ct = CursorResizeNorthSouth;
+
+	if (ct != CursorDefault) {
+		sdl_set_cursor(ct);
+		parent->cursor_set = true;
+	}
+
+	if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
+		if (input.lmouse && input.held == move_start) {
+			moving = true;
+			parent->box_moving = true;
+		}
+	}
+}
+
 void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover) {
 	if (input.lclick) {
 		if (active_edit) {
@@ -409,33 +439,6 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 				input.lclick = false;
 		}
 		active_edit = nullptr;
-	}
-
-	if (!hover || this == hover) {
-		if (!moving)
-			select_edge(view, inside);
-
-		CursorType ct = CursorDefault;
-		if (edge == 5 || edge == 10)
-			ct = CursorResizeNWSE;
-		else if (edge == 6 || edge == 9)
-			ct = CursorResizeNESW;
-		else if (edge & 3)
-			ct = CursorResizeWestEast;
-		else if (edge & 12)
-			ct = CursorResizeNorthSouth;
-
-		if (ct != CursorDefault) {
-			sdl_set_cursor(ct);
-			parent->cursor_set = true;
-		}
-
-		if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
-			if (input.lmouse && input.held == move_start) {
-				moving = true;
-				parent->box_moving = true;
-			}
-		}
 	}
 
 	bool hovered = this == hover;
@@ -513,6 +516,9 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	}
 
 	update_ui(view);
+
+	if (!parent->box_moving && (!hover || this == hover))
+		update_hovered(view, input, inside);
 
 	if (focussed)
 		update_focussed(view, input, inside, hover);

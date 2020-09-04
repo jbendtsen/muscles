@@ -481,12 +481,13 @@ struct Map {
 #define REG_PM_READ   2
 
 struct Span {
+	u8 *data = nullptr;
 	u64 address = 0;
 	int size = 0;
 	int retrieved = 0;
 	int offset = 0;
+	int tag = 0;
 	u32 flags = 0;
-	u8 *data = nullptr;
 };
 
 struct Region {

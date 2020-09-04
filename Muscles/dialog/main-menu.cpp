@@ -72,11 +72,9 @@ void Main_Menu::refresh(Point& cursor) {
 			icons[i] = nullptr;
 			pids[i][0] = 0;
 		}
-	}
 
-	int idx = 0;
-	for (auto& n : names)
-		n = &sources[idx]->name;
+		names[i] = &sources[i]->name;
+	}
 }
 
 void open_view_source(Workspace& ws, int idx) {

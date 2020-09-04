@@ -287,7 +287,9 @@ bool sdl_poll_input(Input& input) {
 						input.action = true;
 						input.action_x = input.mouse_x;
 						input.action_y = input.mouse_y;
-						input.action_timer = input.action_timeout;
+
+						if (!input.double_click)
+							input.action_timer = input.action_timeout;
 					}
 				}
 				input.prevent_action = false;

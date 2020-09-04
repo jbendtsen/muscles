@@ -1074,7 +1074,7 @@ float Hex_View::print_hex_row(Renderer renderer, Span& span, int idx, float x, f
 	for (int i = 0; i < columns * 2; i++) {
 		const Glyph *gl = nullptr;
 		int digit = 0;
-		if (i < span.retrieved * 2) {
+		if (i + idx * 2 < span.retrieved * 2) {
 			digit = span.data[idx + i/2];
 			if (i % 2 == 0)
 				digit >>= 4;

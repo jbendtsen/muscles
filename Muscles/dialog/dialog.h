@@ -69,6 +69,7 @@ struct View_Source : Box {
 	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
+	void on_close() override;
 
 	void refresh_region_list(Point& cursor);
 	void update_regions_table();
@@ -95,7 +96,6 @@ struct View_Source : Box {
 	Number_Edit columns;
 
 	Table table;
-	Source *source = nullptr;
 	std::vector<u64> region_list;
 	u64 selected_region = 0;
 	int goto_digits = 2;
@@ -132,6 +132,7 @@ struct View_Object : Box {
 	void update_ui(Camera& view) override;
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
+	void on_close() override;
 
 	float get_edit_height(float scale);
 	void update_hide_meta_button(float scale);
