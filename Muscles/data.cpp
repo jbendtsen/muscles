@@ -7,6 +7,18 @@ Arena *get_default_arena() {
 	return &default_arena;
 }
 
+void clear_word(char* word) {
+	int len = strlen(word);
+	memset(word, 0xff, len);
+}
+
+char *advance_word(char *p) {
+	do {
+		p += strlen(p + 1);
+	} while (*p == 0xff);
+	return p;
+}
+
 Field_Vector::Field_Vector() {
 	data = new Field[pool_size];
 }

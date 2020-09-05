@@ -19,8 +19,12 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 
 	bool multi_comment = false;
 	bool line_comment = false;
+	bool macro = false;
+	bool single_quotes = false;
+	bool double_quotes = false;
 	bool was_symbol = true;
 	bool was_token_end = false;
+	char last_non_ws = 0;
 
 	char prev = 0;
 	for (int i = 0; i < sz; i++, in++) {
@@ -30,6 +34,7 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 			multi_comment = false;
 			word = in+1;
 			prev = c;
+			last_non_ws = c;
 			continue;
 		}
 		if (line_comment && c == '\n') {
@@ -45,7 +50,22 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 				line_comment = true;
 		}
 
-		if (multi_comment || line_comment) {
+		if (prev != '\\') {
+			if (c == '\'' && !double_quotes)
+				single_quotes = !single_quotes;
+			if (c == '"' && !single_quotes)
+				double_quotes = !double_quotes;
+			if (c == '#' && !single_quotes && !double_quotes)
+				macro = true;
+		}
+
+		if (c == '\n' && last_non_ws != '\\')
+			macro = false;
+
+		if (c > ' ' && c <= '~')
+			last_non_ws = c;
+
+		if (multi_comment || line_comment || macro) {
 			prev = c;
 			continue;
 		}

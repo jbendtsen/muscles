@@ -128,6 +128,9 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 			tex_cache = sdl_bake_sw_render();
 			draw_existing = true;
 		}
+
+		if (use_sf_cache)
+			needs_redraw = false;
 	}
 
 	soft_draw = false;
@@ -1439,9 +1442,11 @@ void Scroll::engage(Point& p) {
 }
 
 void Scroll::scroll(double delta) {
-	int old_pos = position;
+	double old_pos = position;
 	position = clamp(position + delta, 0, maximum - view_span);
-	needs_redraw = position != old_pos;
+
+	double epsilon = 0.01;
+	needs_redraw = abs(position - old_pos) > epsilon;
 	if (content)
 		content->needs_redraw = content->needs_redraw || needs_redraw;
 }
