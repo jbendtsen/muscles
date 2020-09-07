@@ -427,7 +427,7 @@ void sdl_sw_apply_texture(SDL_Renderer *r, SDL_Texture *tex, SDL_Rect *src, SDL_
 
 			int a = in[0];
 			int b = 255 - a;
-			out[0] = (u8)((a * (int)in[0] + b * (int)out[0]) / 255);
+			out[0] = (u8)((a * 255 + b * (int)out[0]) / 255);
 			out[1] = (u8)((a * (int)in[1] + b * (int)out[1]) / 255);
 			out[2] = (u8)((a * (int)in[2] + b * (int)out[2]) / 255);
 			out[3] = (u8)((a * (int)in[3] + b * (int)out[3]) / 255);
@@ -466,6 +466,40 @@ void sdl_draw_rect(Rect& rect, RGBA& color, Renderer rdr) {
 	SDL_Renderer *r = rdr ? (SDL_Renderer*)rdr : renderer;
 	SDL_SetRenderDrawColor(r, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
 	SDL_RenderFillRect(r, &rect_fixed);
+}
+
+void sdl_draw_rect_clipped(Rect_Int& rect, Render_Clip& clip, RGBA& color, Renderer rdr) {
+	Rect_Int box = rect;
+	bool escaped_w = false;
+	bool escaped_h = false;
+
+	if ((clip.flags & CLIP_TOP) && box.y < clip.y_lower) {
+		box.h -= clip.y_lower - box.y;
+		box.y = clip.y_lower;
+	}
+	if ((clip.flags & CLIP_BOTTOM) && box.y + box.h >= clip.y_upper) {
+		box.h = clip.y_upper - box.y;
+		escaped_h = box.y >= clip.y_upper;
+	}
+	if ((clip.flags & CLIP_LEFT) && box.x < clip.x_lower) {
+		box.w -= clip.x_lower - box.x;
+		box.x = clip.x_lower;
+	}
+	if ((clip.flags & CLIP_RIGHT) && box.x + box.w >= clip.x_upper) {
+		box.w = clip.x_upper - box.x;
+		escaped_w = box.x >= clip.x_upper;
+	}
+
+	if (box.w > 0 && box.h > 0 && !escaped_w && !escaped_h) {
+		SDL_Renderer *r = rdr ? (SDL_Renderer*)rdr : renderer;
+		SDL_SetRenderDrawColor(r, (u8)(color.r * 255.0), (u8)(color.g * 255.0), (u8)(color.b * 255.0), (u8)(color.a * 255.0));
+		SDL_RenderFillRect(r, (SDL_Rect*)&box);
+	}
+}
+
+void sdl_draw_rect_clipped(Rect& rect, Render_Clip& clip, RGBA& color, Renderer rdr) {
+	Rect_Int rect_fixed = {(int)(rect.x + 0.5), (int)(rect.y + 0.5), (int)(rect.w + 0.5), (int)(rect.h + 0.5)};
+	sdl_draw_rect_clipped(rect_fixed, clip, color, rdr);
 }
 
 void sdl_clear() {

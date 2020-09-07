@@ -3,11 +3,15 @@
 #include "dialog.h"
 
 void Source_Menu::update_ui(Camera& view) {
-	float y = border;
+	float title_h = title.font->render.text_height() / view.scale;
+	title.outer_box = {
+		border,
+		-border,
+		box.w - 2*border,
+		title_h + 4*border
+	};
 
-	y += center_align_title(&title, *this, view.scale, y);
-
-	if (/*focussed && */search.text_changed)
+	if (search.text_changed)
 		scroll.position = 0;
 
 	float x2 = box.w - scroll.padding;
@@ -15,10 +19,10 @@ void Source_Menu::update_ui(Camera& view) {
 	if (x1 < scroll.padding) x1 = scroll.padding;
 
 	search.pos.x = x1;
-	search.pos.y = y;
+	search.pos.y = title.outer_box.y + title.outer_box.h;
 	search.pos.w = x2 - x1;
 
-	y += search.pos.h + 4;
+	float y = search.pos.y + search.pos.h + border;
 
 	float end_x = box.w - border;
 
@@ -274,7 +278,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
 
-	scroll.back = ws.scroll_back;
+	scroll.back_color = ws.scroll_back;
 	scroll.default_color = ws.scroll_color;
 	scroll.hl_color = ws.scroll_hl_color;
 	scroll.sel_color = ws.scroll_sel_color;

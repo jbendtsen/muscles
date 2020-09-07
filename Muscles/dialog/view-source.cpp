@@ -19,7 +19,6 @@ void View_Source::update_ui(Camera& view) {
 		w,
 		title.font->render.text_height() * 1.1f / view.scale
 	};
-	title.update_position(view.scale);
 
 	float scroll_w = 14;
 
@@ -68,7 +67,6 @@ void View_Source::update_ui(Camera& view) {
 			div.pos.x - border - pad,
 			reg_title.font->render.text_height() * 1.1f / view.scale
 		};
-		reg_title.update_position(view.scale);
 
 		y += reg_title.pos.h;
 
@@ -107,7 +105,6 @@ void View_Source::update_ui(Camera& view) {
 		box.w - data_x - border,
 		hex_title.font->render.text_height() * 1.1f / view.scale
 	};
-	hex_title.update_position(view.scale);
 
 	float data_w = hex_scroll.pos.x - hex_title.pos.x - border;
 
@@ -131,7 +128,6 @@ void View_Source::update_ui(Camera& view) {
 		size_w,
 		size_h
 	};
-	size_label.update_position(view.scale);
 
 	if (menu_type == MenuProcess) {
 		reg_name.pos = {
@@ -140,7 +136,6 @@ void View_Source::update_ui(Camera& view) {
 			data_w - size_w,
 			hex_title.pos.h
 		};
-		reg_name.update_position(view.scale);
 	}
 
 	data_y += hex_title.pos.h;
@@ -178,7 +173,7 @@ void View_Source::update_ui(Camera& view) {
 	hex.show_hex = hex_box.checked;
 	hex.show_ascii = ascii_box.checked;
 
-	hex.update(view.scale);
+	hex.update_view(view.scale);
 
 	if (menu_type == MenuProcess)
 		min_width = div.position + box.w - div.maximum;
@@ -303,6 +298,7 @@ void region_search_handler(Edit_Box *edit, Input& input) {
 	ui->reg_table.hl_row = ui->reg_table.sel_row = -1;
 	ui->reg_scroll.position = 0;
 	ui->selected_region = 0;
+	ui->reg_table.needs_redraw = true;
 }
 
 void set_hex_columns(Number_Edit *edit, Input& input) {
@@ -383,14 +379,14 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		reg_title.font = ws.make_font(10, ws.text_color);
 		ui.push_back(&reg_title);
 
-		reg_scroll.back = ws.scroll_back;
+		reg_scroll.back_color = ws.scroll_back;
 		reg_scroll.default_color = ws.scroll_color;
 		reg_scroll.hl_color = ws.scroll_hl_color;
 		reg_scroll.sel_color = ws.scroll_sel_color;
 		reg_scroll.breadth = 12;
 		ui.push_back(&reg_scroll);
 
-		reg_lat_scroll.back = reg_scroll.back;
+		reg_lat_scroll.back_color = reg_scroll.back_color;
 		reg_lat_scroll.default_color = reg_scroll.default_color;
 		reg_lat_scroll.hl_color = reg_scroll.hl_color;
 		reg_lat_scroll.sel_color = reg_scroll.sel_color;
@@ -456,7 +452,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	ui.push_back(&size_label);
 
-	hex_scroll.back = ws.scroll_back;
+	hex_scroll.back_color = ws.scroll_back;
 	hex_scroll.default_color = ws.scroll_color;
 	hex_scroll.hl_color = ws.scroll_hl_color;
 	hex_scroll.sel_color = ws.scroll_sel_color;

@@ -20,7 +20,6 @@ void Edit_Structs::update_ui(Camera& view) {
 		w,
 		title.font->render.text_height() * 1.1f / view.scale
 	};
-	title.update_position(view.scale);
 
 	show_cb.pos.x = border;
 	show_cb.pos.y = box.h - show_cb.pos.h - border;
@@ -235,14 +234,14 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	edit.vscroll->content = &edit;
 	ui.push_back(&edit);
 
-	edit_hscroll.back = ws.scroll_back;
+	edit_hscroll.back_color = ws.scroll_back;
 	edit_hscroll.default_color = ws.scroll_color;
 	edit_hscroll.hl_color = ws.scroll_hl_color;
 	edit_hscroll.sel_color = ws.scroll_sel_color;
 	edit_hscroll.vertical = false;
 	ui.push_back(&edit_hscroll);
 
-	edit_vscroll.back = ws.scroll_back;
+	edit_vscroll.back_color = ws.scroll_back;
 	edit_vscroll.default_color = ws.scroll_color;
 	edit_vscroll.hl_color = ws.scroll_hl_color;
 	edit_vscroll.sel_color = ws.scroll_sel_color;
@@ -269,7 +268,7 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	ui.push_back(&div);
 
 	out_hscroll.visible = false;
-	out_hscroll.back = ws.scroll_back;
+	out_hscroll.back_color = ws.scroll_back;
 	out_hscroll.default_color = ws.scroll_color;
 	out_hscroll.hl_color = ws.scroll_hl_color;
 	out_hscroll.sel_color = ws.scroll_sel_color;
@@ -277,7 +276,7 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	ui.push_back(&out_hscroll);
 
 	out_vscroll.visible = false;
-	out_vscroll.back = ws.scroll_back;
+	out_vscroll.back_color = ws.scroll_back;
 	out_vscroll.default_color = ws.scroll_color;
 	out_vscroll.hl_color = ws.scroll_hl_color;
 	out_vscroll.sel_color = ws.scroll_sel_color;

@@ -4,10 +4,17 @@
 void Editor::refresh(Render_Clip& clip, Font *font, float scroll_x, float scroll_y) {
 	this->clip = clip;
 	this->font = font;
+
 	font_h = font->render.text_height();
 	digit_w = font->render.digit_width();
-	x_offset = scroll_x;
-	y_offset = scroll_y;
+
+	if (scroll_x >= 0)
+		x_offset = scroll_x;
+	if (scroll_y >= 0)
+		y_offset = scroll_y;
+
+	vis_columns = (clip.x_upper - clip.x_lower) / digit_w;
+	vis_lines = (clip.y_upper - clip.y_lower) / font_h;
 }
 
 void Editor::erase(Cursor& cursor, bool is_back) {
@@ -349,7 +356,7 @@ int Editor::handle_input(Input& input) {
 
 		set_line(primary, req_line);
 
-		scroll_delta = (float)delta * font_h;
+		y_scroll_delta = (float)delta * font_h;
 		page_move = true;
 	}
 	else if (input.strike(input.left)) {
@@ -378,8 +385,8 @@ int Editor::handle_input(Input& input) {
 		if (ctrl && use_clipboard) {
 			if (selected && secondary.cursor != primary.cursor && (input.last_key == 'x' || input.last_key == 'c')) {
 				auto span = get_text_span(primary.cursor, secondary.cursor);
-				std::string clip(text, span.first, span.second);
-				sdl_copy(clip);
+				std::string clip_str(text, span.first, span.second);
+				sdl_copy(clip_str);
 				erased = input.last_key == 'x';
 				end_selection = erased;
 			}
@@ -451,9 +458,36 @@ int Editor::handle_input(Input& input) {
 				cols = 0;
 			}
 		}
+		if (cols > columns)
+			columns = cols;
 
 		lines++;
 		columns++;
+	}
+
+	if (key_press) {
+		int first_vis_col  = x_offset / digit_w;
+		int first_vis_line = y_offset / font_h;
+		int last_vis_col   = vis_columns + x_offset / digit_w;
+		int last_vis_line  = vis_lines + y_offset / font_h;
+
+		if (primary.column < first_vis_col)
+			x_scroll_delta = -digit_w * (float)(first_vis_col - primary.column);
+		else if (secondary.column < first_vis_col)
+			x_scroll_delta = -digit_w * (float)(first_vis_col - secondary.column);
+		else if (primary.column > last_vis_col)
+			x_scroll_delta = digit_w * (float)(primary.column - last_vis_col);
+		else if (secondary.column > last_vis_col)
+			x_scroll_delta = digit_w * (float)(secondary.column - last_vis_col);
+
+		if (primary.line < first_vis_line)
+			y_scroll_delta = -font_h * (float)(first_vis_line - primary.line);
+		else if (secondary.line < first_vis_line)
+			y_scroll_delta = -font_h * (float)(first_vis_line - secondary.line);
+		else if (primary.line > last_vis_line)
+			y_scroll_delta = font_h * (float)(primary.line - last_vis_line);
+		else if (secondary.line > last_vis_line)
+			y_scroll_delta = font_h * (float)(secondary.line - last_vis_line);
 	}
 
 	int flags = (update || enter) ? 1 : 0;
@@ -464,7 +498,7 @@ int Editor::handle_input(Input& input) {
 	return flags;
 }
 
-void Editor::update_cursor(float x, float y, Font *font, float scale, bool click) {
+void Editor::update_cursor(float x, float y, Font *font, float scale, int ticks, bool click) {
 	float edge = border * scale;
 	float gl_w = font->render.digit_width();
 	float gl_h = font->render.text_height();
@@ -477,11 +511,55 @@ void Editor::update_cursor(float x, float y, Font *font, float scale, bool click
 	if (line < 0) line = 0;
 	if (col < 0) col = 0;
 
-	set_line(primary, line);
-	set_column(primary, col);
+	if (ticks - last_tick < click_window) {
+		if (click)
+			click_run++;
+	}
+	else
+		click_run = 1;
 
-	if (click)
-		secondary = primary;
+	if (click) {
+		if (click_run == 1) {
+			set_line(primary, line);
+			set_column(primary, col);
+			secondary = primary;
+		}
+		else if (click_run == 2) {
+			set_cursor(primary, previous_word(text, primary.cursor + 1));
+			set_cursor(secondary, next_word(text, primary.cursor, true));
+			selected = true;
+		}
+		else if (click_run == 3) {
+			set_column(primary, 0);
+			secondary = primary;
+			set_column(secondary, -1);
+			selected = true;
+		}
+
+		last_tick = ticks;
+	}
+	else if (click_run <= 1) {
+		set_line(primary, line);
+		set_column(primary, col);
+	}
+}
+
+void Editor::apply_scroll(Scroll *hscroll, Scroll *vscroll) {
+	if (hscroll)
+		hscroll->scroll(x_scroll_delta);
+	else {
+		x_offset += x_scroll_delta;
+		x_offset = x_offset < 0 ? 0 : x_offset;
+	}
+
+	if (vscroll)
+		vscroll->scroll(y_scroll_delta);
+	else {
+		y_offset += y_scroll_delta;
+		y_offset = y_offset < 0 ? 0 : y_offset;
+	}
+
+	x_scroll_delta = y_scroll_delta = 0;
 }
 
 void Editor::draw_selection_box(Renderer renderer, RGBA& color) {
@@ -489,49 +567,63 @@ void Editor::draw_selection_box(Renderer renderer, RGBA& color) {
 	Editor::Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
 	Editor::Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;
 
-	float y = clip.y_lower + line_pad;
-	Rect r = {0};
+	auto col_to_x = [this](int column) {
+		return (column * digit_w) - x_offset;
+	};
+	auto line_to_y = [this](int line) {
+		return (line * font_h) - y_offset;
+	};
+
+	float left = clip.x_lower;
+	float top = clip.y_lower + line_pad;
+
+	Rect_Int r = {0};
 	if (first->line == second->line) {
-		r.x = clip.x_lower + first->column * digit_w;
-		r.y = y + first->line * font_h;
-		r.w = (second->column - first->column) * digit_w;
+		r.x = left + col_to_x(first->column);
+		r.y = top + line_to_y(first->line);
+		r.w = (second->column - first->column) * digit_w + 1;
 		r.h = font_h + 1;
-		sdl_draw_rect(r, color, renderer);
+
+		sdl_draw_rect_clipped(r, clip, color, renderer);
 	}
 	else {
 		float line_w = clip.x_upper - clip.x_lower;
+		float x = col_to_x(first->column);
 
-		float x = first->column * digit_w;
-		r.x = clip.x_lower + x;
-		r.y = y + first->line * font_h;
+		r.x = left + x;
+		r.y = top + line_to_y(first->line);
 		r.w = line_w - x;
 		r.h = font_h + 1;
-		sdl_draw_rect(r, color, renderer);
+		sdl_draw_rect_clipped(r, clip, color, renderer);
 
 		int gulf = second->line - first->line - 1;
 		if (gulf > 0) {
-			r.x = clip.x_lower;
+			r.x = left;
 			r.y += font_h;
 			r.w = line_w;
 			r.h = gulf * font_h + 1;
-			sdl_draw_rect(r, color, renderer);
+			sdl_draw_rect_clipped(r, clip, color, renderer);
 		}
 
 		if (second->column > 0) {
-			r.x = clip.x_lower;
-			r.y = y + second->line * font_h;
-			r.w = second->column * digit_w;
+			r.x = left;
+			r.y = top + line_to_y(second->line);
+			r.w = col_to_x(second->column) + 1;
 			r.h = font_h + 1;
-			sdl_draw_rect(r, color, renderer);
+			sdl_draw_rect_clipped(r, clip, color, renderer);
 		}
 	}
 }
 
-void Editor::draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, float scale) {
+void Editor::draw_cursor(Renderer renderer, RGBA& color, Editor::Cursor& cursor, Point& pos, Render_Clip& cur_clip, float scale) {
 	float line_pad = font_h * 0.15f;
 	float caret_x = pos.x - x_offset + ((float)cursor.column * digit_w);
 	float caret_y = pos.y - y_offset + (line_pad * 1.5f) + ((float)cursor.line * font_h);
 
-	Rect caret = { caret_x, caret_y, cursor_width * scale, font_h - line_pad };
-	sdl_draw_rect(caret, color, renderer);
+	float caret_w = cursor_width * scale;
+	if (caret_w < 1)
+		caret_w = 1;
+
+	Rect caret = { caret_x, caret_y, caret_w, font_h - line_pad };
+	sdl_draw_rect_clipped(caret, cur_clip, color, renderer);
 }

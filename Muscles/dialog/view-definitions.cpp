@@ -20,7 +20,6 @@ void View_Definitions::update_ui(Camera& camera) {
 		w,
 		title.font->render.text_height() * 1.1f / camera.scale
 	};
-	title.update_position(camera.scale);
 
 	float y = 2*cross.pos.y + cross.pos.h;
 
@@ -76,12 +75,12 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	};
 	ui.push_back(&tabs);
 
-	vscroll.back = ws.scroll_back;
+	vscroll.back_color = ws.scroll_back;
 	vscroll.default_color = ws.scroll_color;
 	vscroll.hl_color = ws.scroll_hl_color;
 	vscroll.sel_color = ws.scroll_sel_color;
 
-	hscroll.back = ws.scroll_back;
+	hscroll.back_color = ws.scroll_back;
 	hscroll.default_color = ws.scroll_color;
 	hscroll.hl_color = ws.scroll_hl_color;
 	hscroll.sel_color = ws.scroll_sel_color;

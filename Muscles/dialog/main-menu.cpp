@@ -267,13 +267,18 @@ void opening_menu_handler(UI_Element *elem, bool dbl_click) {
 }
 
 void Opening_Menu::update_ui(Camera& view) {
-	float y = border;
-	y += center_align_title(&title, *this, view.scale, y);
+	float font_h = title.font->render.text_height() / view.scale;
 
-	menu.pos.x = border;
-	menu.pos.y = y;
-	menu.pos.w = box.w - border * 2;
-	menu.pos.h = box.h - y - border;
+	title.outer_box = {
+		border,
+		0,
+		box.w - 2*border,
+		font_h + 3*border
+	};
+
+	menu.pos = title.outer_box;
+	menu.pos.y += title.outer_box.h;
+	menu.pos.h = box.h - menu.pos.y - border;
 }
 
 Opening_Menu::Opening_Menu(Workspace& ws) {

@@ -300,29 +300,26 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	if (!visible)
 		return;
 
-	Point p = view.to_screen(box.x, box.y);
-	float w = box.w * view.scale;
-	float h = box.h * view.scale;
+	Rect_Int r = view.to_screen_rect(box.x, box.y, box.w, box.h);
 
-	float brd = edge_size * view.scale;
-	Rect edge_rect = {
-		p.x - brd, p.y - brd, w + 2*brd, h + 2*brd
+	int brd = edge_size * view.scale + 0.5;
+	Rect_Int edge_rect = {
+		r.x - brd, r.y - brd, r.w + 2*brd, r.h + 2*brd
 	};
 	sdl_draw_rect(edge_rect, edge_color, nullptr);
 
-	Rect_Int rect = {
-		p.x, p.y, w, h
-	};
-	sdl_draw_rect(rect, back, nullptr);
+	sdl_draw_rect(r, back, nullptr);
 
 	for (auto& e : ui) {
 		e->parent = this;
 		if (e->visible)
-			e->draw(view, rect, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+			e->draw(view, r, inside ? e->pos.contains(*inside) : false, hovered, focussed);
 	}
 
-	if (current_dd)
-		current_dd->draw_menu(nullptr, view, rect);
+	if (current_dd) {
+		Rect back = make_ui_box(r, current_dd->pos, view.scale);
+		current_dd->draw_menu(nullptr, view, back.x, back.y + back.h);
+	}
 }
 
 void Box::require_redraw() {
@@ -492,6 +489,12 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 	dropdown_set = false;
 
+	if (!parent->box_moving && (!hover || this == hover))
+		update_hovered(view, input, inside);
+
+	if (focussed)
+		update_focussed(view, input, inside, hover);
+
 	bool hl = false;
 	for (auto& elem : ui) {
 		elem->parent = this;
@@ -499,8 +502,6 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 			continue;
 
 		if (!hl && this == hover && !moving) {
-			hl = elem->highlight(view, inside);
-
 			if (elem->pos.contains(inside)) {
 				Point p = {inside.x - elem->pos.x, inside.x - elem->pos.y};
 				elem->scroll_handler(view, input, p);
@@ -510,18 +511,13 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 					parent->cursor_set = true;
 				}
 			}
+
+			hl = elem->highlight(view, inside);
 		}
-		else
+
+		if (this != hover)
 			elem->deselect();
 	}
-
-	update_ui(view);
-
-	if (!parent->box_moving && (!hover || this == hover))
-		update_hovered(view, input, inside);
-
-	if (focussed)
-		update_focussed(view, input, inside, hover);
 
 	if (ws.box_expunged) {
 		ws.box_expunged = false;
@@ -533,4 +529,6 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 			current_dd->dropped = false;
 		current_dd = nullptr;
 	}
+
+	update_ui(view);
 }

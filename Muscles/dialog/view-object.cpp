@@ -63,10 +63,6 @@ void View_Object::update_ui(Camera& camera) {
 			label_h
 		};
 
-		struct_label.update_position(camera.scale);
-		source_label.update_position(camera.scale);
-		addr_label.update_position(camera.scale);
-
 		y = edit_y;
 		struct_edit.pos = {
 			label_x + struct_label.pos.w + border,
@@ -310,14 +306,14 @@ View_Object::View_Object(Workspace& ws) {
 	hide_meta.default_color.a = 0.8;
 	ui.push_back(&hide_meta);
 
-	hscroll.back = ws.scroll_back;
+	hscroll.back_color = ws.scroll_back;
 	hscroll.default_color = ws.scroll_color;
 	hscroll.hl_color = ws.scroll_hl_color;
 	hscroll.sel_color = ws.scroll_sel_color;
 	hscroll.vertical = false;
 	ui.push_back(&hscroll);
 
-	vscroll.back = ws.scroll_back;
+	vscroll.back_color = ws.scroll_back;
 	vscroll.default_color = ws.scroll_color;
 	vscroll.hl_color = ws.scroll_hl_color;
 	vscroll.sel_color = ws.scroll_sel_color;

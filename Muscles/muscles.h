@@ -68,6 +68,27 @@ struct Rect {
 struct Rect_Int {
 	int x, y;
 	int w, h;
+
+	Rect to_rect() const {
+		return {
+			(float)x,
+			(float)y,
+			(float)w,
+			(float)h
+		};
+	}
+};
+
+#define CLIP_TOP     1
+#define CLIP_BOTTOM  2
+#define CLIP_LEFT    4
+#define CLIP_RIGHT   8
+#define CLIP_ALL    15
+
+struct Render_Clip {
+	u32 flags = 0;
+	float x_lower = 0, y_lower = 0;
+	float x_upper = 0, y_upper = 0;
 };
 
 struct Input;
@@ -112,6 +133,8 @@ void sdl_apply_texture(Texture tex, Rect& dst, Rect_Int *src, Renderer rdr);
 
 void sdl_draw_rect(Rect_Int& rect, RGBA& color, Renderer rdr);
 void sdl_draw_rect(Rect& rect, RGBA& color, Renderer rdr);
+void sdl_draw_rect_clipped(Rect_Int& rect, Render_Clip& clip, RGBA& color, Renderer rdr);
+void sdl_draw_rect_clipped(Rect& rect, Render_Clip& clip, RGBA& color, Renderer rdr);
 
 void sdl_clear();
 void sdl_render();
@@ -268,18 +291,6 @@ struct Table {
 	void release();
 };
 
-#define CLIP_TOP     1
-#define CLIP_BOTTOM  2
-#define CLIP_LEFT    4
-#define CLIP_RIGHT   8
-#define CLIP_ALL    15
-
-struct Render_Clip {
-	u32 flags = 0;
-	float x_lower = 0, y_lower = 0;
-	float x_upper = 0, y_upper = 0;
-};
-
 struct Font_Render {
 	Texture tex = nullptr;
 	Glyph glyphs[N_CHARS] = {};
@@ -382,6 +393,15 @@ struct Camera {
 		return {
 			center_x + (px - x) * scale,
 			center_y + (py - y) * scale
+		};
+	}
+
+	Rect_Int to_screen_rect(float px, float py, float w, float h) const {
+		return {
+			(int)(center_x + (px - x) * scale + 0.5),
+			(int)(center_y + (py - y) * scale + 0.5),
+			(int)(w * scale + 0.5),
+			(int)(h * scale + 0.5)
 		};
 	}
 };
@@ -665,5 +685,3 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
-
-void parse_definitions(Map& definitions, String_Vector& tokens);
