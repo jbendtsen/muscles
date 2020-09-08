@@ -596,6 +596,8 @@ struct Source {
 	void gather_data(Arena& arena);
 };
 
+std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path);
+
 void get_process_id_list(std::vector<s64>& list);
 int get_process_names(std::vector<s64> *list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& pids, std::vector<void*>& names, int count_per_cell);
 

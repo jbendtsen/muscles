@@ -5,12 +5,9 @@
 Workspace::Workspace(Font_Face face) {
 	this->face = face;
 
-	RGBA cross_color = { 1.0, 1.0, 1.0, 1.0 };
-	float length = 48;
-	cross = make_cross_icon(cross_color, length);
-	maxm = make_rectangle(cross_color, length, length, 0.05, 0.05, 0.08);
-
 	sdl_get_dpi(dpi_w, dpi_h);
+
+	adjust_scale(1.0, 1.0);
 
 	default_font = new Font(face, 12, text_color, dpi_w, dpi_h);
 	fonts.push_back(default_font);
@@ -58,6 +55,21 @@ Workspace::~Workspace() {
 		close_source(*s);
 		delete s;
 	}
+}
+
+void Workspace::adjust_scale(float old_scale, float new_scale) {
+	for (auto& f : fonts)
+		f->adjust_scale(new_scale, dpi_w, dpi_h);
+
+	sdl_destroy_texture(&cross);
+	cross = make_cross_icon(text_color, cross_size * new_scale);
+
+	sdl_destroy_texture(&maxm);
+	float length = cross_size * new_scale;
+	maxm = make_rectangle(text_color, length, length, 0, 0, 0.08);
+
+	for (auto& b : boxes)
+		b->handle_zoom(*this, new_scale);
 }
 
 Box *Workspace::make_box(BoxType btype, MenuType mtype) {
@@ -205,21 +217,6 @@ Box *Workspace::first_box_of_type(BoxType type) {
 	return nullptr;
 }
 
-void Workspace::adjust_scale(float old_scale, float new_scale) {
-	for (auto& f : fonts)
-		f->adjust_scale(new_scale, dpi_w, dpi_h);
-
-	sdl_destroy_texture(&cross);
-	cross = make_cross_icon(text_color, cross_size * new_scale);
-
-	sdl_destroy_texture(&maxm);
-	float length = cross_size * new_scale;
-	maxm = make_rectangle(text_color, length, length, 0.05, 0.05, 0.08);
-
-	for (auto& b : boxes)
-		b->handle_zoom(*this, new_scale);
-}
-
 void Workspace::refresh_sources() {
 	Arena* arena = get_default_arena();
 	auto& sources = (std::vector<Source*>&)this->sources;
@@ -279,7 +276,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 
 	if (new_box) {
 		new_box->parent = this;
-		new_box->refresh(inside);
+		new_box->refresh(&inside);
 		new_box->handle_zoom(*this, view.scale);
 		new_box->update_ui(view);
 		new_box = nullptr;
@@ -487,7 +484,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 		current_dd->highlight(view, inside);
 
 	if (ticks % refresh_every == 0)
-		refresh(inside);
+		refresh(&inside);
 	ticks++;
 
 	dropdown_set = false;

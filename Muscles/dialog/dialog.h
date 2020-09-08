@@ -14,7 +14,7 @@ struct Main_Menu : Box {
 	Main_Menu(Workspace& ws);
 
 	void update_ui(Camera& view) override;
-	void refresh(Point& cursor) override;
+	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	Drop_Down sources_dd;
@@ -40,11 +40,12 @@ struct Source_Menu : Box {
 	Source_Menu(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
-	void refresh(Point& cursor) override;
+	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
-	void (*open_process_handler)(Workspace *ws, int pid, std::string& name) = nullptr;
-	void (*open_file_handler)(Workspace *ws, std::string& path, File_Entry& file) = nullptr;
+	Box *caller = nullptr;
+	void (*open_process_handler)(Box *caller, int pid, std::string& name) = nullptr;
+	void (*open_file_handler)(Box *caller, std::string& path, File_Entry& file) = nullptr;
 
 	Data_View menu;
 	Image cross;
@@ -71,11 +72,11 @@ struct View_Source : Box {
 	View_Source(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
-	void refresh(Point& cursor) override;
+	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 	void on_close() override;
 
-	void refresh_region_list(Point& cursor);
+	void refresh_region_list(Point *cursor);
 	void update_regions_table();
 
 	void open_source(Source *s);
@@ -117,6 +118,7 @@ struct Edit_Structs : Box {
 	Image cross;
 	Image maxm;
 	Label title;
+	Drop_Down file_menu;
 	Text_Editor edit;
 	Scroll edit_hscroll;
 	Scroll edit_vscroll;
@@ -136,7 +138,7 @@ struct View_Object : Box {
 	View_Object(Workspace& ws);
 	
 	void update_ui(Camera& view) override;
-	void refresh(Point& cursor) override;
+	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 	void on_close() override;
 

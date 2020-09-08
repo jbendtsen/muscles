@@ -47,7 +47,7 @@ void Main_Menu::update_ui(Camera& view) {
 	};
 }
 
-void Main_Menu::refresh(Point& cursor) {
+void Main_Menu::refresh(Point *cursor) {
 	auto& sources = (std::vector<Source*>&)parent->sources;
 
 	int n_sources = sources.size();
@@ -77,15 +77,11 @@ void Main_Menu::refresh(Point& cursor) {
 	}
 }
 
-void notify_main_box(Workspace *ws) {
-	auto main_box = dynamic_cast<Main_Menu*>(ws->first_box_of_type(BoxMain));
-	main_box->sources_view.sel_row = ws->sources.size() - 1;
-	main_box->require_redraw();
-}
+static void open_process_handler(Box *box, int pid, std::string& name) {
+	auto ui = dynamic_cast<Main_Menu*>(box);
+	auto ws = box->parent;
 
-void open_process_handler(Workspace *ws, int pid, std::string& name) {
-	auto& sources = (std::vector<Source*>&)ws->sources;
-	for (auto& s : sources) {
+	for (auto& s : ws->sources) {
 		if (s->type == SourceProcess && s->pid == pid)
 			return;
 	}
@@ -95,14 +91,17 @@ void open_process_handler(Workspace *ws, int pid, std::string& name) {
 	s->pid = pid;
 	s->name = name;
 	s->refresh_span_rate = 1;
+	ws->sources.push_back(s);
 
-	sources.push_back(s);
-	notify_main_box(ws);
+	ui->sources_view.sel_row = ws->sources.size() - 1;
+	ui->require_redraw();
 }
 
-void open_file_handler(Workspace *ws, std::string& path, File_Entry& file) {
-	auto& sources = (std::vector<Source*>&)ws->sources;
-	for (auto& s : sources) {
+static void open_file_handler(Box *box, std::string& path, File_Entry& file) {
+	auto ui = dynamic_cast<Main_Menu*>(box);
+	auto ws = box->parent;
+
+	for (auto& s : ws->sources) {
 		if (s->type == SourceFile && path == (const char*)s->identifier)
 			return;
 	}
@@ -112,9 +111,10 @@ void open_file_handler(Workspace *ws, std::string& path, File_Entry& file) {
 	s->identifier = (void*)get_default_arena()->alloc_string((char*)path.c_str());
 	s->name = file.name;
 	s->refresh_span_rate = 1;
+	ws->sources.push_back(s);
 
-	sources.push_back(s);
-	notify_main_box(ws);
+	ui->sources_view.sel_row = ws->sources.size() - 1;
+	ui->require_redraw();
 }
 
 void open_view_source(Workspace& ws, int idx) {
@@ -135,6 +135,7 @@ void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 		Workspace *ws = dd->parent->parent;
 		MenuType type = dd->sel == 0 ? MenuFile : MenuProcess;
 		auto sm = dynamic_cast<Source_Menu*>(ws->make_box(BoxOpenSource, type));
+		sm->caller = dd->parent;
 		sm->open_file_handler = open_file_handler;
 		sm->open_process_handler = open_process_handler;
 	}

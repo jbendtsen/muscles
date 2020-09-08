@@ -192,7 +192,7 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 	ui->view.needs_redraw = true;
 }
 
-void View_Object::refresh(Point& cursor) {
+void View_Object::refresh(Point *cursor) {
 	Workspace *ws = parent;
 	//Box *structs_box = ws->first_box_of_type(BoxStructs);
 

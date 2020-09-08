@@ -200,9 +200,9 @@ void View_Source::update_regions_table() {
 	hex_scroll.position = 0;
 }
 
-void View_Source::refresh_region_list(Point& cursor) {
+void View_Source::refresh_region_list(Point *cursor) {
 	int n_rows = table.row_count();
-	bool hovered = reg_table.pos.contains(cursor);
+	bool hovered = cursor && reg_table.pos.contains(*cursor);
 	hex.source->block_region_refresh = hovered;
 
 	if (!n_rows)
@@ -309,7 +309,7 @@ void View_Source::open_source(Source *s) {
 	hex.source = s;
 }
 
-void View_Source::refresh(Point& cursor) {
+void View_Source::refresh(Point *cursor) {
 	if (menu_type == MenuProcess) {
 		refresh_region_list(cursor);
 	}

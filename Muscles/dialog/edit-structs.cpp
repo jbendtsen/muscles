@@ -19,8 +19,15 @@ void Edit_Structs::update_ui(Camera& view) {
 	show_cb.pos.x = border;
 	show_cb.pos.y = box.h - show_cb.pos.h - border;
 
+	file_menu.pos = {
+		border,
+		title.pos.y + title.pos.h + border,
+		60,
+		25
+	};
+
 	float scroll_w = 14;
-	float edit_y = 2*cross_size;
+	float edit_y = file_menu.pos.y + file_menu.pos.h + border;
 	float end_x = box.w - border;
 	float cb_y = show_cb.pos.y;
 	float win_h = cb_y - 2*border - scroll_w - edit_y;
@@ -163,6 +170,35 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	ui->output.needs_redraw = true;
 }
 
+static void open_file_handler(Box *box, std::string& path, File_Entry& file) {
+	auto buffer = read_file(path);
+	if (!buffer.second.get())
+		return;
+
+	auto ui = dynamic_cast<Edit_Structs*>(box);
+	ui->edit.editor.clear();
+	ui->edit.editor.text = (char*)buffer.second.get();
+	ui->edit.editor.measure_text();
+
+	Input blank = {};
+	structs_edit_handler(&ui->edit, blank);
+
+	ui->require_redraw();
+}
+
+static void file_menu_handler(UI_Element *elem, bool dbl_click) {
+	auto menu = dynamic_cast<Drop_Down*>(elem);
+	if (menu->sel != 0)
+		return;
+
+	Workspace& ws = *menu->parent->parent;
+	auto sm = dynamic_cast<Source_Menu*>(ws.make_box(BoxOpenSource, MenuFile));
+	sm->open_file_handler = open_file_handler;
+	sm->caller = menu->parent;
+
+	menu->parent->set_dropdown(nullptr);
+}
+
 void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	auto ui = (Edit_Structs*)elem->parent;
 	auto cb = dynamic_cast<Checkbox*>(elem);
@@ -221,6 +257,18 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	title.text = "Structs";
 	title.padding = 0;
 	ui.push_back(&title);
+
+	file_menu.title = "File";
+	file_menu.font = ws.make_font(11, ws.text_color, scale);
+	file_menu.action = file_menu_handler;
+	file_menu.default_color = ws.back_color;
+	file_menu.hl_color = ws.hl_color;
+	file_menu.sel_color = ws.active_color;
+	file_menu.width = 100;
+	file_menu.content = {
+		(char*)"Open"
+	};
+	ui.push_back(&file_menu);
 
 	edit.default_color = ws.scroll_back;
 	edit.sel_color = ws.inactive_outline_color;

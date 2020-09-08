@@ -67,7 +67,7 @@ void Source_Menu::update_ui(Camera& view) {
 	}
 }
 
-void process_menu_handler(UI_Element *elem, bool dbl_click) {
+static void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
 		return;
 
@@ -84,17 +84,18 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 	std::string name = (char*)menu->data->columns[2][idx];
 
 	auto box = (Source_Menu*)elem->parent;
+	Box *caller = box->caller;
 	auto callback = box->open_process_handler;
 
 	// THEN delete this box
 	Workspace *ws = box->parent;
 	ws->delete_box(box);
 
-	if (callback)
-		callback(ws, pid, name);
+	if (callback && caller)
+		callback(caller, pid, name);
 }
 
-void file_menu_handler(UI_Element *elem, bool dbl_click) {
+static void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dbl_click)
 		return;
 
@@ -111,8 +112,7 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		ui->path.placeholder += file->name;
 		ui->path.placeholder += get_folder_separator();
 
-		Point p = {0};
-		ui->refresh(p);
+		ui->refresh(nullptr);
 
 		ui->scroll.position = 0;
 		ui->search.clear();
@@ -127,12 +127,13 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	path += file->name;
 
 	auto callback = ui->open_file_handler;
+	Box *caller = ui->caller;
 
 	Workspace *ws = elem->parent->parent;
 	ws->delete_box(elem->parent);
 
-	if (callback)
-		callback(ws, path, *file);
+	if (callback && caller)
+		callback(caller, path, *file);
 }
 
 void file_up_handler(UI_Element *elem, bool dbl_click) {
@@ -152,8 +153,7 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 		ui->menu.data->clear_filter();
 	}
 
-	Point p = {0};
-	ui->refresh(p);
+	ui->refresh(nullptr);
 	ui->menu.needs_redraw = true;
 }
 
@@ -179,13 +179,12 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 	ui->search.clear();
 	ui->menu.data->clear_filter();
 
-	Point p = {0};
-	ui->refresh(p);
+	ui->refresh(nullptr);
 	ui->menu.needs_redraw = true;
 }
 
-void Source_Menu::refresh(Point& cursor) {
-	if (menu.pos.contains(cursor))
+void Source_Menu::refresh(Point *cursor) {
+	if (cursor && menu.pos.contains(*cursor))
 		return;
 
 	if (menu_type == MenuProcess) {

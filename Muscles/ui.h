@@ -68,6 +68,9 @@ struct Editor {
 	float cursor_width = 1;
 	float border = 4;
 
+	void clear();
+	void measure_text();
+
 	void erase(Cursor& cursor, bool is_back);
 	void set_cursor(Cursor& cursor, int cur);
 	void set_line(Cursor& cursor, int line_idx);
@@ -615,7 +618,7 @@ struct Box {
 	Editor *active_edit = nullptr;
 
 	virtual void update_ui(Camera& view) {}
-	virtual void refresh(Point& cursor) {}
+	virtual void refresh(Point *cursor) {}
 	virtual void handle_zoom(Workspace& ws, float new_scale) {}
 	virtual void wake_up() {}
 	virtual void on_close() {}

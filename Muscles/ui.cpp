@@ -35,7 +35,7 @@ void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size) 
 		size
 	};
 	maxm.pos = {
-		cross.pos.x - size * 1.5f,
+		cross.pos.x - size * 1.75f,
 		size * 0.5f,
 		size,
 		size
@@ -356,7 +356,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 		y += item_height;
 	}
 
-	needs_redraw = hl_row != old_hl_row || hl_col != old_hl_col;
+	needs_redraw = needs_redraw || hl_row != old_hl_row || hl_col != old_hl_col;
 	return hl;
 }
 

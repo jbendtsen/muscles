@@ -221,6 +221,22 @@ HANDLE open_file(LPCSTR name) {
 	);
 }
 
+std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path) {
+	std::pair<int, std::unique_ptr<u8[]>> buf = {0, nullptr};
+	HANDLE h = open_file(path.c_str());
+	if (!h)
+		return buf;
+
+	BY_HANDLE_FILE_INFORMATION info = {0};
+	GetFileInformationByHandle(h, &info);
+	buf.first = info.nFileSizeLow;
+	buf.second = std::make_unique<u8[]>(buf.first);
+
+	DWORD retrieved = 0;
+	ReadFile(h, buf.second.get(), buf.first, &retrieved, nullptr);
+	return buf;
+}
+
 void refresh_file_region(Source& source, Arena& arena) {
 	if (source.regions.size() <= 0)
 		source.regions.push_back({});

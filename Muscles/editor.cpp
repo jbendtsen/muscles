@@ -1,6 +1,17 @@
 #include "muscles.h"
 #include "ui.h"
 
+void Editor::clear() {
+	text.clear();
+	set_cursor(primary, 0);
+	set_cursor(secondary, 0);
+	selected = false;
+	x_offset = 0;
+	y_offset = 0;
+	lines = vis_lines = 0;
+	columns = vis_columns = 0;
+}
+
 void Editor::refresh(Render_Clip& clip, Font *font, float scroll_x, float scroll_y) {
 	this->clip = clip;
 	this->font = font;
@@ -231,6 +242,25 @@ std::pair<int, int> get_text_span(int a, int b) {
 	return span;
 }
 
+void Editor::measure_text() {
+	lines = columns = 0;
+	int cols = 0;
+	for (auto& c : text) {
+		cols += c == '\t' ? tab_width : 1;
+		if (c == '\n') {
+			lines++;
+			if (cols > columns)
+				columns = cols;
+			cols = 0;
+		}
+	}
+	if (cols > columns)
+		columns = cols;
+
+	lines++;
+	columns++;
+}
+
 int Editor::handle_input(Input& input) {
 	char ch = 0;
 	bool ctrl = input.lctrl || input.rctrl;
@@ -447,22 +477,7 @@ int Editor::handle_input(Input& input) {
 		secondary = primary;
 
 	if (update) {
-		lines = columns = 0;
-		int cols = 0;
-		for (auto& c : text) {
-			cols += c == '\t' ? tab_width : 1;
-			if (c == '\n') {
-				lines++;
-				if (cols > columns)
-					columns = cols;
-				cols = 0;
-			}
-		}
-		if (cols > columns)
-			columns = cols;
-
-		lines++;
-		columns++;
+		measure_text();
 	}
 
 	if (key_press) {
