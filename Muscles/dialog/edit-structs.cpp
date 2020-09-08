@@ -3,12 +3,7 @@
 #include "dialog.h"
 
 void Edit_Structs::update_ui(Camera& view) {
-	cross.pos = {
-		box.w - cross_size * 1.5f,
-		cross_size * 0.5f,
-		cross_size,
-		cross_size
-	};
+	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
 	float w = title.font->render.text_width(title.text.c_str()) / view.scale;
 	float max_title_w = box.w - 5 * cross_size;
@@ -187,13 +182,12 @@ void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	if (ui->box.w < ui->min_width)
 		ui->box.w = ui->min_width;
 
-	Camera just_scale = {0};
-	just_scale.scale = ui->parent->temp_scale;
-	ui->update_ui(just_scale);
+	ui->update_ui(get_default_camera());
 }
 
 void Edit_Structs::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
+	maxm.img = ws.maxm;
 
 	div.make_icon(new_scale);
 
@@ -213,9 +207,15 @@ void Edit_Structs::wake_up() {
 }
 
 Edit_Structs::Edit_Structs(Workspace& ws) {
+	float scale = get_default_camera().scale;
+
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
 	ui.push_back(&cross);
+
+	maxm.action = get_maximize_box();
+	maxm.img = ws.maxm;
+	ui.push_back(&maxm);
 
 	title.font = ws.default_font;
 	title.text = "Structs";
@@ -225,7 +225,7 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	edit.default_color = ws.scroll_back;
 	edit.sel_color = ws.inactive_outline_color;
 	edit.caret_color = ws.caret_color;
-	edit.font = ws.make_font(10, ws.text_color);
+	edit.font = ws.make_font(10, ws.text_color, scale);
 	edit.editor.text = "struct Test {\n\tint a;\n\tint b;\n};";
 	edit.key_action = structs_edit_handler;
 	edit.hscroll = &edit_hscroll;
@@ -247,12 +247,12 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	edit_vscroll.sel_color = ws.scroll_sel_color;
 	ui.push_back(&edit_vscroll);
 
-	show_cb.font = ws.make_font(10, ws.text_color);
+	show_cb.font = ws.make_font(10, ws.text_color, scale);
 	show_cb.text = "Show Output";
 	show_cb.default_color = ws.scroll_back;
 	show_cb.hl_color = ws.light_color;
 	show_cb.sel_color = ws.cb_color;
-	show_cb.pos.h = show_cb.font->render.text_height() * 1.1f / ws.temp_scale;
+	show_cb.pos.h = show_cb.font->render.text_height() * 1.1f / scale;
 	show_cb.pos.w = 14 * show_cb.font->render.digit_width();
 	show_cb.action = show_cb_handler;
 	ui.push_back(&show_cb);

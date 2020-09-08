@@ -83,6 +83,44 @@ Texture make_triangle(RGBA& color, int width, int height, bool up) {
 	return sdl_create_texture(pixels.get(), width, height);
 }
 
+Texture make_rectangle(RGBA& color, int width, int height, float left, float top, float thickness) {
+	auto pixels = std::make_unique<u32[]>(width * height);
+	u32 shade = rgba_to_u32(color);
+
+	if (left < 0.0 || left >= 1.0 || top < 0.0 || top >= 1.0 || thickness <= 0.0) {
+		memset(pixels.get(), 0, width * height * sizeof(u32));
+		return sdl_create_texture(pixels.get(), width, height);
+	}
+
+	if (left >= 0.5) left = 1.0 - left;
+	if (top >= 0.5) top = 1.0 - top;
+
+	int left_gap = left * (float)width + 0.5;
+	int top_gap = top * (float)height + 0.5;
+	int thicc = thickness * (float)(width > height ? width : height) + 0.5;
+	if (thicc < 1) thicc = 1;
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			pixels[i*width+j] =
+			(
+				i >= top_gap &&
+				j >= left_gap &&
+				i < height - top_gap &&
+				j < width - left_gap
+			) && (
+				i < top_gap + thicc ||
+				j < left_gap + thicc ||
+				i >= height - top_gap - thicc ||
+				j >= width - left_gap - thicc
+			)
+			? shade : 0;
+		}
+	}
+
+	return sdl_create_texture(pixels.get(), width, height);
+}
+
 Texture make_cross_icon(RGBA& color, int length) {
 	auto pixels = std::make_unique<u32[]>(length * length);
 

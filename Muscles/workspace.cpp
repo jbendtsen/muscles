@@ -6,7 +6,9 @@ Workspace::Workspace(Font_Face face) {
 	this->face = face;
 
 	RGBA cross_color = { 1.0, 1.0, 1.0, 1.0 };
-	cross = make_cross_icon(cross_color, 48);
+	float length = 48;
+	cross = make_cross_icon(cross_color, length);
+	maxm = make_rectangle(cross_color, length, length, 0.05, 0.05, 0.08);
 
 	sdl_get_dpi(dpi_w, dpi_h);
 
@@ -59,7 +61,6 @@ Workspace::~Workspace() {
 }
 
 Box *Workspace::make_box(BoxType btype, MenuType mtype) {
-	// 1
 	Box *box = first_box_of_type(btype);
 	if (box && !box->expungable) {
 		box->visible = true;
@@ -170,7 +171,7 @@ void Workspace::bring_to_front(Box *b) {
 	}
 }
 
-Font *Workspace::make_font(float size, RGBA& color) {
+Font *Workspace::make_font(float size, RGBA& color, float scale) {
 	auto to_points = [](float f) -> int { return f * 100.0; };
 
 	int s = to_points(size);
@@ -192,7 +193,7 @@ Font *Workspace::make_font(float size, RGBA& color) {
 
 	Font *f = new Font(face, size, color, dpi_w, dpi_h);
 	fonts.push_back(f);
-	f->adjust_scale(temp_scale, dpi_w, dpi_h);
+	f->adjust_scale(scale, dpi_w, dpi_h);
 	return f;
 }
 
@@ -210,6 +211,10 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 
 	sdl_destroy_texture(&cross);
 	cross = make_cross_icon(text_color, cross_size * new_scale);
+
+	sdl_destroy_texture(&maxm);
+	float length = cross_size * new_scale;
+	maxm = make_rectangle(text_color, length, length, 0.05, 0.05, 0.08);
 
 	for (auto& b : boxes)
 		b->handle_zoom(*this, new_scale);
@@ -236,8 +241,6 @@ void Workspace::refresh_sources() {
 }
 
 void Workspace::update(Camera& view, Input& input, Point& cursor) {
-	temp_scale = view.scale;
-
 	Point inside = {0};
 	Box *hover = box_under_cursor(view, cursor, inside);
 

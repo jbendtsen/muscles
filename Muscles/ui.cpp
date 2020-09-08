@@ -27,10 +27,46 @@ Rect make_ui_box(Rect_Int& box, Rect& elem, float scale) {
 	};
 }
 
+void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size) {
+	cross.pos = {
+		box_w - size * 1.5f,
+		size * 0.5f,
+		size,
+		size
+	};
+	maxm.pos = {
+		cross.pos.x - size * 1.5f,
+		size * 0.5f,
+		size,
+		size
+	};
+}
+
 void delete_box(UI_Element *elem, bool dbl_click) {
 	elem->parent->parent->delete_box(elem->parent);
 }
 void (*get_delete_box(void))(UI_Element*, bool) { return delete_box; }
+
+void maximize_box(UI_Element *elem, bool dbl_click) {
+	Box *box = elem->parent;
+	Camera *view = &get_default_camera();
+
+	float center_x = view->center_x;
+	float center_y = view->center_y;
+
+	center_x *= 0.9;
+	center_y *= 0.9;
+
+	box->box = {
+		view->x - center_x / view->scale,
+		view->y - center_y / view->scale,
+		2 * center_x / view->scale,
+		2 * center_y / view->scale,
+	};
+
+	box->update_ui(*view);
+}
+void (*get_maximize_box(void))(UI_Element*, bool) { return maximize_box; }
 
 void text_editor_action(UI_Element *elem, bool dbl_click) {
 	elem->parent->active_edit = &dynamic_cast<Text_Editor*>(elem)->editor;
@@ -85,7 +121,7 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 
 		else if (!tex_cache) {
 			renderer = sdl_acquire_sw_renderer(w, h);
-			soft_draw = true;
+			soft_draw = renderer != nullptr;
 		}
 		else {
 			// this means that we don't need to render a new frame and can simply use the existing surface instead

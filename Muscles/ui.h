@@ -139,6 +139,7 @@ struct UI_Element {
 };
 
 void (*get_delete_box(void))(UI_Element*, bool);
+void (*get_maximize_box(void))(UI_Element*, bool);
 void (*get_text_editor_action(void))(UI_Element*, bool);
 void (*get_edit_box_action(void))(UI_Element*, bool);
 void (*get_number_edit_action(void))(UI_Element*, bool);
@@ -648,9 +649,9 @@ struct Box {
 
 struct Workspace {
 	int dpi_w = 0, dpi_h = 0;
-	float temp_scale = 1.0;
 
 	Texture cross = nullptr;
+	Texture maxm = nullptr;
 	float cross_size = 16;
 
 	RGBA text_color = { 1, 1, 1, 1 };
@@ -713,7 +714,7 @@ struct Workspace {
 	void bring_to_front(Box *b);
 
 	Box *first_box_of_type(BoxType type);
-	Font *make_font(float size, RGBA& color);
+	Font *make_font(float size, RGBA& color, float scale);
 
 	void adjust_scale(float old_scale, float new_scale);
 	void refresh_sources();
@@ -721,3 +722,4 @@ struct Workspace {
 };
 
 Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);
+void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size);

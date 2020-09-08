@@ -43,8 +43,12 @@ struct Source_Menu : Box {
 	void refresh(Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
+	void (*open_process_handler)(Workspace *ws, int pid, std::string& name) = nullptr;
+	void (*open_file_handler)(Workspace *ws, std::string& path, File_Entry& file) = nullptr;
+
 	Data_View menu;
 	Image cross;
+	Image maxm;
 	Label title;
 	Scroll scroll;
 	Edit_Box search;
@@ -77,6 +81,7 @@ struct View_Source : Box {
 	void open_source(Source *s);
 
 	Image cross;
+	Image maxm;
 	Label title;
 	Divider div;
 	Label reg_title;
@@ -110,6 +115,7 @@ struct Edit_Structs : Box {
 	void wake_up() override;
 
 	Image cross;
+	Image maxm;
 	Label title;
 	Text_Editor edit;
 	Scroll edit_hscroll;
@@ -139,6 +145,7 @@ struct View_Object : Box {
 	void select_view_type(bool all);
 
 	Image cross;
+	Image maxm;
 	Edit_Box title_edit;
 	Label struct_label;
 	Label source_label;
@@ -178,6 +185,7 @@ struct View_Definitions : Box {
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	Image cross;
+	Image maxm;
 	Label title;
 	Tabs tabs;
 	Data_View view;

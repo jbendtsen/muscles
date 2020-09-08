@@ -77,6 +77,46 @@ void Main_Menu::refresh(Point& cursor) {
 	}
 }
 
+void notify_main_box(Workspace *ws) {
+	auto main_box = dynamic_cast<Main_Menu*>(ws->first_box_of_type(BoxMain));
+	main_box->sources_view.sel_row = ws->sources.size() - 1;
+	main_box->require_redraw();
+}
+
+void open_process_handler(Workspace *ws, int pid, std::string& name) {
+	auto& sources = (std::vector<Source*>&)ws->sources;
+	for (auto& s : sources) {
+		if (s->type == SourceProcess && s->pid == pid)
+			return;
+	}
+
+	Source *s = new Source();
+	s->type = SourceProcess;
+	s->pid = pid;
+	s->name = name;
+	s->refresh_span_rate = 1;
+
+	sources.push_back(s);
+	notify_main_box(ws);
+}
+
+void open_file_handler(Workspace *ws, std::string& path, File_Entry& file) {
+	auto& sources = (std::vector<Source*>&)ws->sources;
+	for (auto& s : sources) {
+		if (s->type == SourceFile && path == (const char*)s->identifier)
+			return;
+	}
+
+	Source *s = new Source();
+	s->type = SourceFile;
+	s->identifier = (void*)get_default_arena()->alloc_string((char*)path.c_str());
+	s->name = file.name;
+	s->refresh_span_rate = 1;
+
+	sources.push_back(s);
+	notify_main_box(ws);
+}
+
 void open_view_source(Workspace& ws, int idx) {
 	if (idx < 0)
 		return;
@@ -94,7 +134,9 @@ void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	if (dd->sel == 0 || dd->sel == 1) {
 		Workspace *ws = dd->parent->parent;
 		MenuType type = dd->sel == 0 ? MenuFile : MenuProcess;
-		ws->make_box(BoxOpenSource, type);
+		auto sm = dynamic_cast<Source_Menu*>(ws->make_box(BoxOpenSource, type));
+		sm->open_file_handler = open_file_handler;
+		sm->open_process_handler = open_process_handler;
 	}
 
 	dd->parent->set_dropdown(nullptr);
@@ -164,8 +206,10 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	file_fold = {0.9, 0.9, 0.9, 1.0};
 	file_line = {0.5, 0.5, 0.5, 1.0};
 
+	float scale = get_default_camera().scale;
+
 	sources_dd.title = "Sources";
-	sources_dd.font = ws.make_font(11, ws.text_color);
+	sources_dd.font = ws.make_font(11, ws.text_color, scale);
 	sources_dd.action = sources_main_menu_handler;
 	sources_dd.default_color = ws.back_color;
 	sources_dd.hl_color = ws.hl_color;
@@ -226,17 +270,17 @@ Main_Menu::Main_Menu(Workspace& ws) {
 		ws.light_color,
 		ws.light_color,
 		ws.hl_color,
-		ws.make_font(11, ws.text_color)
+		ws.make_font(11, ws.text_color, scale)
 	};
 	button.inactive_theme = {
 		ws.inactive_color,
 		ws.inactive_color,
 		ws.inactive_color,
-		ws.make_font(11, ws.inactive_text_color)
+		ws.make_font(11, ws.inactive_text_color, scale)
 	};
 	button.text = "View";
 	button.active = false;
-	button.update_size(ws.temp_scale);
+	button.update_size(scale);
 
 	ui.push_back(&sources_dd);
 	ui.push_back(&edit_dd);

@@ -66,6 +66,11 @@ void write_dec(char *out, s64 n) {
 	*out++ = 0;
 }
 
+Camera camera;
+Camera& get_default_camera() {
+	return camera;
+}
+
 int run() {
 	if (!sdl_init("Muscles", 960, 540))
 		return 1;
@@ -78,7 +83,6 @@ int run() {
 		return 2;
 
 	Workspace ctx(face);
-	Camera camera;
 	Input input;
 
 	while (true) {

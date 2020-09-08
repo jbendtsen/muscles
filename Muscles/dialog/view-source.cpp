@@ -4,10 +4,7 @@
 #include "dialog.h"
 
 void View_Source::update_ui(Camera& view) {
-	cross.pos.y = cross_size * 0.5;
-	cross.pos.x = box.w - cross_size * 1.5;
-	cross.pos.w = cross_size;
-	cross.pos.h = cross_size;
+	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
 	float w = title.font->render.text_width(title.text.c_str()) / view.scale;
 	float max_title_w = box.w - 5 * cross_size;
@@ -337,6 +334,7 @@ void View_Source::refresh(Point& cursor) {
 
 void View_Source::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
+	maxm.img = ws.maxm;
 
 	if (menu_type == MenuProcess)
 		div.make_icon(new_scale);
@@ -357,9 +355,15 @@ void View_Source::on_close() {
 View_Source::View_Source(Workspace& ws, MenuType mtype)
 	: menu_type(mtype)
 {
+	float scale = get_default_camera().scale;
+
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
 	ui.push_back(&cross);
+
+	maxm.action = get_maximize_box();
+	maxm.img = ws.maxm;
+	ui.push_back(&maxm);
 
 	title.font = ws.default_font;
 	title.padding = 0;
@@ -376,7 +380,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		ui.push_back(&div);
 
 		reg_title.text = "Regions";
-		reg_title.font = ws.make_font(10, ws.text_color);
+		reg_title.font = ws.make_font(10, ws.text_color, scale);
 		ui.push_back(&reg_title);
 
 		reg_scroll.back_color = ws.scroll_back;
@@ -395,7 +399,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		ui.push_back(&reg_lat_scroll);
 
 		reg_table.action = regions_handler;
-		reg_table.font = ws.make_font(9, ws.text_color);
+		reg_table.font = ws.make_font(9, ws.text_color, scale);
 		reg_table.default_color = ws.dark_color;
 		reg_table.hl_color = ws.hl_color;
 		reg_table.sel_color = ws.light_color;
@@ -442,7 +446,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	float goto_font_size = 10;
 	hex_title.text = "Data";
-	hex_title.font = ws.make_font(goto_font_size, ws.text_color);
+	hex_title.font = ws.make_font(goto_font_size, ws.text_color, scale);
 	ui.push_back(&hex_title);
 
 	size_label.font = hex_title.font;
@@ -458,7 +462,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	hex_scroll.sel_color = ws.scroll_sel_color;
 	ui.push_back(&hex_scroll);
 
-	hex.font = ws.make_font(8, ws.text_color);
+	hex.font = ws.make_font(8, ws.text_color, scale);
 	hex.default_color = ws.dark_color;
 	hex.back_color = ws.back_color;
 	hex.caret = ws.caret_color;
@@ -472,7 +476,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	goto_box.icon_color = ws.text_color;
 	goto_box.icon_color.a = 0.6;
-	goto_box.ph_font = ws.make_font(goto_font_size, goto_box.icon_color);
+	goto_box.ph_font = ws.make_font(goto_font_size, goto_box.icon_color, scale);
 	ui.push_back(&goto_box);
 
 	addr_box.font = size_label.font;
@@ -480,7 +484,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	addr_box.default_color = ws.scroll_back;
 	addr_box.hl_color = ws.light_color;
 	addr_box.sel_color = ws.cb_color;
-	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / ws.temp_scale;
+	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / scale;
 	addr_box.pos.w = 2 * addr_box.pos.h;
 	addr_box.action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->toggle();};
 	ui.push_back(&addr_box);

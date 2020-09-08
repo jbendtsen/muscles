@@ -55,10 +55,7 @@ void Source_Menu::update_ui(Camera& view) {
 
 	scroll.pos.h = menu.pos.h;
 
-	cross.pos.y = cross_size * 0.5;
-	cross.pos.x = box.w - cross_size * 1.5;
-	cross.pos.w = cross_size;
-	cross.pos.h = cross_size;
+	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
 	if (up.visible) {
 		up.pos = {
@@ -68,12 +65,6 @@ void Source_Menu::update_ui(Camera& view) {
 			up.height
 		};
 	}
-}
-
-void notify_main_box(Workspace *ws) {
-	auto main_box = dynamic_cast<Main_Menu*>(ws->first_box_of_type(BoxMain));
-	main_box->sources_view.sel_row = ws->sources.size() - 1;
-	main_box->require_redraw();
 }
 
 void process_menu_handler(UI_Element *elem, bool dbl_click) {
@@ -92,25 +83,15 @@ void process_menu_handler(UI_Element *elem, bool dbl_click) {
 
 	std::string name = (char*)menu->data->columns[2][idx];
 
+	auto box = (Source_Menu*)elem->parent;
+	auto callback = box->open_process_handler;
+
 	// THEN delete this box
-	Workspace *ws = elem->parent->parent;
-	ws->delete_box(elem->parent);
+	Workspace *ws = box->parent;
+	ws->delete_box(box);
 
-	// Then check to see if we've already opened this process
-	auto& sources = (std::vector<Source*>&)ws->sources;
-	for (auto& s : sources) {
-		if (s->type == SourceProcess && s->pid == pid)
-			return;
-	}
-
-	Source *s = new Source();
-	s->type = SourceProcess;
-	s->pid = pid;
-	s->name = name;
-	s->refresh_span_rate = 1;
-
-	sources.push_back(s);
-	notify_main_box(ws);
+	if (callback)
+		callback(ws, pid, name);
 }
 
 void file_menu_handler(UI_Element *elem, bool dbl_click) {
@@ -136,35 +117,22 @@ void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		ui->scroll.position = 0;
 		ui->search.clear();
 		menu->data->clear_filter();
+		menu->needs_redraw = true;
 
 		return;
 	}
-
-	Workspace *ws = elem->parent->parent;
 
 	std::string path = ui->path.placeholder;
 	path += get_folder_separator();
 	path += file->name;
 
-	auto& sources = (std::vector<Source*>&)ws->sources;
+	auto callback = ui->open_file_handler;
 
-	for (auto& s : sources) {
-		if (s->type == SourceFile && path == (const char*)s->identifier) {
-			ws->delete_box(elem->parent);
-			return;
-		}
-	}
-
-	Source *s = new Source();
-	s->type = SourceFile;
-	s->identifier = (void*)get_default_arena()->alloc_string((char*)path.c_str());
-	s->name = file->name;
-	s->refresh_span_rate = 1;
-
-	sources.push_back(s);
-	notify_main_box(ws);
-
+	Workspace *ws = elem->parent->parent;
 	ws->delete_box(elem->parent);
+
+	if (callback)
+		callback(ws, path, *file);
 }
 
 void file_up_handler(UI_Element *elem, bool dbl_click) {
@@ -264,6 +232,8 @@ void Source_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	}
 
 	cross.img = ws.cross;
+	maxm.img = ws.maxm;
+
 	float height = search.font->render.text_height() * 1.5 / new_scale;
 	search.update_icon(IconGlass, height, new_scale);
 }
@@ -275,8 +245,13 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	div.visible = false;
 	path.visible = false;
 
+	float scale = get_default_camera().scale;
+
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
+
+	maxm.action = get_maximize_box();
+	maxm.img = ws.maxm;
 
 	scroll.back_color = ws.scroll_back;
 	scroll.default_color = ws.scroll_color;
@@ -295,7 +270,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	search.caret = ws.caret_color;
 	search.default_color = ws.dark_color;
 	search.sel_color = ws.inactive_outline_color;
-	search.font = ws.make_font(9, ws.text_color);
+	search.font = ws.make_font(9, ws.text_color, scale);
 	search.icon_color = ws.text_color;
 	search.icon_color.a = 0.7;
 	search.key_action = [](Edit_Box* edit, Input& input) {
@@ -309,6 +284,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	ui.push_back(&search);
 	ui.push_back(&title);
 	ui.push_back(&cross);
+	ui.push_back(&maxm);
 
 	if (menu_type == MenuProcess) {
 		title.text = "Open Process";
@@ -344,7 +320,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		up.icon_right = true;
 
 		float up_font_size = 10;
-		Font *up_font = ws.make_font(up_font_size, ws.text_color);
+		Font *up_font = ws.make_font(up_font_size, ws.text_color, scale);
 
 		h = up_font->render.text_height();
 		up.icon = make_folder_icon(folder_dark, folder_light, h, h);
@@ -356,7 +332,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 			up_font
 		};
 		up.inactive_theme = up.active_theme;
-		up.update_size(ws.temp_scale);
+		up.update_size(scale);
 
 		div.visible = true;
 		div.default_color = {0.5, 0.6, 0.8, 1.0};
@@ -372,7 +348,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 
 		RGBA ph_color = ws.text_color;
 		ph_color.a = 0.75;
-		path.ph_font = ws.make_font(up_font_size, ph_color);
+		path.ph_font = ws.make_font(up_font_size, ph_color, scale);
 
 		ui.push_back(&up);
 		ui.push_back(&div);

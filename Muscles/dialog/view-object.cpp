@@ -3,10 +3,7 @@
 #include "dialog.h"
 
 void View_Object::update_ui(Camera& camera) {
-	cross.pos.y = cross_size * 0.5;
-	cross.pos.x = box.w - cross_size * 1.5;
-	cross.pos.w = cross_size;
-	cross.pos.h = cross_size;
+	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
 	float title_w = 200;
 	float title_x = (cross.pos.x - title_w) / 2;
@@ -261,6 +258,7 @@ void View_Object::refresh(Point& cursor) {
 
 void View_Object::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
+	maxm.img = ws.maxm;
 
 	update_hide_meta_button(new_scale);
 
@@ -274,12 +272,18 @@ void View_Object::on_close() {
 }
 
 View_Object::View_Object(Workspace& ws) {
+	float scale = get_default_camera().scale;
+
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
 	ui.push_back(&cross);
 
+	maxm.action = get_maximize_box();
+	maxm.img = ws.maxm;
+	ui.push_back(&maxm);
+
 	title_edit.placeholder = "<instance>";
-	title_edit.ph_font = ws.make_font(12, ws.ph_text_color);
+	title_edit.ph_font = ws.make_font(12, ws.ph_text_color, scale);
 	title_edit.font = ws.default_font;
 	title_edit.caret = ws.caret_color;
 	title_edit.caret.a = 0.6;
@@ -293,7 +297,7 @@ View_Object::View_Object(Workspace& ws) {
 		ui->struct_label.visible = ui->struct_edit.visible = !ui->meta_hidden;
 		ui->source_label.visible = ui->source_edit.visible = !ui->meta_hidden;
 		ui->addr_label.visible = ui->addr_edit.visible = !ui->meta_hidden;
-		ui->update_hide_meta_button(elem->parent->parent->temp_scale);
+		ui->update_hide_meta_button(get_default_camera().scale);
 	};
 	hide_meta.active_theme = {
 		ws.light_color,
@@ -341,7 +345,7 @@ View_Object::View_Object(Workspace& ws) {
 
 	ui.push_back(&view);
 
-	struct_label.font = ws.make_font(11, ws.text_color);
+	struct_label.font = ws.make_font(11, ws.text_color, scale);
 	struct_label.text = "Struct:";
 	struct_label.padding = 0;
 	ui.push_back(&struct_label);
@@ -403,7 +407,7 @@ View_Object::View_Object(Workspace& ws) {
 		ws.dark_color,
 		ws.light_color,
 		ws.light_color,
-		ws.make_font(10, ws.text_color)
+		ws.make_font(10, ws.text_color, scale)
 	};
 	theme_off = {
 		ws.back_color,
@@ -416,7 +420,7 @@ View_Object::View_Object(Workspace& ws) {
 	all_btn.text = "All";
 	all_btn.active_theme = theme_on;
 	all_btn.inactive_theme = theme_on;
-	all_btn.update_size(ws.temp_scale);
+	all_btn.update_size(scale);
 	all_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(true); };
 	ui.push_back(&all_btn);
 
@@ -424,7 +428,7 @@ View_Object::View_Object(Workspace& ws) {
 	sel_btn.text = "Selected";
 	sel_btn.active_theme = theme_off;
 	sel_btn.inactive_theme = theme_off;
-	sel_btn.update_size(ws.temp_scale);
+	sel_btn.update_size(scale);
 	sel_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
 	ui.push_back(&sel_btn);
 

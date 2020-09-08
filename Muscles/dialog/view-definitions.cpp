@@ -3,12 +3,7 @@
 #include "dialog.h"
 
 void View_Definitions::update_ui(Camera& camera) {
-	cross.pos = {
-		box.w - cross_size * 1.5f,
-		cross_size * 0.5f,
-		cross_size,
-		cross_size
-	};
+	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
 	float w = title.font->render.text_width(title.text.c_str()) / camera.scale;
 	float max_title_w = box.w - 5 * cross_size;
@@ -41,12 +36,19 @@ void View_Definitions::update_ui(Camera& camera) {
 
 void View_Definitions::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
+	maxm.img = ws.maxm;
 }
 
 View_Definitions::View_Definitions(Workspace& ws) {
+	float scale = get_default_camera().scale;
+
 	cross.action = get_delete_box();
 	cross.img = ws.cross;
 	ui.push_back(&cross);
+
+	maxm.action = get_maximize_box();
+	maxm.img = ws.maxm;
+	ui.push_back(&maxm);
 
 	title.font = ws.default_font;
 	title.text = "Definitions";
@@ -87,7 +89,7 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	hscroll.vertical = false;
 
 	//view.show_column_names = true;
-	view.font = ws.make_font(11, ws.text_color);
+	view.font = ws.make_font(11, ws.text_color, scale);
 	view.default_color = ws.scroll_back;
 	view.hl_color = ws.hl_color;
 	view.back_color = ws.back_color;

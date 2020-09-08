@@ -5,8 +5,8 @@ int main(int argc, char **argv) {
 	return run();
 }
 
-#define SW_WIDTH   2048
-#define SW_HEIGHT  2048
+#define SWR_MAX_WIDTH   2048
+#define SWR_MAX_HEIGHT  2048
 
 struct {
 	u8 r, g, b;
@@ -52,6 +52,9 @@ void sdl_log_last_error() {
 }
 
 Renderer sdl_acquire_sw_renderer(int w, int h) {
+	if (w > SWR_MAX_WIDTH || h > SWR_MAX_HEIGHT)
+		return nullptr;
+
 	sf_cache->w = w;
 	sf_cache->h = h;
 	sf_cache->pitch = w * 4;
@@ -87,7 +90,7 @@ bool sdl_init(const char *title, int width, int height) {
 	cursors[CursorResizeNESW]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
 	cursors[CursorResizeNWSE]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
 
-	sf_cache = (SDL_Surface*)sdl_create_surface(nullptr, SW_WIDTH, SW_HEIGHT);
+	sf_cache = (SDL_Surface*)sdl_create_surface(nullptr, SWR_MAX_WIDTH, SWR_MAX_HEIGHT);
 	soft_renderer = SDL_CreateSoftwareRenderer(sf_cache);
 
 	float hdpi, vdpi;
