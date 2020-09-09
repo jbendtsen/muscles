@@ -112,11 +112,13 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 			s->flags |= FLAG_AVAILABLE;
 			s->fields.zero_out();
 		}
+
+		ws->definitions.erase_all_of_type(FLAG_EXTERNAL | FLAG_PRIMITIVE);
 	}
 
 	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
 
-	//parse_definitions(ws->definitions, ws->tokens);
+	parse_typedefs(ws->definitions, ws->tokens);
 
 	char *tokens_alias = ws->tokens.pool;
 	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector, ws->definitions);
@@ -170,7 +172,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	ui->output.needs_redraw = true;
 }
 
-static void open_file_handler(Box *box, std::string& path, File_Entry& file) {
+static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 	auto buffer = read_file(path);
 	if (!buffer.second.get())
 		return;

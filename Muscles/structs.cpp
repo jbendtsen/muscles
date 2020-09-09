@@ -138,6 +138,48 @@ u64 evaluate_number(char *token) {
 	return strtoull(token, nullptr, 0);
 }
 
+void parse_typedefs(Map& definitions, String_Vector& tokens) {
+	char *p = tokens.pool;
+	char *prev = nullptr;
+	char *next = nullptr;
+
+	std::string type = "";
+	bool td_mode = false;
+
+	while (*p) {
+		next = advance_word(p);
+
+		if (!td_mode && prev && !strcmp(prev, "typedef")) {
+			if (strcmp(p, "enum") && strcmp(p, "struct") && strcmp(p, "union")) {
+				clear_word(prev);
+				td_mode = true;
+			}
+		}
+
+		bool end_expr = next[0] == ';';
+		if (td_mode) {
+			if (end_expr) {
+				Bucket& buck = definitions.insert(p);
+				buck.value = definitions.sv->add_buffer(type.c_str(), type.size());
+				buck.flags |= FLAG_EXTERNAL | FLAG_PRIMITIVE;
+				type = "";
+				td_mode = false;
+			}
+			else {
+				if (type.size())
+					type += " ";
+
+				type += p;
+			}
+
+			clear_word(p);
+		}
+
+		prev = p;
+		p = next;
+	}
+}
+
 Struct *lookup_struct(std::vector<Struct*>& structs, Struct *st, Field *f, char *name_pool, char *str) {
 	if (!strcmp(str, "void") || !strcmp(str, "struct") || !strcmp(str, "union"))
 		return nullptr;
@@ -224,7 +266,7 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 	bool first = true;
 
 	while (*t) {
-		char *next = t + strlen(t) + 1;
+		char *next = advance_word(t);
 
 		if (!is_symbol(*t))
 			name = t;
@@ -235,7 +277,7 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 		}
 		else if (*t == '[') {
 			t = next;
-			next += strlen(next) + 1;
+			next = advance_word(next);
 
 			int n = (int)evaluate_number(t);
 			if (n > 0) {
@@ -335,7 +377,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 	int longest_field = 8;
 
 	while (*t) {
-		char *next = t + strlen(t) + 1;
+		char *next = advance_word(t);
 		bool type_over = is_symbol(*next) && *next != '*';
 
 		if (!f) {
@@ -354,11 +396,11 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				new_st->flags |= is_union ? FLAG_UNION : 0;
 				new_st->name_idx = name_vector.add_string(name);
 
-				t += strlen(t) + 1;
+				t = advance_word(t);
 				parse_c_struct(structs, &t, name_vector, definitions, new_st);
 
 				add_struct_instances(st, new_st, &t, name_vector);
-				next = t + strlen(t) + 1;
+				next = advance_word(t);
 
 				f = &st->fields.back();
 			}
@@ -371,7 +413,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			was_symbol = true;
 			type = "";
 		}
-		else if (is_symbol(*t)) {
+		else if (!outside_struct && is_symbol(*t)) {
 			// Bitfield
 			if (!strcmp(t, ":")) { // the bitfield symbol ':' must have a length of 1
 				int n = (int)evaluate_number(next);
@@ -458,28 +500,35 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			was_symbol = *t != '*';
 		}
 		else {
-			if (held_type < 0) {
-				// Determine if this field has a name (unnamed fields can be legal, eg. zero-width bitfields)
-				if (type_over) {
-					//named_field = true;
-					u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
-					named_field = (definitions[t].flags & prim_mask) != prim_mask;
-
-					if (named_field)
-						named_field = strcmp(t, "struct") && strcmp(t, "union");
-				}
-
-				// Ignore "const" when determining the field type
-				if ((!type_over && strcmp(t, "const")) || (type_over && !named_field)) {
-					if (type.size() > 0)
-						type += ' ';
-					type += t;
-				}
+			if (is_symbol(*t)) {
+				held_type = -1;
+				type = "";
+				was_symbol = *t != '*';
 			}
-			else
-				named_field = true;
+			else {
+				if (held_type < 0) {
+					// Determine if this field has a name (unnamed fields can be legal, eg. zero-width bitfields)
+					if (type_over) {
+						//named_field = true;
+						u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+						named_field = (definitions[t].flags & prim_mask) != prim_mask;
 
-			was_symbol = false;
+						if (named_field)
+							named_field = strcmp(t, "struct") && strcmp(t, "union");
+					}
+
+					// Ignore "const" when determining the field type
+					if ((!type_over && strcmp(t, "const")) || (type_over && !named_field)) {
+						if (type.size() > 0)
+							type += ' ';
+						type += t;
+					}
+				}
+				else
+					named_field = true;
+
+				was_symbol = false;
+			}
 		}
 
 		if (held_type >= 0)
@@ -487,17 +536,24 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 		// Determine the type of the current field.
 		// This code may run multiple times per field,
-		//  as there some primitive types that use more than one keyword (eg. "s64")
+		//  as there some primitive types that use more than one keyword (eg. "long long")
 		if (f && type_over && type.size() > 0 && (f->flags & FLAG_COMPOSITE) == 0) {
 			Bucket& p = definitions[type.c_str()];
 
 			// If the type string matches a known primitive type
-			u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+			const u32 prim_mask = FLAG_OCCUPIED | FLAG_PRIMITIVE;
 			if ((p.flags & prim_mask) == prim_mask) {
-				f->flags |= p.flags & 0xff; // 0xff captures the relevant flags for a primitive
-				f->default_bit_size = p.value;
-				if ((f->flags & FLAG_BITFIELD) == 0 || f->bit_size > f->default_bit_size)
-					f->bit_size = f->default_bit_size;
+
+				const u32 ext_mask = prim_mask | FLAG_EXTERNAL;
+				while ((p.flags & ext_mask) == ext_mask)
+					p = definitions[definitions.sv->at(p.value)];
+
+				if ((p.flags & prim_mask) == prim_mask) {
+					f->flags |= p.flags & 0xff; // 0xff captures the relevant flags for a primitive
+					f->default_bit_size = p.value;
+					if ((f->flags & FLAG_BITFIELD) == 0 || f->bit_size > f->default_bit_size)
+						f->bit_size = f->default_bit_size;
+				}
 			}
 
 			// Check if the type refers to an existing struct/union
@@ -511,7 +567,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				Struct *record = lookup_struct(structs, st, f, name_vector.pool, (char*)type_name.c_str());
 				if (record) {
 					add_struct_instances(st, record, &t, name_vector);
-					next = t + strlen(t) + 1;
+					next = advance_word(t);
 					f = &st->fields.back();
 
 					held_type = -1;

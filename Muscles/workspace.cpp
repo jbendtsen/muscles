@@ -218,7 +218,7 @@ Box *Workspace::first_box_of_type(BoxType type) {
 }
 
 void Workspace::refresh_sources() {
-	Arena* arena = get_default_arena();
+	Arena* arena = &get_default_arena();
 	auto& sources = (std::vector<Source*>&)this->sources;
 	for (auto& s : sources) {
 		s->region_refreshed = false;
@@ -495,6 +495,11 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	if (focussed)
 		update_focussed(view, input, inside, hover);
 
+	if (ws.box_expunged) {
+		ws.box_expunged = false;
+		return;
+	}
+
 	bool hl = false;
 	for (auto& elem : ui) {
 		elem->parent = this;
@@ -517,11 +522,6 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 		if (this != hover)
 			elem->deselect();
-	}
-
-	if (ws.box_expunged) {
-		ws.box_expunged = false;
-		return;
 	}
 
 	if (input.lclick && !dropdown_set) {

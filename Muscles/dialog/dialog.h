@@ -45,7 +45,7 @@ struct Source_Menu : Box {
 
 	Box *caller = nullptr;
 	void (*open_process_handler)(Box *caller, int pid, std::string& name) = nullptr;
-	void (*open_file_handler)(Box *caller, std::string& path, File_Entry& file) = nullptr;
+	void (*open_file_handler)(Box *caller, std::string& path, File_Entry *file) = nullptr;
 
 	Data_View menu;
 	Image cross;

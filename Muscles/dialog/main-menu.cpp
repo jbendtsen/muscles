@@ -97,7 +97,7 @@ static void open_process_handler(Box *box, int pid, std::string& name) {
 	ui->require_redraw();
 }
 
-static void open_file_handler(Box *box, std::string& path, File_Entry& file) {
+static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 	auto ui = dynamic_cast<Main_Menu*>(box);
 	auto ws = box->parent;
 
@@ -108,8 +108,8 @@ static void open_file_handler(Box *box, std::string& path, File_Entry& file) {
 
 	Source *s = new Source();
 	s->type = SourceFile;
-	s->identifier = (void*)get_default_arena()->alloc_string((char*)path.c_str());
-	s->name = file.name;
+	s->identifier = (void*)get_default_arena().alloc_string((char*)path.c_str());
+	s->name = file->name;
 	s->refresh_span_rate = 1;
 	ws->sources.push_back(s);
 

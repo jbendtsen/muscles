@@ -133,7 +133,7 @@ static void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	ws->delete_box(elem->parent);
 
 	if (callback && caller)
-		callback(caller, path, *file);
+		callback(caller, path, file);
 }
 
 void file_up_handler(UI_Element *elem, bool dbl_click) {
@@ -161,20 +161,40 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 	if (input.enter != 1 || !edit->editor.text.size())
 		return;
 
+	auto ui = dynamic_cast<Source_Menu*>(edit->parent);
 	std::string str = edit->editor.text;
+
 	char sep = get_folder_separator()[0];
-	if (str.back() == sep)
+	while (str.back() == sep)
 		str.pop_back();
 
-	if (!is_folder(str.c_str()))
+	if (!is_folder(str.c_str())) {
+		auto callback = ui->open_file_handler;
+		Box *caller = ui->caller;
+
+		Workspace *ws = ui->parent;
+		ws->delete_box(ui);
+
+		if (callback && caller) {
+			auto last = str.find_last_of(sep);
+			int off = last == std::string::npos ? 0 : last + 1;
+			int len = str.size() - off;
+
+			if (len < 111) {
+				File_Entry file = {0};
+				strcpy(file.name, str.c_str() + off);
+				callback(caller, str, nullptr);
+			}
+		}
+
 		return;
+	}
 
 	str += sep;
 	edit->placeholder = str;
 	edit->parent->active_edit = nullptr;
 	edit->clear();
 
-	auto ui = dynamic_cast<Source_Menu*>(edit->parent);
 	ui->scroll.position = 0;
 	ui->search.clear();
 	ui->menu.data->clear_filter();
@@ -198,7 +218,7 @@ void Source_Menu::refresh(Point *cursor) {
 	}
 	else {
 		auto& files = (std::vector<File_Entry*>&)menu.data->columns[1];
-		enumerate_files((char*)path.placeholder.c_str(), files, *get_default_arena());
+		enumerate_files((char*)path.placeholder.c_str(), files, get_default_arena());
 
 		if (files.size() > 0) {
 			menu.data->columns[0].resize(files.size(), nullptr);

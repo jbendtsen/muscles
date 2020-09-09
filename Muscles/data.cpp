@@ -3,8 +3,8 @@
 
 Arena default_arena;
 
-Arena *get_default_arena() {
-	return &default_arena;
+Arena& get_default_arena() {
+	return default_arena;
 }
 
 void clear_word(char* word) {
@@ -14,7 +14,7 @@ void clear_word(char* word) {
 
 char *advance_word(char *p) {
 	do {
-		p += strlen(p + 1);
+		p += strlen(p) + 1;
 	} while (*p == 0xff);
 	return p;
 }
@@ -185,11 +185,11 @@ void Arena::rewind() {
 	memset(&pools.back()[idx], 0, delta);
 }
 
-Table::Table() : arena(get_default_arena()) {}
+Table::Table() : arena(&get_default_arena()) {}
 
 Table::Table(const Table& t) :
 	headers(t.headers),
-	arena(t.arena ? t.arena : get_default_arena())
+	arena(t.arena ? t.arena : &get_default_arena())
 {
 	int n_cols = t.column_count();
 	int n_rows = t.row_count();
@@ -207,7 +207,7 @@ Table::Table(const Table& t) :
 Table::Table(Table&& t) :
 	headers(std::move(t.headers)),
 	columns(std::move(t.columns)),
-	arena(t.arena ? t.arena : get_default_arena())
+	arena(t.arena ? t.arena : &get_default_arena())
 {}
 
 Table::~Table() {

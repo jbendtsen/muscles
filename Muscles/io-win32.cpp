@@ -83,7 +83,7 @@ int get_process_names(std::vector<s64> *full_list, Map& icon_map, std::vector<vo
 		Bucket& buck = icon_map.insert(p);
 		if (buck.flags & FLAG_NEW) {
 			buck.pointer = load_icon(path);
-			buck.flags |= FLAG_POINTER;
+			buck.flags |= FLAG_EXTERNAL;
 		}
 
 		icons[idx] = buck.pointer;

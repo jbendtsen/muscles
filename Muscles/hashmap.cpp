@@ -171,6 +171,29 @@ void Map::remove(const char *str, int len) {
 	buck = {0};
 }
 
+void Map::erase_all_of_type(u32 flags) {
+	int size = 1 << log2_slots;
+	for (int i = 0; i < size; i++) {
+		if ((data[i].flags & flags) == flags) {
+			if (data[i].flags & FLAG_OCCUPIED)
+				n_entries--;
+
+			data[i] = {0};
+		}
+	}
+}
+void Map::erase_all_of_exact_type(u32 flags) {
+	int size = 1 << log2_slots;
+	for (int i = 0; i < size; i++) {
+		if (data[i].flags == flags) {
+			if (data[i].flags & FLAG_OCCUPIED)
+				n_entries--;
+
+			data[i] = {0};
+		}
+	}
+}
+
 void Map::next_level_maybe() {
 	int n_slots = 1 << log2_slots;
 	float load = (float)n_entries / (float)n_slots;

@@ -166,6 +166,9 @@ Texture make_goto_icon(RGBA& color, int length);
 Texture make_glass_icon(RGBA& color, int length);
 Texture make_plus_minus_icon(RGBA& color, int length, bool plus);
 
+void clear_word(char* word);
+char *advance_word(char *p);
+
 struct Arena {
 	std::vector<char*> pools;
 	int pool_size = 1024 * 1024;
@@ -197,7 +200,7 @@ struct Arena {
 	void rewind();
 };
 
-Arena *get_default_arena();
+Arena& get_default_arena();
 
 struct String_Vector {
 	char *pool = nullptr;
@@ -494,6 +497,9 @@ struct Map {
 	Bucket& insert(const char *str, int len = 0);
 	void remove(const char *str, int len = 0);
 
+	void erase_all_of_type(u32 flags);
+	void erase_all_of_exact_type(u32 flags);
+
 	void next_level();
 	void next_level_maybe();
 	void release();
@@ -632,6 +638,7 @@ void close_source(Source& source);
 
 #define FLAG_OCCUPIED  0x80000000
 #define FLAG_NEW       0x40000000
+#define FLAG_EXTERNAL  0x20000000
 
 struct Struct;
 
@@ -686,6 +693,7 @@ struct Struct {
 };
 
 void tokenize(String_Vector& tokens, const char *text, int sz);
+void parse_typedefs(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
