@@ -1012,7 +1012,7 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 
 	dropdown->pos = pos;
 	if (dropdown->dropped) {
-		Point p = view.to_screen(parent->box.x, parent->box.y);
+		Point p = view.to_screen(parent->box.x + pos.x, parent->box.y + pos.y);
 		dropdown->draw_menu(renderer, view, p.x, p.y + pos.h * view.scale);
 	}
 }
