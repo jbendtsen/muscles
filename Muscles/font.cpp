@@ -145,20 +145,31 @@ void Font_Render::draw_text(void *renderer, const char *text, float x, float y, 
 	bool clip_left = (clip.flags & CLIP_LEFT) != 0;
 	bool clip_right = (clip.flags & CLIP_RIGHT) != 0;
 
-	if (clip_right && x > clip.x_upper)
+	if ((clip_right && x > clip.x_upper) || (clip_bottom && y > clip.y_upper))
 		return;
 
 	float x_start = x;
 	Rect_Int src, dst;
 
+	bool draw = true;
+	int col = 0;
+	int offset = 0;
+	int len = strlen(text);
+
 	float height = text_height();
 	y += height;
 
-	bool draw = true;
-	int col = 0;
-	int len = strlen(text);
+	if (clip_top && y < clip.y_lower) {
+		for (offset = 0; offset < len && y < clip.y_lower; offset++) {
+			if (text[offset] == '\n')
+				y += height;
+		}
 
-	for (int i = 0; i < len; i++, col++) {
+		if (offset >= len)
+			return;
+	}
+
+	for (int i = offset; i < len; i++, col++) {
 		if (text[i] == '\t') {
 			int add = tab_cols - (col % tab_cols);
 			x += (float)add * glyph_for(' ')->box_w;
@@ -174,13 +185,8 @@ void Font_Render::draw_text(void *renderer, const char *text, float x, float y, 
 			continue;
 		}
 
-		if (!draw)
+		if (!draw || text[i] < MIN_CHAR || text[i] > MAX_CHAR)
 			continue;
-
-		if (text[i] < MIN_CHAR || text[i] > MAX_CHAR) {
-			col--;
-			continue;
-		}
 
 		Glyph *gl = &glyphs[text[i] - MIN_CHAR];
 		float advance = gl->box_w;
@@ -233,8 +239,6 @@ void Font_Render::draw_text(void *renderer, const char *text, float x, float y, 
 		dst.h = src.h;
 
 		sdl_apply_texture(tex, dst, &src, renderer);
-		//RGBA white = {1, 1, 1, 1};
-		//sdl_draw_rect(dst, white);
 
 		x += advance;
 		if (clip_right && x > clip.x_upper)
