@@ -15,7 +15,7 @@ void clear_word(char* word) {
 char *advance_word(char *p) {
 	do {
 		p += strlen(p) + 1;
-	} while (*p == 0xff);
+	} while (*(u8*)p == 0xff);
 	return p;
 }
 
@@ -137,8 +137,11 @@ void String_Vector::append_extra_zero() {
 }
 
 void *Arena::allocate(int size) {
-	if (size <= 0 || size > pool_size)
+	if (size <= 0)
 		return nullptr;
+
+	if (size > pool_size)
+		return add_big_pool(size);
 
 	if (idx + size > pool_size || pools.size() == 0)
 		add_pool();
@@ -162,6 +165,33 @@ char *Arena::alloc_string(char *str) {
 	}
 
 	return p;
+}
+
+void *Arena::store_buffer(void *buf, int size, u64 align) {
+	if (align < 1) align = 1;
+
+	void *ptr = nullptr;
+	int max_size = size + sizeof(int) + align - 1;
+
+	if (max_size > pool_size)
+		ptr = add_big_pool(max_size);
+	else {
+		if (idx + max_size > pool_size || pools.size() == 0)
+			add_pool();
+
+		ptr = &pools.back()[idx];
+		idx += max_size;
+	}
+
+	// We add sizeof(int) here so that we have room to store the size of the buffer (just before the actual buffer).
+	// The contents of the buffer are what should be aligned, not necessarily the size word that precedes it.
+	u64 addr = (u64)ptr + sizeof(int);
+	int diff = ((align - (int)(addr % (u64)align)) % align);
+	ptr = (void*)((char*)ptr + diff); // ptr += diff;
+
+	*(int*)ptr = size;
+	memcpy(&((int*)ptr)[1], buf, size); // memcpy(ptr + sizeof(int), buf, size);
+	return ptr;
 }
 
 void Arena::rewind() {

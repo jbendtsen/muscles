@@ -118,7 +118,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 
 	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
 
-	parse_typedefs(ws->definitions, ws->tokens);
+	parse_typedefs_and_enums(ws->definitions, ws->tokens);
 
 	char *tokens_alias = ws->tokens.pool;
 	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector, ws->definitions);
@@ -178,9 +178,7 @@ static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 		return;
 
 	auto ui = dynamic_cast<Edit_Structs*>(box);
-	ui->edit.editor.clear();
-	ui->edit.editor.text = (char*)buffer.second.get();
-	ui->edit.editor.measure_text();
+	ui->edit.editor.set_text_from_buffer(std::move(buffer));
 
 	Input blank = {};
 	structs_edit_handler(&ui->edit, blank);

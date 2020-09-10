@@ -115,7 +115,7 @@ static void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		ui->refresh(nullptr);
 
 		ui->scroll.position = 0;
-		ui->search.clear();
+		ui->search.editor.clear();
 		menu->data->clear_filter();
 		menu->needs_redraw = true;
 
@@ -149,7 +149,7 @@ void file_up_handler(UI_Element *elem, bool dbl_click) {
 	if (pos != std::string::npos) {
 		ui->path.placeholder.erase(pos + 1);
 		ui->scroll.position = 0;
-		ui->search.clear();
+		ui->search.editor.clear();
 		ui->menu.data->clear_filter();
 	}
 
@@ -193,10 +193,10 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 	str += sep;
 	edit->placeholder = str;
 	edit->parent->active_edit = nullptr;
-	edit->clear();
+	edit->editor.clear();
 
 	ui->scroll.position = 0;
-	ui->search.clear();
+	ui->search.editor.clear();
 	ui->menu.data->clear_filter();
 
 	ui->refresh(nullptr);

@@ -126,7 +126,7 @@ void sdl_acquire_mouse();
 void sdl_release_mouse();
 
 void sdl_copy(std::string& string);
-int sdl_paste_into(std::string& string, int offset, bool multiline);
+int sdl_paste_into(std::string& string, int offset, int (*filterer)(char*, int));
 
 void sdl_apply_texture(Texture tex, Rect_Int& dst, Rect_Int *src, Renderer rdr);
 void sdl_apply_texture(Texture tex, Rect& dst, Rect_Int *src, Renderer rdr);
@@ -171,6 +171,8 @@ char *advance_word(char *p);
 
 struct Arena {
 	std::vector<char*> pools;
+	std::vector<char*> big_pools;
+
 	int pool_size = 1024 * 1024;
 	int idx = 0;
 
@@ -187,15 +189,23 @@ struct Arena {
 		pools.push_back(new char[pool_size]);
 		idx = 0;
 	}
+	void *add_big_pool(int size) {
+		big_pools.push_back(new char[size]);
+		return (void*)big_pools.back();
+	}
 
 	Arena() = default;
 	~Arena() {
 		for (auto& p : pools)
 			delete[] p;
+		for (auto& p : big_pools)
+			delete[] p;
 	}
 
 	void *allocate(int size);
 	char *alloc_string(char *str);
+
+	void *store_buffer(void *buf, int size, u64 align = 4);
 
 	void rewind();
 };
@@ -621,15 +631,18 @@ void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& aren
 
 void close_source(Source& source);
 
-#define FLAG_POINTER     0x0001
-#define FLAG_BITFIELD    0x0002
-#define FLAG_UNNAMED     0x0004
-#define FLAG_COMPOSITE   0x0008
-#define FLAG_UNION       0x0010
-#define FLAG_SIGNED      0x0020
-#define FLAG_FLOAT       0x0040
-#define FLAG_BIG_ENDIAN  0x0080
-#define FLAG_PRIMITIVE   0x0100
+#define FLAG_POINTER       0x0001
+#define FLAG_BITFIELD      0x0002
+#define FLAG_UNNAMED       0x0004
+#define FLAG_COMPOSITE     0x0008
+#define FLAG_UNION         0x0010
+#define FLAG_SIGNED        0x0020
+#define FLAG_FLOAT         0x0040
+#define FLAG_BIG_ENDIAN    0x0080
+#define FLAG_PRIMITIVE     0x0100
+#define FLAG_ENUM          0x0200
+#define FLAG_ENUM_ELEMENT  0x0400
+#define FLAG_TYPEDEF       0x0800
 
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000
@@ -693,7 +706,7 @@ struct Struct {
 };
 
 void tokenize(String_Vector& tokens, const char *text, int sz);
-void parse_typedefs(Map& definitions, String_Vector& tokens);
+void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);

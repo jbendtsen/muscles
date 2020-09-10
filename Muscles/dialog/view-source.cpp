@@ -286,7 +286,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 	}
 
 	ui->hex.set_offset(address - base);
-	edit->clear();
+	edit->editor.clear();
 }
 
 void region_search_handler(Edit_Box *edit, Input& input) {

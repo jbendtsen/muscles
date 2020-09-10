@@ -70,6 +70,7 @@ struct Editor {
 
 	void clear();
 	void measure_text();
+	void set_text_from_buffer(std::pair<int, std::unique_ptr<u8[]>>&& buffer);
 
 	void erase(Cursor& cursor, bool is_back);
 	void set_cursor(Cursor& cursor, int cur);
@@ -362,8 +363,6 @@ struct Edit_Box : UI_Element {
 		CLIP_LEFT | CLIP_RIGHT,
 		0, 0, 0, 0
 	};
-
-	void clear();
 
 	void update_icon(IconType type, float height, float scale);
 

@@ -138,41 +138,116 @@ u64 evaluate_number(char *token) {
 	return strtoull(token, nullptr, 0);
 }
 
-void parse_typedefs(Map& definitions, String_Vector& tokens) {
+void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens) {
 	char *p = tokens.pool;
 	char *prev = nullptr;
 	char *next = nullptr;
+
+	Arena& arena = get_default_arena();
+
+	std::vector<int> cur_enum;
+	bool is_enum = false;
+	bool enum_mode = false;
+	bool td_enum = false;
+	bool inside_enum = false;
+	bool active_enum_elem = false;
+	bool start_enum_elem = false;
+	char *enum_name = nullptr;
+	s64 enum_value = 0;
 
 	std::string type = "";
 	bool td_mode = false;
 
 	while (*p) {
 		next = advance_word(p);
+		is_enum = strcmp(p, "enum") == 0;
+		bool was_typedef = prev && strcmp(prev, "typedef") == 0;
+		bool was_symbol = prev && is_symbol(*prev);
 
-		if (!td_mode && prev && !strcmp(prev, "typedef")) {
-			if (strcmp(p, "enum") && strcmp(p, "struct") && strcmp(p, "union")) {
+		if (!td_mode && was_typedef) {
+			if (!is_enum && strcmp(p, "struct") && strcmp(p, "union")) {
 				clear_word(prev);
 				td_mode = true;
 			}
 		}
 
-		bool end_expr = next[0] == ';';
-		if (td_mode) {
-			if (end_expr) {
-				Bucket& buck = definitions.insert(p);
-				buck.value = definitions.sv->add_buffer(type.c_str(), type.size());
-				buck.flags |= FLAG_EXTERNAL | FLAG_PRIMITIVE;
-				type = "";
-				td_mode = false;
-			}
-			else {
-				if (type.size())
-					type += " ";
+		if (is_enum) {
+			enum_mode = true;
+			td_enum = was_typedef;
 
-				type += p;
-			}
+			enum_name = td_enum ? nullptr : arena.alloc_string(next);
 
 			clear_word(p);
+			if (was_typedef)
+				clear_word(prev);
+		}
+		else {
+			bool end_expr = next[0] == ';';
+
+			if (enum_mode) {
+				if (is_symbol(*p)) {
+					if (*p == '{' && !inside_enum) {
+						inside_enum = true;
+						start_enum_elem = true;
+					}
+					if (*p == ',') {
+						start_enum_elem = true;
+					}
+					if (*p == '}') {
+						enum_mode = false;
+
+						if (inside_enum) {
+							char *name = td_enum ? next : enum_name;
+							Bucket& buck = definitions.insert(name);
+							buck.pointer = arena.store_buffer((void*)cur_enum.data(), cur_enum.size() * sizeof(int));
+							buck.flags |= FLAG_EXTERNAL | FLAG_ENUM;
+							if (td_enum)
+								buck.flags |= FLAG_TYPEDEF;
+
+							for (auto& e : cur_enum) {
+								Bucket& elem = definitions[definitions.sv->at(e)];
+								elem.parent_name_idx = buck.name_idx;
+							}
+						}
+
+						td_enum = false;
+						inside_enum = false;
+						active_enum_elem = false;
+						start_enum_elem = false;
+						enum_value = 0;
+					}
+				}
+				else {
+					if (start_enum_elem) {
+						Bucket& buck = definitions.insert(p);
+						buck.value = enum_value++;
+						buck.flags |= FLAG_ENUM_ELEMENT;
+
+						cur_enum.push_back(buck.name_idx);
+						start_enum_elem = false;
+					}
+				}
+
+				clear_word(p);
+			}
+
+			if (td_mode) {
+				if (end_expr) {
+					Bucket& buck = definitions.insert(p);
+					buck.value = definitions.sv->add_buffer(type.c_str(), type.size());
+					buck.flags |= FLAG_EXTERNAL | FLAG_PRIMITIVE;
+					type = "";
+					td_mode = false;
+				}
+				else {
+					if (type.size())
+						type += " ";
+
+					type += p;
+				}
+
+				clear_word(p);
+			}
 		}
 
 		prev = p;
@@ -354,6 +429,9 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 	std::string type;
 
 	char *t = *tokens;
+	if (*(u8*)t == 0xff)
+		t = advance_word(t);
+
 	char *prev = nullptr;
 
 	bool top_level = false;
@@ -366,6 +444,8 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 	Field *f = nullptr;
 	int field_flags = 0;
 
+	bool typedef_decl = false;
+	bool typedef_st = false;
 	bool was_symbol = false;
 	bool was_array_open = false;
 	bool was_zero_width = false;
@@ -379,6 +459,10 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 	while (*t) {
 		char *next = advance_word(t);
 		bool type_over = is_symbol(*next) && *next != '*';
+		if (strcmp(t, "typedef") == 0) {
+			typedef_decl = true;
+			typedef_st = true;
+		}
 
 		if (!f) {
 			f = &st->fields.add_blank();
@@ -387,25 +471,37 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		}
 
 		// Inline struct/union declaration
-		if (*t == '{' && type.size() > 0) {
-			char *name = named_field ? prev : nullptr;
+		if (*t == '{' && (type.size() > 0 || typedef_decl)) {
+			char *name = nullptr;
+			if (!typedef_decl && named_field)
+				name = prev;
+
 			if (!outside_struct) {
-				bool is_union = !strcmp(type.c_str(), "union");
+				bool is_union = false;
+				if (typedef_decl)
+					is_union = !strcmp(prev, "union");
+				else if (type.size() > 0)
+					is_union = !strcmp(type.c_str(), "union");
 
 				Struct *new_st = find_new_struct(structs);
 				new_st->flags |= is_union ? FLAG_UNION : 0;
-				new_st->name_idx = name_vector.add_string(name);
+
+				if (name)
+					new_st->name_idx = name_vector.add_string(name);
 
 				t = advance_word(t);
 				parse_c_struct(structs, &t, name_vector, definitions, new_st);
 
-				add_struct_instances(st, new_st, &t, name_vector);
-				next = advance_word(t);
+				if (!typedef_decl)
+					add_struct_instances(st, new_st, &t, name_vector);
 
+				next = advance_word(t);
 				f = &st->fields.back();
 			}
 			else {
-				st->name_idx = name_vector.add_string(name);
+				if (name)
+					st->name_idx = name_vector.add_string(name);
+
 				outside_struct = false;
 			}
 
@@ -495,6 +591,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			if (*t == ';') {
 				held_type = -1;
 				type = "";
+				typedef_decl = false;
 			}
 
 			was_symbol = *t != '*';
@@ -504,6 +601,11 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				held_type = -1;
 				type = "";
 				was_symbol = *t != '*';
+
+				if (*t == ';') {
+					typedef_st = false;
+					typedef_decl = false;
+				}
 			}
 			else {
 				if (held_type < 0) {
@@ -514,7 +616,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 						named_field = (definitions[t].flags & prim_mask) != prim_mask;
 
 						if (named_field)
-							named_field = strcmp(t, "struct") && strcmp(t, "union");
+							named_field = strcmp(t, "struct") != 0 && strcmp(t, "union") != 0;
 					}
 
 					// Ignore "const" when determining the field type
@@ -581,6 +683,11 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		t = next;
 
 		if (*prev == '}') {
+			if (typedef_st && !is_symbol(*t))
+				st->name_idx = name_vector.add_string(t);
+
+			typedef_st = false;
+
 			if (top_level) {
 				outside_struct = true;
 				finalize_struct(st, f, longest_field);

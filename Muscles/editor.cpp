@@ -1,6 +1,35 @@
 #include "muscles.h"
 #include "ui.h"
 
+int single_line_filterer(char *str, int len) {
+	char *in = str;
+	char *out = str;
+	for (int i = 0; i < len; i++) {
+		if (*in == '\n')
+			break;
+
+		if (*in != '\r')
+			*out++ = *in;
+		in++;
+	}
+
+	return out - str;
+}
+
+int multiline_ascii_filterer(char *str, int len) {
+	char *in = str;
+	char *out = str;
+
+	for (int i = 0; i < len; i++) {
+		if (*in == '\t' || *in == '\n' || (*in >= ' ' && *in <= '~'))
+			*out++ = *in;
+
+		in++;
+	}
+
+	return out - str;
+}
+
 void Editor::clear() {
 	text.clear();
 	set_cursor(primary, 0);
@@ -10,6 +39,20 @@ void Editor::clear() {
 	y_offset = 0;
 	lines = vis_lines = 0;
 	columns = vis_columns = 0;
+}
+
+void Editor::set_text_from_buffer(std::pair<int, std::unique_ptr<u8[]>>&& buffer) {
+	char *str = (char*)buffer.second.get();
+	int len = multiline_ascii_filterer(str, buffer.first);
+	text = std::string(str, len);
+
+	set_cursor(primary, 0);
+	set_cursor(secondary, 0);
+	selected = false;
+	x_offset = 0;
+	y_offset = 0;
+
+	measure_text();
 }
 
 void Editor::refresh(Render_Clip& clip, Font *font, float scroll_x, float scroll_y) {
@@ -460,7 +503,8 @@ int Editor::handle_input(Input& input) {
 	}
 
 	if (paste) {
-		int advance = sdl_paste_into(text, primary.cursor, multiline);
+		auto filterer = multiline ? multiline_ascii_filterer : single_line_filterer;
+		int advance = sdl_paste_into(text, primary.cursor, filterer);
 		set_cursor(primary, primary.cursor + advance);
 		update = true;
 	}

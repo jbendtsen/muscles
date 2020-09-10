@@ -855,12 +855,6 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	font->render.draw_text_simple(renderer, title, back.x + text_x, back.y + gap_y);
 }
 
-void Edit_Box::clear() {
-	editor.set_cursor(editor.primary, 0);
-	editor.text.clear();
-	//offset = 0;
-}
-
 bool Edit_Box::disengage(Input& input, bool try_select) {
 	float cancel_lclick = false;
 	if (dropdown) {
@@ -896,7 +890,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 		needs_redraw = true;
 
 	if (res & 8) {
-		clear();
+		editor.clear();
 		disengage(input, false);
 		parent->active_edit = nullptr;
 	}
