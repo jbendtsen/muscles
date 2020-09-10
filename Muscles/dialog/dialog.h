@@ -186,6 +186,8 @@ struct View_Definitions : Box {
 	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
+	void update_tables(Workspace *ws = nullptr);
+
 	Image cross;
 	Image maxm;
 	Label title;

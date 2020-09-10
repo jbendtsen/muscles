@@ -260,6 +260,7 @@ enum ColumnType {
 	ColumnCheckbox
 };
 
+// Column Type, Count Per Cell, Fractional Width, Minimum Heights, Maximum Heights, Name
 struct Column {
 	ColumnType type = ColumnNone;
 	int count_per_cell = 0;        // Number of elements (eg. chars or digits) to allocate or print per cell
@@ -501,6 +502,10 @@ struct Map {
 
 	Bucket& operator[](const char *str) {
 		return data[get(str, 0)];
+	}
+
+	int size() const {
+		return 1 << log2_slots;
 	}
 
 	int get(const char *str, int len = 0);

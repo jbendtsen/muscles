@@ -215,6 +215,7 @@ void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens) {
 						active_enum_elem = false;
 						start_enum_elem = false;
 						enum_value = 0;
+						cur_enum.clear();
 					}
 				}
 				else {

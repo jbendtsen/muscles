@@ -123,6 +123,10 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	char *tokens_alias = ws->tokens.pool;
 	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector, ws->definitions);
 
+	auto view_defs = dynamic_cast<View_Definitions*>(ws->first_box_of_type(BoxDefinitions));
+	if (view_defs)
+		view_defs->update_tables();
+
 	for (auto& s : ws->structs) {
 		char *name = ws->name_vector.at(s->name_idx);
 		if (name)
