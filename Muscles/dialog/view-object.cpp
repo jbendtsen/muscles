@@ -435,7 +435,10 @@ View_Object::View_Object(Workspace& ws) {
 	refresh_every = 1;
 	back = ws.back_color;
 	edge_color = ws.dark_color;
-	box = {-200, -225, 400, 450};
+
+	initial_width = 400;
+	initial_height = 450;
+
 	min_width = 300;
 	min_height = 200;
 	expungable = true;

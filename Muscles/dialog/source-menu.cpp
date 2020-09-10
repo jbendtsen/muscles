@@ -309,20 +309,19 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		title.text = "Open Process";
 		menu.action = process_menu_handler;
 
-		box = { -100, -100, 300, 200 };
-
 		Column col[] = {
 			{ColumnImage, 0, 0.1, 0, 1.5, ""},
 			{ColumnDec, 0, 0.2, 0, 3, ""},
 			{ColumnString, 64, 0.7, 0, 0, ""}
 		};
 		menu.data->init(col, nullptr, 3, 0);
+
+		initial_width = 300;
+		initial_height = 200;
 	}
 	else {
 		title.text = "Open File";
 		menu.action = file_menu_handler;
-
-		box = { -150, -150, 400, 300 };
 
 		Column col[] = {
 			{ColumnImage, 0, 0.1, 0, 1.5, ""},
@@ -372,6 +371,9 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		ui.push_back(&up);
 		ui.push_back(&div);
 		ui.push_back(&path);
+
+		initial_width = 400;
+		initial_height = 300;
 	}
 
 	back = ws.back_color;

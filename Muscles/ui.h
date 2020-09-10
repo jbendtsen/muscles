@@ -637,6 +637,9 @@ struct Box {
 	float min_width = 300;
 	float min_height = 200;
 
+	float initial_width = 450;
+	float initial_height = 300;
+
 	void draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hovered, bool focussed);
 	void require_redraw();
 

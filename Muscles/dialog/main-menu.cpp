@@ -290,7 +290,8 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	ui.push_back(&button);
 
 	refresh_every = 1;
-	box = { -200, -100, 400, 200 };
+	initial_width = 400;
+	initial_height = 200;
 	back = ws.back_color;
 	edge_color = ws.dark_color;
 }
@@ -346,6 +347,7 @@ Opening_Menu::Opening_Menu(Workspace& ws) {
 	ui.push_back(&menu);
 
 	back = ws.back_color;
-	box = {-80, -50, 160, 100};
+	initial_width = 160;
+	initial_height = 100;
 	visible = true;
 }

@@ -520,7 +520,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	refresh_every = 1;
 	back = ws.back_color;
 	edge_color = ws.dark_color;
-	box = {-300, -200, 600, 400};
+	initial_width = 600;
+	initial_height = 400;
 	min_width = 400;
 	min_height = 300;
 	expungable = true;

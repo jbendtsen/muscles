@@ -66,10 +66,10 @@ void Edit_Structs::update_ui(Camera& view) {
 		};
 
 		end_x = div.pos.x - pad;
-		min_width = div.position + box.w - div.maximum;
+		flex_min_width = div.position + box.w - div.maximum;
 	}
 	else
-		min_width = min_width;
+		flex_min_width = min_width;
 
 	edit.pos = {
 		border,
@@ -211,12 +211,12 @@ void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	ui->out_vscroll.visible = cb->checked;
 
 	if (cb->checked)
-		ui->min_width = ui->div.minimum * 2;
+		ui->flex_min_width = ui->div.minimum * 2;
 	else
-		ui->min_width = ui->min_width;
+		ui->flex_min_width = ui->min_width;
 
-	if (ui->box.w < ui->min_width)
-		ui->box.w = ui->min_width;
+	if (ui->box.w < ui->flex_min_width)
+		ui->box.w = ui->flex_min_width;
 
 	ui->update_ui(get_default_camera());
 }
@@ -355,7 +355,8 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	//refresh_every = 1;
 	back = ws.back_color;
 	edge_color = ws.dark_color;
-	box = {-200, -225, 400, 450};
-	min_width = min_width;
+	initial_width = 400;
+	initial_height = 450;
+	min_width = flex_min_width;
 	min_height = 200;
 }

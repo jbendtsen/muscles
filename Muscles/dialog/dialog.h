@@ -131,7 +131,7 @@ struct Edit_Structs : Box {
 	Arena arena;
 	Table table;
 
-	float min_width = 200;
+	float flex_min_width = 200;
 };
 
 struct View_Object : Box {

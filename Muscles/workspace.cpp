@@ -114,8 +114,15 @@ Box *Workspace::make_box(BoxType btype, MenuType mtype) {
 		box = b;
 	}
 
-	if (box)
+	if (box) {
+		Camera& view = get_default_camera();
+		float x = view.center_x - box->initial_width * view.scale / 2;
+		float y = view.center_y - box->initial_height * view.scale / 2;
+		Point p = view.to_world(x, y);
+
+		box->box = { p.x, p.y, box->initial_width, box->initial_height };
 		box->wake_up();
+	}
 
 	return box;
 }

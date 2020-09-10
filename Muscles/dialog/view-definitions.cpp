@@ -115,5 +115,7 @@ View_Definitions::View_Definitions(Workspace& ws) {
 
 	back = ws.back_color;
 	edge_color = ws.dark_color;
-	box = {-200, -225, 400, 450};
+
+	initial_width = 400;
+	initial_height = 450;
 }
