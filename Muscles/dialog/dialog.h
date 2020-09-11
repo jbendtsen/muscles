@@ -168,6 +168,7 @@ struct View_Object : Box {
 	Button::Theme theme_off = {};
 
 	Table table;
+	Map fields;
 
 	Struct *record = nullptr;
 	Source *source = nullptr;

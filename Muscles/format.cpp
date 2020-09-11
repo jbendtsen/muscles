@@ -74,3 +74,41 @@ char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field) {
 
 	return name;
 }
+
+void format_field_value(Field& field, Span& span, char*& cell) {
+	if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
+		return;
+
+	int offset = (field.bit_offset + 7) / 8;
+	if (offset >= span.retrieved) {
+		strcpy(cell, "???");
+		return;
+	}
+
+	if (field.array_len == 0 && field.bit_size <= 64) {
+		u64 n = 0;
+		bool byte_aligned = (field.bit_offset % 8 == 0) && (field.bit_size % 8 == 0);
+		if (byte_aligned) {
+			int bytes = field.bit_size / 8;
+			if (field.flags & FLAG_BIG_ENDIAN) {
+				for (int i = 0; i < bytes; i++)
+					n = (n << 8) | span.data[offset + i];
+			}
+			else
+				memcpy(&n, &span.data[offset], bytes);
+		}
+		else { // Endian-ness is ignored when reading bit fields (ie. bit fields are big-endian only)
+			int off = field.bit_offset;
+			int out_pos = field.bit_size - 1;
+			for (int j = 0; j < field.bit_size; j++, off++, out_pos--) {
+				u8 byte = span.data[off / 8];
+				int bit = 7 - (off % 8);
+				n |= (u64)((byte >> bit) & 1) << out_pos;
+			}
+		}
+
+		strcpy(cell, "0x");
+		int digits = count_hex_digits(n);
+		write_hex(&cell[2], n, digits);
+	}
+}

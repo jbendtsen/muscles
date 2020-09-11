@@ -194,7 +194,6 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 
 void View_Object::refresh(Point *cursor) {
 	Workspace *ws = parent;
-	//Box *structs_box = ws->first_box_of_type(BoxStructs);
 
 	int n_sources = ws->sources.size();
 	source_dd.content.resize(n_sources);
@@ -210,49 +209,19 @@ void View_Object::refresh(Point *cursor) {
 	span.address = strtoull(addr_edit.editor.text.c_str(), nullptr, 16);
 	span.size = (record->total_size + 7) / 8;
 
-	int idx = 0;
+	int idx = -1;
 	for (auto& row : view.data->columns[1]) {
-		auto name = (const char*)row;
-		if (!name) {
-			idx++;
-			continue;
-		}
-
-		for (int i = 0; i < record->fields.n_fields; i++) {
-			Field& field = record->fields.data[i];
-			char *field_name = ws->name_vector.at(field.field_name_idx);
-
-			if (!field_name || strcmp(field_name, name))
-				continue;
-
-			if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
-				break;
-
-			auto& cell = (char*&)view.data->columns[2][idx];
-
-			int offset = (field.bit_offset + 7) / 8;
-			if (offset >= span.retrieved) {
-				strcpy(cell, "???");
-				break;
-			}
-
-			u64 n = 0;
-			int off = field.bit_offset;
-			int out_pos = field.bit_size - 1;
-			for (int j = 0; j < field.bit_size; j++, off++, out_pos--) {
-				u8 byte = span.data[off / 8];
-				int bit = 7 - (off % 8);
-				n |= (u64)((byte >> bit) & 1) << out_pos;
-			}
-
-			strcpy(cell, "0x");
-
-			int digits = count_hex_digits(n);
-			write_hex(&cell[2], n, digits);
-
-			break;
-		}
 		idx++;
+		auto name = (const char*)row;
+		if (!name)
+			continue;
+
+		Bucket& buck = fields[name];
+		if ((buck.flags & FLAG_OCCUPIED) == 0)
+			continue;
+
+		Field *field = (Field*)buck.pointer;
+		format_field_value(*field, span, (char*&)view.data->columns[2][idx]);
 	}
 }
 
@@ -473,9 +442,18 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, Strin
 	int n_rows = ui->record->fields.n_fields;
 	ui->view.data->resize(n_rows);
 
+	ui->fields.release();
+
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view.data, 0, i, false);
-		ui->view.data->columns[1][i] = (void*)name_vector.at(ui->record->fields.data[i].field_name_idx);
+
+		Field& f = ui->record->fields.data[i];
+		char *name = name_vector.at(f.field_name_idx);
+		ui->view.data->columns[1][i] = name;
+
+		Bucket& buck = ui->fields.insert(name);
+		buck.flags |= f.flags;
+		buck.pointer = &f;
 	}
 
 	ui->view.needs_redraw = true;
