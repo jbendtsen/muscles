@@ -3,6 +3,7 @@
 #include "dialog.h"
 
 #include <algorithm>
+#include <numeric>
 
 void View_Definitions::update_ui(Camera& camera) {
 	reposition_box_buttons(cross, maxm, box.w, cross_size);
@@ -41,7 +42,7 @@ void View_Definitions::update_tables(Workspace *ws) {
 	enums.clear_data();
 
 	auto& types_vec = (std::vector<s64>&)types.columns[0];
-	auto& enums_vec = (std::vector<s64>&)enums.columns[0];
+	std::vector<s64> enum_name_idxs;
 
 	if (!ws) ws = parent;
 	auto& defs = ws->definitions;
@@ -53,10 +54,11 @@ void View_Definitions::update_tables(Workspace *ws) {
 			continue;
 
 		int name_idx = defs.data[i].name_idx;
+		char *name = defs.sv->at(name_idx);
 		if (flags & FLAG_PRIMITIVE)
 			types_vec.push_back(name_idx);
 		else if (flags & FLAG_ENUM)
-			enums_vec.push_back(name_idx);
+			enum_name_idxs.push_back(name_idx);
 	}
 
 	String_Vector *sv = defs.sv;
@@ -65,20 +67,20 @@ void View_Definitions::update_tables(Workspace *ws) {
 	};
 
 	std::sort(types_vec.begin(), types_vec.end(), sort_names);
-	std::sort(enums_vec.begin(), enums_vec.end(), sort_names);
+	std::sort(enum_name_idxs.begin(), enum_name_idxs.end(), sort_names);
 
 	int n_types = types_vec.size();
 	types.resize(n_types);
 
 	for (int i = 0; i < n_types; i++) {
-		char *name = sv->at(types_vec[i]);
+		char *name = defs.sv->at(types_vec[i]);
 		types.columns[0][i] = (void*)name;
 
 		Bucket& buck = defs[name];
 		if (buck.flags & FLAG_EXTERNAL) {
 			const u32 mask = FLAG_OCCUPIED | FLAG_EXTERNAL | FLAG_PRIMITIVE;
 			while ((buck.flags & mask) == mask)
-				buck = defs[sv->at(buck.value)];
+				buck = defs[defs.sv->at(buck.value)];
 
 			if ((buck.flags & (FLAG_EXTERNAL | FLAG_PRIMITIVE)) != FLAG_PRIMITIVE)
 				continue;
@@ -92,14 +94,44 @@ void View_Definitions::update_tables(Workspace *ws) {
 		SET_TABLE_CHECKBOX((&types), 4, i, buck.flags & FLAG_SIGNED);
 	}
 
-	int n_enums = enums_vec.size();
-	enums.resize(n_enums);
+	enums.branches.clear();
+	enums.branch_name_vector.head = 0;
 
+	int n_elems = 0;
+	int n_enums = enum_name_idxs.size();
 	for (int i = 0; i < n_enums; i++) {
-		char *name = sv->at(types_vec[i]);
-		types.columns[0][i] = (void*)name;
-		types.columns[1][i] = (void*)defs[name].value;
+		char *name = defs.sv->at(enum_name_idxs[i]);
+		if (!name)
+			continue;
+
+		Bucket& buck = defs[name];
+		const u32 mask = FLAG_OCCUPIED | FLAG_ENUM;
+		if ((buck.flags & mask) != mask || !buck.pointer)
+			continue;
+
+		int *data = (int*)buck.pointer;
+		int size = *data++ / sizeof(int);
+		enums.resize(enums.row_count() + size);
+
+		int name_idx = enums.branch_name_vector.add_string(name);
+		enums.branches.push_back({
+			n_elems,
+			size,
+			name_idx,
+			false
+		});
+
+		for (int j = 0; j < size; j++) {
+			char *elem = defs.sv->at(data[j]);
+			if (elem) {
+				enums.columns[0][n_elems] = elem;
+				enums.columns[1][n_elems] = (void*)defs[elem].value;
+			}
+			n_elems++;
+		}
 	}
+
+	enums.update_tree();
 
 	require_redraw();
 }
@@ -107,6 +139,14 @@ void View_Definitions::update_tables(Workspace *ws) {
 void View_Definitions::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
 	maxm.img = ws.maxm;
+
+	sdl_destroy_texture(&view.icon_plus);
+	sdl_destroy_texture(&view.icon_minus);
+
+	int len = view.font->render.text_height() + 0.5;
+	RGBA color = {1, 1, 1, 0.8};
+	view.icon_plus = make_plus_minus_icon(color, len, true);
+	view.icon_minus = make_plus_minus_icon(color, len, false);
 }
 
 View_Definitions::View_Definitions(Workspace& ws) {

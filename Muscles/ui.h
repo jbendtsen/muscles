@@ -212,15 +212,6 @@ struct Data_View : UI_Element {
 	Table *data = nullptr;
 	std::vector<Table*> *tables = nullptr;
 
-	struct Branch {
-		int row_idx;
-		int length;
-		int name_idx;
-		bool closed;
-	};
-	String_Vector branch_name_vector;
-	std::vector<Branch> branches;
-	std::vector<int> tree;
 	Texture icon_plus = nullptr;
 	Texture icon_minus = nullptr;
 
@@ -244,9 +235,6 @@ struct Data_View : UI_Element {
 		CLIP_LEFT | CLIP_RIGHT | CLIP_BOTTOM,
 		0, 0, 0, 0
 	};
-
-	void update_tree(std::vector<Branch> *new_branches = nullptr);
-	int get_table_index(int view_idx);
 
 	float column_width(float total_width, float min_width, float font_height, float scale, int idx);
 	void draw_item_backing(Renderer renderer, RGBA& color, Rect_Int& back, float scale, int idx);
@@ -721,8 +709,10 @@ struct Workspace {
 	Box *first_box_of_type(BoxType type);
 	Font *make_font(float size, RGBA& color, float scale);
 
-	void adjust_scale(float old_scale, float new_scale);
 	void refresh_sources();
+	void reset_primitives();
+
+	void adjust_scale(float old_scale, float new_scale);
 	void update(Camera& view, Input& input, Point& cursor);
 };
 

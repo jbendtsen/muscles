@@ -328,6 +328,50 @@ void Table::update_filter(std::string& filter) {
 	}
 }
 
+void Table::update_tree(std::vector<Branch> *new_branches) {
+	if (new_branches) {
+		branches.resize(new_branches->size());
+		std::copy(new_branches->begin(), new_branches->end(), branches.begin());
+	}
+
+	int n_rows = row_count();
+	int n_branches = branches.size();
+	tree.clear();
+	tree.reserve(n_rows);
+
+	int b = 0;
+	for (int i = 0; i < n_rows; i++) {
+		if (b < n_branches && branches[b].row_idx == i) {
+			if (branches[b].closed)
+				i = branches[b].row_idx + branches[b].length;
+
+			tree.push_back(-b - 1);
+			b++;
+			i--;
+			continue;
+		}
+
+		tree.push_back(i);
+	}
+}
+
+int Table::get_table_index(int view_idx) {
+	if (view_idx < 0)
+		return view_idx;
+
+	int idx = -1;
+	int tree_size = tree.size();
+
+	if (tree_size > 0) {
+		if (view_idx < tree_size)
+			idx = tree[view_idx];
+	}
+	else if (view_idx < row_count())
+		idx = view_idx;
+
+	return idx;
+}
+
 void Table::release() {
 	int n_cols = column_count();
 	for (int i = 0; i < n_cols; i++) {

@@ -270,12 +270,25 @@ struct Column {
 	const char *name;              // Used as the column header text
 };
 
+
+// row_idx, length, name_idx, closed
+struct Branch {
+	int row_idx;
+	int length;
+	int name_idx;
+	bool closed;
+};
+
 struct Table {
 	Arena *arena = nullptr;
 	std::vector<Column> headers;
 	std::unique_ptr<std::vector<void*>[]> columns;
 	std::set<int> list;
 	int filtered = -1;
+
+	String_Vector branch_name_vector;
+	std::vector<Branch> branches;
+	std::vector<int> tree;
 
 	Table();
 	Table(const Table& t);
@@ -302,6 +315,9 @@ struct Table {
 	void clear_filter();
 	void clear_data();
 	void update_filter(std::string& line);
+
+	void update_tree(std::vector<Branch> *new_branches = nullptr);
+	int get_table_index(int view_idx);
 
 	void release();
 };
@@ -514,6 +530,7 @@ struct Map {
 
 	void erase_all_of_type(u32 flags);
 	void erase_all_of_exact_type(u32 flags);
+	void erase_all_similar_to(u32 flags);
 
 	void next_level();
 	void next_level_maybe();

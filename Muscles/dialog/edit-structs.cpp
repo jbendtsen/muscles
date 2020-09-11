@@ -113,7 +113,8 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 			s->fields.zero_out();
 		}
 
-		ws->definitions.erase_all_of_type(FLAG_EXTERNAL | FLAG_PRIMITIVE);
+		ws->definitions.erase_all_similar_to(FLAG_PRIMITIVE | FLAG_ENUM | FLAG_ENUM_ELEMENT);
+		ws->reset_primitives();
 	}
 
 	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
@@ -142,11 +143,11 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	for (auto& s : ws->structs)
 		n_rows += s->fields.n_fields;
 
-	ui->output.branches.clear();
-	ui->output.branch_name_vector.head = 0;
+	ui->table.branches.clear();
+	ui->table.branch_name_vector.head = 0;
 
-	ui->output.data->resize(n_rows);
-	ui->output.data->arena->rewind();
+	ui->table.resize(n_rows);
+	ui->table.arena->rewind();
 
 	int idx = 0;
 	for (auto& s : ws->structs) {
@@ -156,23 +157,23 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 		int name_idx = -1;
 		if (s->name_idx >= 0) {
 			char *str = ws->name_vector.at(s->name_idx);
-			name_idx = ui->output.branch_name_vector.add_string(str);
+			name_idx = ui->table.branch_name_vector.add_string(str);
 
-			ui->output.branches.push_back({
+			ui->table.branches.push_back({
 				idx, s->fields.n_fields, name_idx, false
 			});
 		}
 
 		for (int i = 0; i < s->fields.n_fields; i++, idx++) {
 			auto& f = s->fields.data[i];
-			auto& cols = ui->output.data->columns;
+			auto& cols = ui->table.columns;
 
-			cols[0][idx] = format_field_name(*ui->output.data->arena, ws->name_vector, f);
-			cols[1][idx] = format_type_name(*ui->output.data->arena, ws->name_vector, f);
+			cols[0][idx] = format_field_name(*ui->table.arena, ws->name_vector, f);
+			cols[1][idx] = format_type_name(*ui->table.arena, ws->name_vector, f);
 		}
 	}
 
-	ui->output.update_tree();
+	ui->table.update_tree();
 	ui->output.needs_redraw = true;
 }
 

@@ -258,50 +258,6 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 	font->render.draw_text_simple(renderer, text.c_str(), text_x, text_y);
 }
 
-void Data_View::update_tree(std::vector<Branch> *new_branches) {
-	if (new_branches) {
-		branches.resize(new_branches->size());
-		std::copy(new_branches->begin(), new_branches->end(), branches.begin());
-	}
-
-	int n_rows = data->row_count();
-	int n_branches = branches.size();
-	tree.clear();
-	tree.reserve(n_rows);
-
-	int b = 0;
-	for (int i = 0; i < n_rows; i++) {
-		if (b < n_branches && branches[b].row_idx == i) {
-			if (branches[b].closed)
-				i = branches[b].row_idx + branches[b].length;
-
-			tree.push_back(-b - 1);
-			b++;
-			i--;
-			continue;
-		}
-
-		tree.push_back(i);
-	}
-}
-
-int Data_View::get_table_index(int view_idx) {
-	if (view_idx < 0)
-		return view_idx;
-
-	int idx = -1;
-	int tree_size = tree.size();
-
-	if (tree_size > 0) {
-		if (view_idx < tree_size)
-			idx = tree[view_idx];
-	}
-	else if (view_idx < data->row_count())
-		idx = view_idx;
-
-	return idx;
-}
-
 bool Data_View::highlight(Camera& view, Point& inside) {
 	if (!font || !data) {
 		hl_row = hl_col = -1;
@@ -319,7 +275,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
 
-	int n_rows = tree.size() > 0 ? tree.size() : data->row_count();
+	int n_rows = data->tree.size() > 0 ? data->tree.size() : data->row_count();
 	n_rows = data->filtered >= 0 ? data->filtered : n_rows;
 	int n_cols = data->column_count();
 
@@ -409,7 +365,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 	int n_rows = data->row_count();
 	int n_cols = data->column_count();
-	int tree_size = tree.size();
+	int tree_size = data->tree.size();
 
 	float font_height = (float)font->render.text_height();
 	float font_units = font_height / view.scale;
@@ -518,15 +474,15 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 				write_hex(buf, (u64)cell, header.count_per_cell);
 				str = buf;
 			}
-			else if (type == ColumnFile)
+			else if (type == ColumnFile && cell)
 				str = ((File_Entry*)cell)->name;
-			else if (type == ColumnStdString)
+			else if (type == ColumnStdString && cell)
 				str = (char*)((std::string*)cell)->c_str();
 
 			if (str)
 				font->render.draw_text(renderer, (const char*)str, x, y - line_off, clip);
 		}
-		else if (type == ColumnImage) {
+		else if (type == ColumnImage && cell) {
 			sdl_get_texture_size(cell, &src.w, &src.h);
 			dst.x = x;
 			dst.y = y + sp_half;
@@ -593,7 +549,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 				}
 
 				auto thing = data->columns[i][idx];
-				if (thing && !skip_draw)
+				if (!skip_draw)
 					draw_cell(thing, data->headers[i], x, y);
 
 				y += line_h;
@@ -605,21 +561,21 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 				if (tree_size) {
 					if (j >= tree_size)
 						break;
-					idx = tree[j];
+					idx = data->tree[j];
 				}
 				else if (j >= n_rows)
 					break;
 
 				if (idx < 0 && i == 0) {
 					int branch = -idx - 1;
-					Texture icon = branches[branch].closed ? icon_plus : icon_minus;
+					Texture icon = data->branches[branch].closed ? icon_plus : icon_minus;
 					Column temp;
 					temp.type = ColumnImage;
 					draw_cell(icon, temp, x, y + font_height * 0.025);
 
-					int name_idx = branches[branch].name_idx;
+					int name_idx = data->branches[branch].name_idx;
 					if (name_idx >= 0)
-						font->render.draw_text(renderer, branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
+						font->render.draw_text(renderer, data->branch_name_vector.at(name_idx), x + font_height * 1.2, y - line_off, clip);
 				}
 				else if (idx >= 0) {
 					bool skip_draw = false;
@@ -631,7 +587,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 					}
 
 					auto thing = data->columns[i][idx];
-					if (thing && !skip_draw)
+					if (!skip_draw)
 						draw_cell(thing, data->headers[i], x, y);
 				}
 
@@ -645,17 +601,17 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 }
 
 void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (!hovered || !input.lclick)
+	if (!hovered || !input.lclick || !data)
 		return;
 
-	int row = get_table_index(hl_row);
+	int row = data->get_table_index(hl_row);
 	if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
 		TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
 	}
-	else if (hl_row >= 0 && row < 0 && tree.size() > 0) {
+	else if (hl_row >= 0 && row < 0 && data->tree.size() > 0) {
 		int b = -row - 1;
-		branches[b].closed = !branches[b].closed;
-		update_tree();
+		data->branches[b].closed = !data->branches[b].closed;
+		data->update_tree();
 	}
 	needs_redraw = true;
 }

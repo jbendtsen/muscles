@@ -7,7 +7,7 @@ u32 murmur3_32(const char* key, int len, u32 seed) {
 	u32 c2 = 0x1b873593;
 	u32 h = seed;
 	const u32 *p = (const u32*)key;
-	const u8 *tail = (const u8*)&p[(len & ~3)];
+	const u8 *tail = (const u8*)&p[len / sizeof(u32)];
 
 	for (int i = 0; i < (len & ~3); i += sizeof(u32)) {
 		u32 k = *p++;
@@ -186,6 +186,17 @@ void Map::erase_all_of_exact_type(u32 flags) {
 	int size = 1 << log2_slots;
 	for (int i = 0; i < size; i++) {
 		if (data[i].flags == flags) {
+			if (data[i].flags & FLAG_OCCUPIED)
+				n_entries--;
+
+			data[i] = {0};
+		}
+	}
+}
+void Map::erase_all_similar_to(u32 flags) {
+	int size = 1 << log2_slots;
+	for (int i = 0; i < size; i++) {
+		if (data[i].flags & flags) {
 			if (data[i].flags & FLAG_OCCUPIED)
 				n_entries--;
 

@@ -15,25 +15,7 @@ Workspace::Workspace(Font_Face face) {
 	inactive_font = new Font(face, 12, inactive_text_color, dpi_w, dpi_h);
 	fonts.push_back(inactive_font);
 
-	u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
-	auto set = [flags](Bucket& buck, u32 type, u64 value) {
-		buck.flags |= flags | type;
-		buck.value = value;
-	};
-
-	set(definitions.insert("char"), FLAG_SIGNED, 8);
-	set(definitions.insert("int8_t"), FLAG_SIGNED, 8);
-	set(definitions.insert("uint8_t"), 0, 8);
-	set(definitions.insert("short"), FLAG_SIGNED, 16);
-	set(definitions.insert("int16_t"), FLAG_SIGNED, 16);
-	set(definitions.insert("uint16_t"), 0, 16);
-	set(definitions.insert("int"), FLAG_SIGNED, 32);
-	set(definitions.insert("int32_t"), FLAG_SIGNED, 32);
-	set(definitions.insert("uint32_t"), 0, 32);
-	set(definitions.insert("long"), FLAG_SIGNED, 32);
-	set(definitions.insert("s64"), FLAG_SIGNED, 64);
-	set(definitions.insert("float"), FLAG_FLOAT, 32);
-	set(definitions.insert("double"), FLAG_FLOAT, 64);
+	reset_primitives();
 
 	make_box(BoxOpening);
 }
@@ -242,6 +224,28 @@ void Workspace::refresh_sources() {
 		}
 		s->timer++;
 	}
+}
+
+void Workspace::reset_primitives() {
+	u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+	auto set = [flags](Bucket& buck, u32 type, u64 value) {
+		buck.flags |= flags | type;
+		buck.value = value;
+	};
+
+	set(definitions.insert("char"), FLAG_SIGNED, 8);
+	set(definitions.insert("int8_t"), FLAG_SIGNED, 8);
+	set(definitions.insert("uint8_t"), 0, 8);
+	set(definitions.insert("short"), FLAG_SIGNED, 16);
+	set(definitions.insert("int16_t"), FLAG_SIGNED, 16);
+	set(definitions.insert("uint16_t"), 0, 16);
+	set(definitions.insert("int"), FLAG_SIGNED, 32);
+	set(definitions.insert("int32_t"), FLAG_SIGNED, 32);
+	set(definitions.insert("uint32_t"), 0, 32);
+	set(definitions.insert("long"), FLAG_SIGNED, 32);
+	set(definitions.insert("long long"), FLAG_SIGNED, 64);
+	set(definitions.insert("float"), FLAG_FLOAT, 32);
+	set(definitions.insert("double"), FLAG_FLOAT, 64);
 }
 
 void Workspace::update(Camera& view, Input& input, Point& cursor) {
