@@ -15,6 +15,17 @@ Workspace::Workspace(Font_Face face) {
 	inactive_font = new Font(face, 12, inactive_text_color, dpi_w, dpi_h);
 	fonts.push_back(inactive_font);
 
+	// Fonts that are added to the 'fonts' vector are resized upon zooming in/out.
+	// This is why we create separate fonts for 'rclick_menu', even though they use the same parameters.
+	rclick_menu.font = new Font(face, 12, text_color, dpi_w, dpi_h);
+	rclick_menu.inactive_font = new Font(face, 12, inactive_text_color, dpi_w, dpi_h);
+
+	Menu_Item test_item = {0, (char*)"Item A", nullptr};
+	default_rclick_menu.push_back(test_item);
+
+	test_item.name = (char*)"Item B";
+	default_rclick_menu.push_back(test_item);
+
 	reset_primitives();
 
 	make_box(BoxOpening);
@@ -32,6 +43,9 @@ Workspace::~Workspace() {
 
 	for (auto& f : fonts)
 		delete f;
+
+	delete rclick_menu.font;
+	delete rclick_menu.inactive_font;
 
 	for (auto& s : sources) {
 		close_source(*s);
@@ -206,26 +220,6 @@ Box *Workspace::first_box_of_type(BoxType type) {
 	return nullptr;
 }
 
-void Workspace::refresh_sources() {
-	Arena* arena = &get_default_arena();
-	auto& sources = (std::vector<Source*>&)this->sources;
-	for (auto& s : sources) {
-		s->region_refreshed = false;
-		if (!s->block_region_refresh && s->timer % s->refresh_region_rate == 0) {
-			if (s->type == SourceFile)
-				refresh_file_region(*s, *arena);
-			else if (s->type == SourceProcess)
-				refresh_process_regions(*s, *arena);
-
-			s->region_refreshed = true;
-		}
-		if (s->timer % s->refresh_span_rate == 0) {
-			s->gather_data(*arena);
-		}
-		s->timer++;
-	}
-}
-
 void Workspace::reset_primitives() {
 	u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
 	auto set = [flags](Bucket& buck, u32 type, u64 value) {
@@ -248,19 +242,92 @@ void Workspace::reset_primitives() {
 	set(definitions.insert("double"), FLAG_FLOAT, 64);
 }
 
+void Workspace::refresh_sources() {
+	Arena* arena = &get_default_arena();
+	auto& sources = (std::vector<Source*>&)this->sources;
+	for (auto& s : sources) {
+		s->region_refreshed = false;
+		if (!s->block_region_refresh && s->timer % s->refresh_region_rate == 0) {
+			if (s->type == SourceFile)
+				refresh_file_region(*s, *arena);
+			else if (s->type == SourceProcess)
+				refresh_process_regions(*s, *arena);
+
+			s->region_refreshed = true;
+		}
+		if (s->timer % s->refresh_span_rate == 0) {
+			s->gather_data(*arena);
+		}
+		s->timer++;
+	}
+}
+
+void Workspace::prepare_rclick_menu(Camera& view, Point& cursor) {
+	return;
+}
+
+void reposition_rclick_menu(Context_Menu& menu, Camera& view, int x, int y) {
+	auto& items = *menu.list;
+	int n_visible = 0;
+	int width = 0;
+
+	for (auto& it : items) {
+		if (it.flags & FLAG_INVISIBLE)
+			continue;
+
+		n_visible++;
+		int w = menu.font->render.text_width(it.name);
+		if (w > width)
+			width = w;
+	}
+
+	menu.rect = {
+		x,
+		y,
+		width + 50,
+		n_visible * menu.get_item_height()
+	};
+
+	int sc_w = view.center_x * 2;
+	int sc_h = view.center_y * 2;
+	if (menu.rect.x + menu.rect.w >= sc_w)
+		menu.rect.x -= menu.rect.w;
+	if (menu.rect.y + menu.rect.h >= sc_h)
+		menu.rect.y -= menu.rect.h;
+}
+
 void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	Point inside = {0};
 	Box *hover = box_under_cursor(view, cursor, inside);
 
 	// There are three main ways for a box to be distinguished a any time: if it's hovered, focussed or held with the mouse.
-	if (hover && (input.lclick || input.rclick) && !view.moving) {
-		sdl_acquire_mouse();
+	if (!view.moving) {
+		if (hover && (input.lclick || input.rclick)) {
+			sdl_acquire_mouse();
 
-		// This function makes it so the given box is the last to be rendered, making it the box at the front.
-		// The box at the front is the focussed box.
-		bring_to_front(hover);
-		if (!input.rclick)
-			selected = hover;
+			// This function makes it so the given box is the last to be rendered, making it the box at the front.
+			// The box at the front is the focussed box.
+			bring_to_front(hover);
+			if (!input.rclick)
+				selected = hover;
+		}
+
+		if (input.rclick) {
+			show_rclick_menu = true;
+			Point size = {0};
+			if (hover) {
+				rclick_box = hover;
+				rclick_box->prepare_rclick_menu(rclick_menu, view, cursor);
+				rclick_menu.list = &rclick_box->rclick_menu;
+			}
+			else {
+				rclick_box = nullptr;
+				prepare_rclick_menu(view, cursor);
+				rclick_menu.list = &default_rclick_menu;
+			}
+
+			reposition_rclick_menu(rclick_menu, view, input.mouse_x, input.mouse_y);
+		}
 	}
 
 	if (!input.lmouse) {
@@ -270,8 +337,31 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		selected = nullptr;
 	}
 
+	bool disable_mouse_click = input.lctrl || input.rctrl;
+	rclick_menu.hl = -1;
+
+	if (show_rclick_menu) {
+		if (rclick_menu.rect.contains(input.mouse_x, input.mouse_y)) {
+			rclick_menu.hl = (input.mouse_y - rclick_menu.rect.y) / rclick_menu.get_item_height();
+			auto& hl_item = (*rclick_menu.list)[rclick_menu.hl];
+
+			if (input.action && (hl_item.flags & FLAG_INACTIVE) == 0) {
+				auto action = hl_item.action;
+				if (action)
+					action(*this);
+
+				show_rclick_menu = false;
+			}
+
+			disable_mouse_click = true;
+		}
+		else if (input.lclick) {
+			show_rclick_menu = false;
+		}
+	}
+
 	Input box_input = input;
-	if (input.lctrl || input.rctrl) {
+	if (disable_mouse_click) {
 		box_input.lmouse = box_input.lclick = false;
 		box_input.rmouse = box_input.rclick = false;
 		box_input.scroll_x = box_input.scroll_y = 0;
@@ -304,242 +394,30 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 		}
 	}
 
+	if (show_rclick_menu) {
+		sdl_draw_rect(rclick_menu.rect, back_color, nullptr);
+
+		int item_h = rclick_menu.get_item_height();
+		if (rclick_menu.hl >= 0) {
+			Rect_Int r = rclick_menu.rect;
+			r.y += rclick_menu.hl * item_h;
+			r.h = item_h;
+			sdl_draw_rect(r, hl_color, nullptr);
+		}
+
+		auto& list = *rclick_menu.list;
+		int x = rclick_menu.rect.x + 5;
+		int y = rclick_menu.rect.y - 3;
+
+		for (auto& it : list) {
+			if (it.flags & FLAG_INVISIBLE)
+				continue;
+
+			Font *font = (it.flags & FLAG_INACTIVE) ? rclick_menu.inactive_font : rclick_menu.font;
+			font->render.draw_text_simple(nullptr, it.name, x, y);
+			y += item_h;
+		}
+	}
+
 	sdl_render();
-}
-
-void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hovered, bool focussed) {
-	if (!visible)
-		return;
-
-	Rect_Int r = view.to_screen_rect(box.x, box.y, box.w, box.h);
-
-	int brd = edge_size * view.scale + 0.5;
-	Rect_Int edge_rect = {
-		r.x - brd, r.y - brd, r.w + 2*brd, r.h + 2*brd
-	};
-	sdl_draw_rect(edge_rect, edge_color, nullptr);
-
-	sdl_draw_rect(r, back, nullptr);
-
-	for (auto& e : ui) {
-		e->parent = this;
-		if (e->visible)
-			e->draw(view, r, inside ? e->pos.contains(*inside) : false, hovered, focussed);
-	}
-
-	if (current_dd) {
-		Rect back = make_ui_box(r, current_dd->pos, view.scale);
-		current_dd->draw_menu(nullptr, view, back.x, back.y + back.h);
-	}
-}
-
-void Box::require_redraw() {
-	for (auto& elem : ui)
-		elem->needs_redraw = true;
-}
-
-void Box::select_edge(Camera& view, Point& p) {
-	edge = 0;
-	float gap = 6 / view.scale;
-	if (p.x >= -gap && p.x < box.w + gap && p.y >= -gap && p.y < box.h + gap) {
-		if (p.x < 0)
-			edge |= 1;
-		if (p.x >= box.w)
-			edge |= 2;
-		if (p.y < 0)
-			edge |= 4;
-		if (p.y >= box.h)
-			edge |= 8;
-	}
-}
-
-void Box::move(float dx, float dy, Camera& view, Input& input) {
-	if (!edge) {
-		box.x += dx;
-		box.y += dy;
-		return;
-	}
-
-	Point p = view.to_screen(box.x, box.y);
-	float w = box.w * view.scale;
-	float h = box.h * view.scale;
-
-	float min_w = min_width * view.scale;
-	float min_h = min_height * view.scale;
-
-	if (edge & 2) {
-		if (input.mouse_x - min_w >= (int)p.x)
-			box.w += dx;
-		else
-			box.w = min_w / view.scale;
-	}
-	else if (edge & 1) {
-		if (input.mouse_x + min_w < p.x + w) {
-			box.x += dx;
-			box.w -= dx;
-		}
-		else {
-			box.x = view.to_world_x(p.x + w - min_w);
-			box.w = min_w / view.scale;
-		}
-	}
-
-	if (edge & 8) {
-		if (input.mouse_y - min_h >= (int)p.y)
-			box.h += dy;
-		else
-			box.h = min_h / view.scale;
-	}
-	else if (edge & 4) {
-		if (input.mouse_y + min_h < p.y + h) {
-			box.y += dy;
-			box.h -= dy;
-		}
-		else {
-			box.y = view.to_world_y(p.y + h - min_h);
-			box.h = min_h / view.scale;
-		}
-	}
-}
-
-void Box::set_dropdown(Drop_Down *dd) {
-	if (current_dd && dd != current_dd)
-		current_dd->cancel();
-
-	current_dd = dd;
-	if (current_dd)
-		current_dd->dropped = true;
-
-	dropdown_set = true;
-}
-
-void Box::update_hovered(Camera& view, Input& input, Point& inside) {
-	if (!moving)
-		select_edge(view, inside);
-
-	CursorType ct = CursorDefault;
-	if (edge == 5 || edge == 10)
-		ct = CursorResizeNWSE;
-	else if (edge == 6 || edge == 9)
-		ct = CursorResizeNESW;
-	else if (edge & 3)
-		ct = CursorResizeWestEast;
-	else if (edge & 12)
-		ct = CursorResizeNorthSouth;
-
-	if (ct != CursorDefault) {
-		sdl_set_cursor(ct);
-		parent->cursor_set = true;
-	}
-
-	if (!ui_held && (edge > 0 || (!edge && parent->selected == this))) {
-		if (input.lmouse && input.held == move_start) {
-			moving = true;
-			parent->box_moving = true;
-		}
-	}
-}
-
-void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover) {
-	if (input.lclick) {
-		if (active_edit) {
-			if (active_edit->parent->disengage(input, true))
-				input.lclick = false;
-		}
-		active_edit = nullptr;
-	}
-
-	bool hovered = this == hover;
-	if (hovered && input.action && current_dd && current_dd->action) {
-		current_dd->action(current_dd, input.double_click);
-		input.action = false;
-	}
-
-	for (auto& elem : ui) {
-		if (!elem->visible)
-			continue;
-
-		elem->mouse_handler(view, input, inside, this == hover);
-		elem->key_handler(view, input);
-
-		if (input.action && elem->active && elem->action && elem->pos.contains(inside)) {
-			Workspace *ws = parent;
-			ws->box_expunged = false;
-			elem->action(elem, input.double_click);
-			input.action = false;
-
-			if (ws->box_expunged)
-				return;
-		}
-	}
-}
-
-void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed) {
-	this->parent = &ws;
-
-	if (!visible)
-		return;
-
-	if (moving) {
-		float dx = (input.mouse_x - input.prev_x) / view.scale;
-		float dy = (input.mouse_y - input.prev_y) / view.scale;
-		move(dx, dy, view, input);
-	}
-	else
-		edge = 0;
-
-	Point cursor = view.to_world(input.mouse_x, input.mouse_y);
-	Point inside = {cursor.x - box.x, cursor.y - box.y};
-
-	if (current_dd)
-		current_dd->highlight(view, inside);
-
-	if (ticks % refresh_every == 0)
-		refresh(&inside);
-	ticks++;
-
-	dropdown_set = false;
-
-	if (!parent->box_moving && (!hover || this == hover))
-		update_hovered(view, input, inside);
-
-	if (focussed)
-		update_focussed(view, input, inside, hover);
-
-	if (ws.box_expunged) {
-		ws.box_expunged = false;
-		return;
-	}
-
-	bool hl = false;
-	for (auto& elem : ui) {
-		elem->parent = this;
-		if (!elem->visible)
-			continue;
-
-		if (!hl && this == hover && !moving) {
-			if (elem->pos.contains(inside)) {
-				Point p = {inside.x - elem->pos.x, inside.x - elem->pos.y};
-				elem->scroll_handler(view, input, p);
-
-				if (!elem->use_default_cursor && !parent->cursor_set) {
-					sdl_set_cursor(elem->cursor_type);
-					parent->cursor_set = true;
-				}
-			}
-
-			hl = elem->highlight(view, inside);
-		}
-
-		if (this != hover)
-			elem->deselect();
-	}
-
-	if (input.lclick && !dropdown_set) {
-		if (current_dd)
-			current_dd->dropped = false;
-		current_dd = nullptr;
-	}
-
-	update_ui(view);
 }

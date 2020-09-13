@@ -274,7 +274,7 @@ bool sdl_poll_input(Input& input) {
 				if (event.button.button == SDL_BUTTON_LEFT)  input.lmouse = false;
 				if (event.button.button == SDL_BUTTON_RIGHT) input.rmouse = false;
 
-				if (!input.prevent_action) {
+				if (!input.prevent_action && event.button.button == SDL_BUTTON_LEFT) {
 					double dx = input.mouse_x - input.click_x;
 					double dy = input.mouse_y - input.click_y;
 

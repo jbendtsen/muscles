@@ -77,6 +77,13 @@ struct Rect_Int {
 			(float)h
 		};
 	}
+
+	bool contains(Point& p) const {
+		return p.x >= x && p.x < x+w && p.y >= y && p.y < y+h;
+	}
+	bool contains(float px, float py) const {
+		return px >= x && px < x+w && py >= y && py < y+h;
+	}
 };
 
 #define CLIP_TOP     1

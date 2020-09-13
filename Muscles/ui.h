@@ -588,6 +588,27 @@ enum MenuType {
 
 struct Workspace;
 
+#define FLAG_INVISIBLE  1
+#define FLAG_INACTIVE   2
+
+struct Menu_Item {
+	u32 flags;
+	char *name;
+	void (*action)(Workspace& ws);
+};
+
+struct Context_Menu {
+	std::vector<Menu_Item> *list = nullptr;
+	Rect_Int rect = {0};
+	Font *font = nullptr;
+	Font *inactive_font = nullptr;
+	int hl = -1;
+
+	int get_item_height() {
+		return font ? 0.5 + font->render.text_height() * 1.2 : 0;
+	}
+};
+
 struct Box {
 	BoxType box_type;
 	bool expungable = false; // the expungables
@@ -604,17 +625,13 @@ struct Box {
 	Drop_Down *current_dd = nullptr;
 	Editor *active_edit = nullptr;
 
-	virtual void update_ui(Camera& view) {}
-	virtual void refresh(Point *cursor) {}
-	virtual void handle_zoom(Workspace& ws, float new_scale) {}
-	virtual void wake_up() {}
-	virtual void on_close() {}
-
 	int edge = 0;
 
 	Rect box = {};
 	RGBA back = {};
 	RGBA edge_color = {};
+
+	std::vector<Menu_Item> rclick_menu;
 
 	std::vector<UI_Element*> ui;
 
@@ -624,9 +641,15 @@ struct Box {
 
 	float min_width = 300;
 	float min_height = 200;
-
 	float initial_width = 450;
 	float initial_height = 300;
+
+	virtual void update_ui(Camera& view) {}
+	virtual void refresh(Point *cursor) {}
+	virtual void handle_zoom(Workspace& ws, float new_scale) {}
+	virtual void prepare_rclick_menu(Context_Menu& menu, Camera& view, Point& cursor) {}
+	virtual void wake_up() {}
+	virtual void on_close() {}
 
 	void draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hovered, bool focussed);
 	void require_redraw();
@@ -677,10 +700,15 @@ struct Workspace {
 	std::vector<Box*> boxes;
 	Box *selected = nullptr;
 	Box *new_box = nullptr;
+
 	bool box_moving = false;
 	bool box_expunged = false;
-
 	bool cursor_set = false;
+	bool show_rclick_menu = false;
+
+	std::vector<Menu_Item> default_rclick_menu;
+	Box *rclick_box = nullptr;
+	Context_Menu rclick_menu;
 
 	std::vector<Source*> sources;
 
@@ -713,6 +741,7 @@ struct Workspace {
 	void reset_primitives();
 
 	void adjust_scale(float old_scale, float new_scale);
+	void prepare_rclick_menu(Camera& view, Point& cursor);
 	void update(Camera& view, Input& input, Point& cursor);
 };
 

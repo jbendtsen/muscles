@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="box.cpp" />
     <ClCompile Include="data.cpp" />
     <ClCompile Include="dialog\edit-structs.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
