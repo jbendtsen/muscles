@@ -333,6 +333,7 @@ Opening_Menu::Opening_Menu(Workspace& ws) {
 
 	menu.font = ws.default_font;
 	menu.hl_color = ws.hl_color;
+	menu.sel_color = ws.hl_color;
 	menu.default_color = ws.back_color;
 
 	Column menu_column = { ColumnString, 0, 1, 0, 0, "" };

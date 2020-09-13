@@ -282,6 +282,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	menu.data = &table;
 	menu.default_color = ws.back_color;
 	menu.hl_color = ws.hl_color;
+	menu.sel_color = ws.hl_color;
 	menu.font = ws.default_font;
 	menu.vscroll = &scroll;
 	menu.vscroll->content = &menu;

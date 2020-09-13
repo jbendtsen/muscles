@@ -75,6 +75,9 @@
     <ClCompile Include="box.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dialog\field-formatting.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dialog\dialog.h">

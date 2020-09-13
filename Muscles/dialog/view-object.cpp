@@ -158,12 +158,9 @@ void View_Object::select_view_type(bool all) {
 }
 
 void struct_edit_handler(Edit_Box *edit, Input& input) {
-	//Box *structs_box = edit->parent->parent->first_box_of_type(BoxStructs);
-	/*if (structs_box)*/ {
-		auto ui = dynamic_cast<View_Object*>(edit->parent);
-		Workspace *ws = edit->parent->parent;
-		populate_object_table(ui, ws->structs, ws->name_vector);
-	}
+	auto ui = dynamic_cast<View_Object*>(edit->parent);
+	Workspace *ws = edit->parent->parent;
+	populate_object_table(ui, ws->structs, ws->name_vector);
 }
 
 void source_edit_handler(Edit_Box *edit, Input& input) {
@@ -190,6 +187,36 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 	}
 
 	ui->view.needs_redraw = true;
+}
+
+void launch_edit_formatting(Workspace& ws) {
+	auto box = dynamic_cast<View_Object*>(ws.rclick_box);
+	int idx = box->view.sel_row;
+	if (idx < 0 || !box->record)
+		return;
+
+	auto new_box = dynamic_cast<Field_Formatting*>(ws.make_box(BoxFormatting));
+
+	char *s_name = ws.name_vector.at(box->record->name_idx);
+	int s_len = strlen(s_name);
+	char *f_name = (char*)box->view.data->columns[1][idx];
+	int f_len = strlen(f_name);
+
+	char *str = (char*)get_default_arena().allocate(s_len + 1 + f_len);
+	strcpy(str, s_name);
+	char *p = &str[s_len];
+	*p++ = '.';
+	strcpy(p, f_name);
+
+	new_box->field_edit.editor.text = str;
+}
+
+void view_handler(UI_Element *elem, bool dbl_click) {
+	auto table = dynamic_cast<Data_View*>(elem);
+
+	table->sel_row = table->hl_row;
+	if (dbl_click)
+		launch_edit_formatting(*elem->parent->parent);
 }
 
 void View_Object::refresh(Point *cursor) {
@@ -223,6 +250,10 @@ void View_Object::refresh(Point *cursor) {
 		Field *field = (Field*)buck.pointer;
 		format_field_value(*field, span, (char*&)view.data->columns[2][idx]);
 	}
+}
+
+void View_Object::prepare_rclick_menu(Context_Menu& menu, Camera& camera, Point& cursor) {
+	rclick_menu[0].flags = view.hl_row >= 0 ? 0 : FLAG_INACTIVE;
 }
 
 void View_Object::handle_zoom(Workspace& ws, float new_scale) {
@@ -294,7 +325,9 @@ View_Object::View_Object(Workspace& ws) {
 
 	view.font = ws.default_font;
 	view.default_color = ws.dark_color;
-	view.hl_color = ws.dark_color;
+	view.hl_color = ws.hl_color;
+	view.sel_color = ws.light_color;
+	view.action = view_handler;
 	view.use_sf_cache = false;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;
@@ -400,6 +433,9 @@ View_Object::View_Object(Workspace& ws) {
 	sel_btn.update_size(scale);
 	sel_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
 	ui.push_back(&sel_btn);
+
+	Menu_Item edit_item = {0, (char*)"Edit Formatting", launch_edit_formatting};
+	rclick_menu.push_back(edit_item);
 
 	refresh_every = 1;
 	back = ws.back_color;

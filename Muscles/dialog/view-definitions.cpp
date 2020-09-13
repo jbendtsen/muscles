@@ -219,6 +219,7 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	view.font = ws.make_font(11, ws.text_color, scale);
 	view.default_color = ws.scroll_back;
 	view.hl_color = ws.hl_color;
+	view.sel_color = ws.hl_color;
 	view.back_color = ws.scroll_back;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;

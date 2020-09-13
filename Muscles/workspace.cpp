@@ -26,7 +26,8 @@ Workspace::Workspace(Font_Face face) {
 	test_item.name = (char*)"Item B";
 	default_rclick_menu.push_back(test_item);
 
-	reset_primitives();
+	std::string text = "struct Test {\n\tint a;\n\tint b\n;};";
+	update_structs(text);
 
 	make_box(BoxOpening);
 }
@@ -98,12 +99,19 @@ Box *Workspace::make_box(BoxType btype, MenuType mtype) {
 			case BoxDefinitions:
 				b = new View_Definitions(*this);
 				break;
+			case BoxFormatting:
+				b = new Field_Formatting(*this);
+				break;
 		}
 
 		if (b) {
 			b->box_type = btype;
 			b->parent = this;
 			b->visible = true;
+
+			for (auto& elem : b->ui)
+				elem->parent = b;
+
 			add_box(b);
 		}
 
@@ -363,7 +371,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	Input box_input = input;
 	if (disable_mouse_click) {
 		box_input.lmouse = box_input.lclick = false;
-		box_input.rmouse = box_input.rclick = false;
+		//box_input.rmouse = box_input.rclick = false;
 		box_input.scroll_x = box_input.scroll_y = 0;
 		box_input.action = false;
 	}
@@ -420,4 +428,48 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	}
 
 	sdl_render();
+}
+
+void Workspace::update_structs(std::string& text) {
+	if (first_struct_run) {
+		int reserve = text.size() + 2;
+		tokens.try_expand(reserve);
+		name_vector.try_expand(reserve);
+		first_struct_run = false;
+	}
+	else {
+		tokens.head = 0;
+		name_vector.head = 0;
+		struct_names.clear();
+
+		for (auto& s : structs) {
+			s->flags |= FLAG_AVAILABLE;
+			s->fields.zero_out();
+		}
+
+		definitions.erase_all_similar_to(FLAG_PRIMITIVE | FLAG_ENUM | FLAG_ENUM_ELEMENT);
+		reset_primitives();
+	}
+
+	tokenize(tokens, text.c_str(), text.size());
+
+	parse_typedefs_and_enums(definitions, tokens);
+
+	char *tokens_alias = tokens.pool;
+	parse_c_struct(structs, &tokens_alias, name_vector, definitions);
+
+	auto view_defs = dynamic_cast<View_Definitions*>(first_box_of_type(BoxDefinitions));
+	if (view_defs)
+		view_defs->update_tables();
+
+	for (auto& s : structs) {
+		char *name = name_vector.at(s->name_idx);
+		if (name)
+			struct_names.push_back(name);
+	}
+
+	for (auto& b : boxes) {
+		if (b->box_type == BoxObject)
+			populate_object_table((View_Object*)b, structs, name_vector);
+	}
 }

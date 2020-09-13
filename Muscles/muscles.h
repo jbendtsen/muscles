@@ -264,7 +264,8 @@ enum ColumnType {
 	ColumnHex,
 	ColumnStdString,
 	ColumnImage,
-	ColumnCheckbox
+	ColumnCheckbox,
+	ColumnEdit
 };
 
 // Column Type, Count Per Cell, Fractional Width, Minimum Heights, Maximum Heights, Name
@@ -276,7 +277,6 @@ struct Column {
 	float max_size = 0;
 	const char *name;              // Used as the column header text
 };
-
 
 // row_idx, length, name_idx, closed
 struct Branch {

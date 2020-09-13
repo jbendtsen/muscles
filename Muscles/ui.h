@@ -577,7 +577,8 @@ enum BoxType {
 	BoxViewSource,
 	BoxStructs,
 	BoxObject,
-	BoxDefinitions
+	BoxDefinitions,
+	BoxFormatting
 };
 
 enum MenuType {
@@ -743,6 +744,8 @@ struct Workspace {
 	void adjust_scale(float old_scale, float new_scale);
 	void prepare_rclick_menu(Camera& view, Point& cursor);
 	void update(Camera& view, Input& input, Point& cursor);
+
+	void update_structs(std::string& text);
 };
 
 Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);

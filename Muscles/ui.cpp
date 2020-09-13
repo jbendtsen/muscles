@@ -601,18 +601,23 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 }
 
 void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (!hovered || !input.lclick || !data)
+	if (!data || !hovered || (!input.lclick && !input.rclick))
 		return;
 
-	int row = data->get_table_index(hl_row);
-	if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
-		TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+	if (input.lclick) {
+		int row = data->get_table_index(hl_row);
+		if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
+			TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+		}
+		else if (hl_row >= 0 && row < 0 && data->tree.size() > 0) {
+			int b = -row - 1;
+			data->branches[b].closed = !data->branches[b].closed;
+			data->update_tree();
+		}
 	}
-	else if (hl_row >= 0 && row < 0 && data->tree.size() > 0) {
-		int b = -row - 1;
-		data->branches[b].closed = !data->branches[b].closed;
-		data->update_tree();
-	}
+	if (input.rclick && hl_row >= 0)
+		sel_row = hl_row;
+
 	needs_redraw = true;
 }
 

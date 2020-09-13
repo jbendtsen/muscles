@@ -97,47 +97,7 @@ void structs_edit_handler(Text_Editor *edit, Input& input) {
 	auto ui = (Edit_Structs*)edit->parent;
 	auto ws = (Workspace*)edit->parent->parent;
 
-	if (ws->first_struct_run) {
-		int reserve = edit->editor.text.size() + 2;
-		ws->tokens.try_expand(reserve);
-		ws->name_vector.try_expand(reserve);
-		ws->first_struct_run = false;
-	}
-	else {
-		ws->tokens.head = 0;
-		ws->name_vector.head = 0;
-		ws->struct_names.clear();
-
-		for (auto& s : ws->structs) {
-			s->flags |= FLAG_AVAILABLE;
-			s->fields.zero_out();
-		}
-
-		ws->definitions.erase_all_similar_to(FLAG_PRIMITIVE | FLAG_ENUM | FLAG_ENUM_ELEMENT);
-		ws->reset_primitives();
-	}
-
-	tokenize(ws->tokens, edit->editor.text.c_str(), edit->editor.text.size());
-
-	parse_typedefs_and_enums(ws->definitions, ws->tokens);
-
-	char *tokens_alias = ws->tokens.pool;
-	parse_c_struct(ws->structs, &tokens_alias, ws->name_vector, ws->definitions);
-
-	auto view_defs = dynamic_cast<View_Definitions*>(ws->first_box_of_type(BoxDefinitions));
-	if (view_defs)
-		view_defs->update_tables();
-
-	for (auto& s : ws->structs) {
-		char *name = ws->name_vector.at(s->name_idx);
-		if (name)
-			ws->struct_names.push_back(name);
-	}
-
-	for (auto& b : ws->boxes) {
-		if (b->box_type == BoxObject)
-			populate_object_table((View_Object*)b, ws->structs, ws->name_vector);
-	}
+	ws->update_structs(edit->editor.text);
 
 	int n_rows = 0;
 	for (auto& s : ws->structs)
@@ -340,6 +300,7 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	output.font = edit.font;
 	output.default_color = ws.dark_color;
 	output.hl_color = ws.hl_color;
+	output.sel_color = ws.hl_color;
 	output.back_color = ws.back_color;
 	output.hscroll = &out_hscroll;
 	output.hscroll->content = &output;

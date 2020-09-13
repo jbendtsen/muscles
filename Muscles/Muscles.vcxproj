@@ -152,6 +152,7 @@
     <ClCompile Include="box.cpp" />
     <ClCompile Include="data.cpp" />
     <ClCompile Include="dialog\edit-structs.cpp" />
+    <ClCompile Include="dialog\field-formatting.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
     <ClCompile Include="dialog\source-menu.cpp" />
     <ClCompile Include="dialog\view-definitions.cpp" />

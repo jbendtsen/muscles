@@ -139,6 +139,7 @@ struct View_Object : Box {
 	
 	void update_ui(Camera& view) override;
 	void refresh(Point *cursor) override;
+	void prepare_rclick_menu(Context_Menu& menu, Camera& view, Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 	void on_close() override;
 
@@ -203,6 +204,23 @@ struct View_Definitions : Box {
 	std::vector<Table*> tables;
 
 	Arena arena;
+};
+
+struct Field_Formatting : Box {
+	Field_Formatting(Workspace& ws);
+
+	void update_ui(Camera& view) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
+	Image cross;
+	Image maxm;
+	Label title;
+	Edit_Box field_edit;
+	Drop_Down field_dd;
+	Data_View options;
+	Scroll scroll;
+
+	Table table;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);
