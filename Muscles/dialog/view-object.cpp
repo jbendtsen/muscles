@@ -189,26 +189,18 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 	ui->view.needs_redraw = true;
 }
 
-void launch_edit_formatting(Workspace& ws) {
-	auto box = dynamic_cast<View_Object*>(ws.rclick_box);
-	int idx = box->view.sel_row;
-	if (idx < 0 || !box->record)
+void launch_edit_formatting(Workspace& ws, Box *box) {
+	auto vo = dynamic_cast<View_Object*>(box);
+	int idx = vo->view.data->get_table_index(vo->view.sel_row);
+	if (idx < 0 || !vo->record)
 		return;
 
 	auto new_box = dynamic_cast<Field_Formatting*>(ws.make_box(BoxFormatting));
 
-	char *s_name = ws.name_vector.at(box->record->name_idx);
-	int s_len = strlen(s_name);
-	char *f_name = (char*)box->view.data->columns[1][idx];
-	int f_len = strlen(f_name);
+	int name_idx = ws.get_full_field_name(vo->record->fields.data[idx], vo->temp_vec);
+	char *name = &vo->temp_vec.pool[name_idx];
 
-	char *str = (char*)get_default_arena().allocate(s_len + 1 + f_len);
-	strcpy(str, s_name);
-	char *p = &str[s_len];
-	*p++ = '.';
-	strcpy(p, f_name);
-
-	new_box->field_edit.editor.text = str;
+	new_box->field_edit.editor.text = name;
 }
 
 void view_handler(UI_Element *elem, bool dbl_click) {
@@ -216,7 +208,7 @@ void view_handler(UI_Element *elem, bool dbl_click) {
 
 	table->sel_row = table->hl_row;
 	if (dbl_click)
-		launch_edit_formatting(*elem->parent->parent);
+		launch_edit_formatting(*elem->parent->parent, elem->parent);
 }
 
 void View_Object::refresh(Point *cursor) {

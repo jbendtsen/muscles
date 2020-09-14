@@ -371,6 +371,8 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 			if (name)
 				f->field_name_idx = name_vector.add_string(name);
 
+			f->paste_st = current_st;
+
 			int parent_field = current_st->fields.n_fields - 1;
 			embed_struct(current_st, parent_field, embed);
 
@@ -579,6 +581,8 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				f->bit_offset = st->offset;
 				if ((st->flags & FLAG_UNION) == 0)
 					st->offset += f->bit_size;
+
+				f->this_st = f->paste_st = st;
 
 				// Most zero-width fields are later overwritten.
 				// By setting the current field to NULL, we know that a new field must be created later.

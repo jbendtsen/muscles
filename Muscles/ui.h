@@ -595,7 +595,7 @@ struct Workspace;
 struct Menu_Item {
 	u32 flags;
 	char *name;
-	void (*action)(Workspace& ws);
+	void (*action)(Workspace& ws, Box *box);
 };
 
 struct Context_Menu {
@@ -746,6 +746,7 @@ struct Workspace {
 	void update(Camera& view, Input& input, Point& cursor);
 
 	void update_structs(std::string& text);
+	int get_full_field_name(Field& field, String_Vector& out_vec);
 };
 
 Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);

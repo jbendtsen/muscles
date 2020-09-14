@@ -170,6 +170,7 @@ struct View_Object : Box {
 
 	Table table;
 	Map fields;
+	String_Vector temp_vec;
 
 	Struct *record = nullptr;
 	Source *source = nullptr;
