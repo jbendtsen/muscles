@@ -150,9 +150,12 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 	}
 
 	bool hovered = this == hover;
-	if (hovered && input.action && current_dd && current_dd->action) {
-		current_dd->action(current_dd, input.double_click);
-		input.action = false;
+	if (hovered && input.action && current_dd) {
+		current_dd->default_action(view, input.double_click);
+		if (current_dd->action) {
+			current_dd->action(current_dd, view, input.double_click);
+			input.action = false;
+		}
 	}
 
 	for (auto& elem : ui) {
@@ -162,11 +165,15 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 		elem->mouse_handler(view, input, inside, this == hover);
 		elem->key_handler(view, input);
 
-		if (input.action && elem->active && elem->action && elem->pos.contains(inside)) {
+		if (input.action && elem->active && elem->pos.contains(inside)) {
 			Workspace *ws = parent;
 			ws->box_expunged = false;
-			elem->action(elem, input.double_click);
-			input.action = false;
+
+			elem->default_action(view, input.double_click);
+			if (elem->action) {
+				elem->action(elem, view, input.double_click);
+				input.action = false;
+			}
 
 			if (ws->box_expunged)
 				return;

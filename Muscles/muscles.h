@@ -291,6 +291,7 @@ struct Table {
 	std::unique_ptr<std::vector<void*>[]> columns;
 	std::set<int> list;
 	int filtered = -1;
+	bool has_ui_elements = false;
 
 	String_Vector branch_name_vector;
 	std::vector<Branch> branches;

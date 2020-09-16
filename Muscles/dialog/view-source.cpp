@@ -248,7 +248,7 @@ void View_Source::refresh_region_list(Point *cursor) {
 	needs_region_update = false;
 }
 
-void regions_handler(UI_Element *elem, bool dbl_click) {
+void regions_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = dynamic_cast<View_Source*>(elem->parent);
 	ui->reg_table.sel_row = ui->reg_table.hl_row;
 	ui->selected_region = 0;
@@ -486,7 +486,6 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	addr_box.sel_color = ws.cb_color;
 	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / scale;
 	addr_box.pos.w = 2 * addr_box.pos.h;
-	addr_box.action = [](UI_Element *elem, bool dbl_click) {auto c = dynamic_cast<Checkbox*>(elem); c->toggle();};
 	ui.push_back(&addr_box);
 
 	hex_box.font = size_label.font;

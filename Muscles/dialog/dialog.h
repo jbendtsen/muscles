@@ -213,6 +213,7 @@ struct Field_Formatting : Box {
 
 	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
+	void on_close() override;
 
 	Image cross;
 	Image maxm;
@@ -234,6 +235,9 @@ struct Field_Formatting : Box {
 	Checkbox endian_cb;
 
 	Drop_Down precision_dd;
+
+	Texture option_arrow = nullptr;
+	RGBA arrow_color = {};
 
 	Table table;
 

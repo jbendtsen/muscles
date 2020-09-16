@@ -42,46 +42,30 @@ void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size) 
 	};
 }
 
-void delete_box(UI_Element *elem, bool dbl_click) {
+void delete_box(UI_Element *elem, Camera& view, bool dbl_click) {
 	elem->parent->parent->delete_box(elem->parent);
 }
-void (*get_delete_box(void))(UI_Element*, bool) { return delete_box; }
+void (*get_delete_box(void))(UI_Element*, Camera&, bool) { return delete_box; }
 
-void maximize_box(UI_Element *elem, bool dbl_click) {
+void maximize_box(UI_Element *elem, Camera& view, bool dbl_click) {
 	Box *box = elem->parent;
-	Camera *view = &get_default_camera();
 
-	float center_x = view->center_x;
-	float center_y = view->center_y;
+	float center_x = view.center_x;
+	float center_y = view.center_y;
 
 	center_x *= 0.9;
 	center_y *= 0.9;
 
 	box->box = {
-		view->x - center_x / view->scale,
-		view->y - center_y / view->scale,
-		2 * center_x / view->scale,
-		2 * center_y / view->scale,
+		view.x - center_x / view.scale,
+		view.y - center_y / view.scale,
+		2 * center_x / view.scale,
+		2 * center_y / view.scale,
 	};
 
-	box->update_ui(*view);
+	box->update_ui(view);
 }
-void (*get_maximize_box(void))(UI_Element*, bool) { return maximize_box; }
-
-void text_editor_action(UI_Element *elem, bool dbl_click) {
-	elem->parent->active_edit = &dynamic_cast<Text_Editor*>(elem)->editor;
-}
-void (*get_text_editor_action(void))(UI_Element*, bool) { return text_editor_action; }
-
-void edit_box_action(UI_Element *elem, bool dbl_click) {
-	elem->parent->active_edit = &dynamic_cast<Edit_Box*>(elem)->editor;
-}
-void (*get_edit_box_action(void))(UI_Element*, bool) { return edit_box_action; }
-
-void number_edit_action(UI_Element *elem, bool dbl_click) {
-	elem->parent->active_edit = &dynamic_cast<Number_Edit*>(elem)->editor;
-}
-void (*get_number_edit_action(void))(UI_Element*, bool) { return number_edit_action; }
+void (*get_maximize_box(void))(UI_Element*, Camera&, bool) { return maximize_box; }
 
 void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	ticks++;
@@ -263,6 +247,10 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 	}
 }
 
+void Checkbox::default_action(Camera& view, bool dbl_click) {
+	checked = !checked;
+}
+
 bool Data_View::highlight(Camera& view, Point& inside) {
 	if (!font || !data) {
 		hl_row = hl_col = -1;
@@ -305,6 +293,16 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 
 				if (inside.x >= x && inside.x < x + w) {
 					hl_col = j;
+
+					if (data->headers[j].type == ColumnElement) {
+						int row = data->get_table_index(hl_row);
+						UI_Element *elem = row >= 0 ? (UI_Element*)data->columns[j][row] : nullptr;
+						if (elem) {
+							Point yes = {0};
+							elem->highlight(view, yes); // just hope that elem isn't another Data_View lol
+						}
+					}
+
 					break;
 				}
 
@@ -324,7 +322,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
 	float w = data->headers[idx].width;
 	if (w == 0)
-		return (total_width - total_spacing - min_width) * scale;
+		return (total_width - min_width) * scale;
 
 	w *= (total_width - total_spacing) * scale;
 
@@ -433,10 +431,14 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 		elem->parent = parent;
 		elem->visible = true;
 
-		float scale = info.camera->scale;
-		elem->pos = {0, 0, r.w / scale, r.h / scale};
-
 		Rect_Int back = r.to_rect_int();
+		back.y += info.elem_pad;
+		back.h -= 2 * info.elem_pad;
+
+		float scale = info.camera->scale;
+		elem->pos = {0, 0, back.w / scale, back.h / scale};
+		elem->table_cell_rect = back;
+
 		elem->draw_element(info.renderer, *info.camera, back, false, false, false);
 	}
 }
@@ -536,8 +538,8 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	float y_max = y + table.h * view.scale;
 
 	float line_off = font->line_offset * font_height;
-	float line_h = font_height + (font->line_spacing * font_height);
-	float sp_half = font->line_spacing * font_height / 2;
+	float line_sp = (font->line_spacing + extra_line_spacing) * font_height;
+	float line_h = font_height + line_sp;
 
 	Rect_Int dst = {0, 0, font_height, font_height};
 	Rect_Int src = {0};
@@ -545,8 +547,9 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	clip.x_lower = x + scroll_x;
 	clip.y_upper = y_max;
 
+	int elem_pad = view.scale + 1.0;
 	Draw_Cell_Info dci = {
-		this, &view, renderer, dst, src, y_max, line_off, sp_half, font_height
+		this, &view, renderer, dst, src, y_max, line_off, line_sp / 2, font_height, elem_pad
 	};
 
 	float table_off_y = y;
@@ -648,8 +651,53 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	}
 }
 
+void Data_View::default_action(Camera& view, bool dbl_click) {
+	if (hl_row >= 0)
+		sel_row = hl_row;
+
+	if (active_elem) {
+		active_elem->default_action(view, dbl_click);
+		if (active_elem->action)
+			active_elem->action(active_elem, view, dbl_click);
+
+		active_elem = nullptr;
+	}
+}
+
 void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
-	if (!data || !hovered || (!input.lclick && !input.rclick))
+	if (!data)
+		return;
+
+	if (data->has_ui_elements) {
+		Rect_Int box = view.to_screen_rect(parent->box);
+		int n_cols = data->column_count();
+
+		for (int i = 0; i < n_cols; i++) {
+			if (data->headers[i].type != ColumnElement)
+				continue;
+
+			for (auto& cell : data->columns[i]) {
+				if (!cell)
+					continue;
+
+				auto elem = (UI_Element*)cell;
+				Point inside = {
+					cursor.x - (elem->table_cell_rect.x - box.x) / view.scale,
+					cursor.y - (elem->table_cell_rect.y - box.y) / view.scale
+				};
+
+				elem->mouse_handler(view, input, inside, hovered);
+				elem->key_handler(view, input);
+
+				if (input.lclick && elem->pos.contains(inside))
+					active_elem = elem;
+			}
+
+			needs_redraw = true;
+		}
+	}
+
+	if (!hovered || (!input.lclick && !input.rclick))
 		return;
 
 	if (input.lclick) {
@@ -927,6 +975,10 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		if (input.lclick && on_icon)
 			dropdown->dropped = !dropdown->dropped;
 	}
+}
+
+void Edit_Box::default_action(Camera& view, bool dbl_click) {
+	parent->active_edit = &editor;
 }
 
 void Edit_Box::update_icon(IconType type, float height, float scale) {
@@ -1351,6 +1403,10 @@ void Number_Edit::key_handler(Camera& view, Input& input) {
 	}
 }
 
+void Number_Edit::default_action(Camera& view, bool dbl_click) {
+	parent->active_edit = &editor;
+}
+
 void Number_Edit::affect_number(int delta) {
 	number = strtol(editor.text.c_str(), nullptr, 10) + delta;
 
@@ -1651,6 +1707,10 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 	}
 
 	needs_redraw = needs_redraw || mouse_held;
+}
+
+void Text_Editor::default_action(Camera& view, bool dbl_click) {
+	parent->active_edit = &editor;
 }
 
 void Text_Editor::scroll_handler(Camera& view, Input& input, Point& inside) {

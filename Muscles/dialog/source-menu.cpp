@@ -67,7 +67,7 @@ void Source_Menu::update_ui(Camera& view) {
 	}
 }
 
-static void process_menu_handler(UI_Element *elem, bool dbl_click) {
+static void process_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	if (dbl_click)
 		return;
 
@@ -95,7 +95,7 @@ static void process_menu_handler(UI_Element *elem, bool dbl_click) {
 		callback(caller, pid, name);
 }
 
-static void file_menu_handler(UI_Element *elem, bool dbl_click) {
+static void file_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	if (dbl_click)
 		return;
 
@@ -136,7 +136,7 @@ static void file_menu_handler(UI_Element *elem, bool dbl_click) {
 		callback(caller, path, file);
 }
 
-void file_up_handler(UI_Element *elem, bool dbl_click) {
+void file_up_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = dynamic_cast<Source_Menu*>(elem->parent);
 
 	char sep = get_folder_separator()[0];

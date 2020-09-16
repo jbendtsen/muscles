@@ -151,7 +151,7 @@ static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 	ui->require_redraw();
 }
 
-static void file_menu_handler(UI_Element *elem, bool dbl_click) {
+static void file_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto menu = dynamic_cast<Drop_Down*>(elem);
 	if (menu->sel != 0)
 		return;
@@ -164,18 +164,16 @@ static void file_menu_handler(UI_Element *elem, bool dbl_click) {
 	menu->parent->set_dropdown(nullptr);
 }
 
-void show_cb_handler(UI_Element *elem, bool dbl_click) {
+void show_cb_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = (Edit_Structs*)elem->parent;
-	auto cb = dynamic_cast<Checkbox*>(elem);
+	bool show_output = dynamic_cast<Checkbox*>(elem)->checked;
 
-	cb->toggle();
+	ui->div.visible = show_output;
+	ui->output.visible = show_output;
+	ui->out_hscroll.visible = show_output;
+	ui->out_vscroll.visible = show_output;
 
-	ui->div.visible = cb->checked;
-	ui->output.visible = cb->checked;
-	ui->out_hscroll.visible = cb->checked;
-	ui->out_vscroll.visible = cb->checked;
-
-	if (cb->checked)
+	if (show_output)
 		ui->flex_min_width = ui->div.minimum * 2;
 	else
 		ui->flex_min_width = ui->min_width;
@@ -183,7 +181,7 @@ void show_cb_handler(UI_Element *elem, bool dbl_click) {
 	if (ui->box.w < ui->flex_min_width)
 		ui->box.w = ui->flex_min_width;
 
-	ui->update_ui(get_default_camera());
+	ui->update_ui(view);
 }
 
 void Edit_Structs::handle_zoom(Workspace& ws, float new_scale) {

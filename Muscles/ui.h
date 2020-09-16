@@ -103,6 +103,8 @@ struct UI_Element {
 	int old_width = 0;
 	int old_height = 0;
 
+	Rect_Int table_cell_rect = {};
+
 	Texture tex_cache = nullptr;
 	int reify_timer = 0;
 	int hw_draw_timeout = 15;
@@ -117,7 +119,7 @@ struct UI_Element {
 
 	Font *font = nullptr;
 
-	void (*action)(UI_Element*, bool) = nullptr;
+	void (*action)(UI_Element*, Camera&, bool) = nullptr;
 
 	void draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed);
 	void set_active(bool state);
@@ -126,6 +128,7 @@ struct UI_Element {
 	virtual void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {}
 	virtual void post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {}
 
+	virtual void default_action(Camera& view, bool dbl_click) {}
 	virtual void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {}
 	virtual void key_handler(Camera& view, Input& input) {}
 
@@ -155,13 +158,11 @@ struct Draw_Cell_Info {
 	float line_off;
 	float sp_half;
 	float font_height;
+	int elem_pad;
 };
 
-void (*get_delete_box(void))(UI_Element*, bool);
-void (*get_maximize_box(void))(UI_Element*, bool);
-void (*get_text_editor_action(void))(UI_Element*, bool);
-void (*get_edit_box_action(void))(UI_Element*, bool);
-void (*get_number_edit_action(void))(UI_Element*, bool);
+void (*get_delete_box(void))(UI_Element*, Camera&, bool);
+void (*get_maximize_box(void))(UI_Element*, Camera&, bool);
 
 struct Scroll;
 
@@ -212,6 +213,7 @@ struct Checkbox : UI_Element {
 	float leaning = -1.0; // -1 = left, 0 = centre, 1 = right
 
 	void toggle();
+	void default_action(Camera& view, bool dbl_click) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
@@ -235,17 +237,20 @@ struct Data_View : UI_Element {
 	Scroll *hscroll = nullptr;
 	Scroll *vscroll = nullptr;
 
+	UI_Element *active_elem = nullptr;
+
 	int hl_row = -1;
 	int hl_col = -1;
 	int sel_row = -1;
 	int condition_col = -1;
 
-	float item_height = 0;
 	float header_height = 25;
 	float padding = 2;
+	float extra_line_spacing = 0;
 	float column_spacing = 0.2;
 	float scroll_total = 0.2;
 
+	float item_height = 0;
 	float total_spacing = 0;
 
 	bool show_column_names = false;
@@ -260,6 +265,8 @@ struct Data_View : UI_Element {
 	void draw_cell(Draw_Cell_Info& dci, void *cell, Column& header, Rect& r);
 
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
+
+	void default_action(Camera& view, bool dbl_click) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 
 	void scroll_handler(Camera& view, Input& input, Point& inside) override;
@@ -334,12 +341,12 @@ struct Drop_Down : UI_Element {
 
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(ElemEditBox, CursorEdit), editor(this) {
-		action = get_edit_box_action();
 		editor.multiline = false;
 		use_post_draw = true;
 	}
 	~Edit_Box() {
-		sdl_destroy_texture(&icon);
+		if (manage_icon)
+			sdl_destroy_texture(&icon);
 	}
 
 	void (*key_action)(Edit_Box*, Input&) = nullptr;
@@ -357,6 +364,7 @@ struct Edit_Box : UI_Element {
 	float caret_off_y = 0.2;
 	float caret_width = 0.08;
 
+	bool manage_icon = true;
 	bool icon_right = false;
 	int icon_length = 0;
 	RGBA icon_color = {};
@@ -378,6 +386,7 @@ struct Edit_Box : UI_Element {
 	bool disengage(Input& input, bool try_select) override;
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void default_action(Camera& view, bool dbl_click) override;
 	//void update(Rect_Int& rect) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -460,7 +469,6 @@ struct Label : UI_Element {
 
 struct Number_Edit : UI_Element {
 	Number_Edit() : UI_Element(ElemNumEdit), editor(this) {
-		action = get_number_edit_action();
 		editor.use_clipboard = false;
 		editor.numeric_only = true;
 	}
@@ -492,6 +500,7 @@ struct Number_Edit : UI_Element {
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void default_action(Camera& view, bool dbl_click) override;
 	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
@@ -556,7 +565,6 @@ struct Tabs : UI_Element {
 
 struct Text_Editor : UI_Element {
 	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit), editor(this) {
-		action = get_text_editor_action();
 		editor.parent = this;
 		use_sf_cache = true;
 		use_post_draw = true;
@@ -584,6 +592,7 @@ struct Text_Editor : UI_Element {
 
 	void key_handler(Camera& view, Input& input) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
+	void default_action(Camera& view, bool dbl_click) override;
 	void scroll_handler(Camera& view, Input& input, Point& inside) override;
 	void update(Camera& view, Rect_Int& rect) override;
 

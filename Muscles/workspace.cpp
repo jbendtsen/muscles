@@ -476,7 +476,7 @@ void Workspace::update_structs(std::string& text) {
 
 /*
    This method gets the full name of a field in a struct instance, eg. player.position.x.
-   It retrieves names starting with the target field and working back up the heirarchy (eg. x, position, player)
+   It retrieves names starting with the target field and working back up the hierarchy (eg. x, position, player)
    By reversing each field name, then reversing the result at the end, the string is arranged in the desired order.
 */
 int Workspace::get_full_field_name(Field& field, String_Vector& out_vec) {

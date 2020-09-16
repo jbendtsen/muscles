@@ -203,7 +203,7 @@ void launch_edit_formatting(Workspace& ws, Box *box) {
 	new_box->field_edit.editor.text = name;
 }
 
-void view_handler(UI_Element *elem, bool dbl_click) {
+void view_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 
 	table->sel_row = table->hl_row;
@@ -296,13 +296,13 @@ View_Object::View_Object(Workspace& ws) {
 	ui.push_back(&title_edit);
 
 	hide_meta.padding = 0;
-	hide_meta.action = [](UI_Element *elem, bool dbl_click) {
+	hide_meta.action = [](UI_Element *elem, Camera& view, bool dbl_click) {
 		auto ui = dynamic_cast<View_Object*>(elem->parent);
 		ui->meta_hidden = !ui->meta_hidden;
 		ui->struct_label.visible = ui->struct_edit.visible = !ui->meta_hidden;
 		ui->source_label.visible = ui->source_edit.visible = !ui->meta_hidden;
 		ui->addr_label.visible = ui->addr_edit.visible = !ui->meta_hidden;
-		ui->update_hide_meta_button(get_default_camera().scale);
+		ui->update_hide_meta_button(view.scale);
 	};
 	hide_meta.active_theme = {
 		ws.light_color,
@@ -428,7 +428,7 @@ View_Object::View_Object(Workspace& ws) {
 	all_btn.active_theme = theme_on;
 	all_btn.inactive_theme = theme_on;
 	all_btn.update_size(scale);
-	all_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(true); };
+	all_btn.action = [](UI_Element *elem, Camera&, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(true); };
 	ui.push_back(&all_btn);
 
 	sel_btn.padding = 0;
@@ -436,7 +436,7 @@ View_Object::View_Object(Workspace& ws) {
 	sel_btn.active_theme = theme_off;
 	sel_btn.inactive_theme = theme_off;
 	sel_btn.update_size(scale);
-	sel_btn.action = [](UI_Element *elem, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
+	sel_btn.action = [](UI_Element *elem, Camera&, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
 	ui.push_back(&sel_btn);
 
 	Menu_Item edit_item = {0, (char*)"Edit Formatting", launch_edit_formatting};

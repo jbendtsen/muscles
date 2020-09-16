@@ -126,7 +126,7 @@ void open_view_source(Workspace& ws, int idx) {
 	vs->open_source(ws.sources[idx]);
 }
 
-void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
+void sources_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0)
 		return;
@@ -143,7 +143,7 @@ void sources_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
-void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
+void edit_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0 || dd->sel > 2)
 		return;
@@ -157,7 +157,7 @@ void edit_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
-void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
+void view_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0)
 		return;
@@ -171,7 +171,7 @@ void view_main_menu_handler(UI_Element *elem, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
-void table_main_menu_handler(UI_Element *elem, bool dbl_click) {
+void table_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 
 	if (dbl_click)
@@ -263,7 +263,7 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	table.init(sources_cols, nullptr, 3, 0);
 	sources_view.data = &table;
 
-	button.action = [](UI_Element* elem, bool dbl_click) {
+	button.action = [](UI_Element* elem, Camera&, bool dbl_click) {
 		Data_View *view = &dynamic_cast<Main_Menu*>(elem->parent)->sources_view;
 		open_view_source(*elem->parent->parent, view->sel_row);
 	};
@@ -296,7 +296,7 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	edge_color = ws.dark_color;
 }
 
-void opening_menu_handler(UI_Element *elem, bool dbl_click) {
+void opening_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 
 	switch (table->hl_row) {

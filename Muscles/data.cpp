@@ -274,6 +274,11 @@ void Table::init(Column *headers, Arena *a, int n_cols, int n_rows) {
 	this->headers.resize(n_cols);
 	memcpy(this->headers.data(), headers, n_cols * sizeof(Column));
 
+	for (auto& h : this->headers) {
+		if (h.type == ColumnElement)
+			has_ui_elements = true;
+	}
+
 	columns = std::make_unique<std::vector<void*>[]>(n_cols);
 	if (n_rows > 0)
 		resize(n_rows);

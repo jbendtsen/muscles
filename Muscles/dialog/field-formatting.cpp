@@ -57,6 +57,25 @@ void Field_Formatting::handle_zoom(Workspace& ws, float new_scale) {
 
 	float height = get_edit_height(field_edit, new_scale);
 	field_edit.update_icon(IconTriangle, height, new_scale);
+
+	float row_h = options.font->render.text_height();
+	sdl_destroy_texture(&option_arrow);
+	option_arrow = make_triangle(arrow_color, row_h, row_h);
+
+	auto set_icon = [this, row_h](Edit_Box& edit) {
+		edit.icon = option_arrow;
+		edit.icon_length = row_h;
+		edit.needs_redraw = true;
+	};
+
+	set_icon(separator_edit);
+	set_icon(prefix_edit);
+	set_icon(base_edit);
+	set_icon(precision_edit);
+}
+
+void Field_Formatting::on_close() {
+	sdl_destroy_texture(&option_arrow);
 }
 
 Field_Formatting::Field_Formatting(Workspace& ws) {
@@ -83,11 +102,13 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	field_dd.width = 250;
 	ui.push_back(&field_dd);
 
+	arrow_color = ws.text_color;
+	arrow_color.a = 0.7;
+
 	field_edit.font = field_dd.font;
 	field_edit.caret = ws.caret_color;
 	field_edit.default_color = ws.dark_color;
-	field_edit.icon_color = ws.text_color;
-	field_edit.icon_color.a = 0.7;
+	field_edit.icon_color = arrow_color;
 	field_edit.icon_right = true;
 	field_edit.dropdown = &field_dd;
 	field_edit.key_action = field_edit_handler;
@@ -131,44 +152,75 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	};
 
 	string_dd.title = "auto";
-	string_dd.default_color = ws.dark_color;
+	string_dd.default_color = ws.scroll_back;
+	string_dd.hl_color = ws.hl_color;
+	string_dd.title_off_y = -0.1;
 
 	brackets_dd.title = "[]";
-	brackets_dd.default_color = ws.dark_color;
+	brackets_dd.default_color = ws.scroll_back;
+	brackets_dd.hl_color = ws.hl_color;
+	brackets_dd.title_off_y = -0.1;
 
-	separator_edit.default_color = ws.dark_color;
+	separator_edit.default_color = ws.scroll_back;
+	separator_edit.caret = ws.text_color;
+	separator_edit.icon_color = arrow_color;
+	separator_edit.icon_right = true;
+	separator_edit.manage_icon = false;
+	separator_edit.text_off_y = -0.1;
 
-	prefix_edit.default_color = ws.dark_color;
+	prefix_edit.default_color = ws.scroll_back;
+	prefix_edit.caret = ws.text_color;
+	prefix_edit.icon_color = arrow_color;
+	prefix_edit.icon_right = true;
+	prefix_edit.manage_icon = false;
+	prefix_edit.text_off_y = -0.1;
 
-	base_edit.default_color = ws.dark_color;
+	base_edit.default_color = ws.scroll_back;
+	base_edit.caret = ws.text_color;
+	base_edit.icon_color = arrow_color;
+	base_edit.icon_right = true;
+	base_edit.manage_icon = false;
+	base_edit.text_off_y = -0.1;
 
-	precision_edit.default_color = ws.dark_color;
+	precision_edit.default_color = ws.scroll_back;
+	precision_edit.caret = ws.text_color;
+	precision_edit.text_off_y = -0.1;
+	precision_edit.icon_color = arrow_color;
+	precision_edit.icon_right = true;
+	precision_edit.manage_icon = false;
 	precision_edit.dropdown = &precision_dd;
 
 	precision_dd.title = "auto";
 
 	floatfmt_dd.title = "auto";
-	floatfmt_dd.default_color = ws.dark_color;
+	floatfmt_dd.default_color = ws.scroll_back;
+	floatfmt_dd.hl_color = ws.hl_color;
+	floatfmt_dd.title_off_y = -0.1;
 
 	uppercase_cb.default_color = ws.scroll_back;
 	uppercase_cb.sel_color = ws.cb_color;
-	uppercase_cb.leaning = 0.9;
+	uppercase_cb.leaning = 1.0;
 
 	sign_dd.title = "auto";
-	sign_dd.default_color = ws.dark_color;
+	sign_dd.default_color = ws.scroll_back;
+	sign_dd.hl_color = ws.hl_color;
+	sign_dd.title_off_y = -0.1;
 
 	endian_cb.default_color = ws.scroll_back;
 	endian_cb.sel_color = ws.cb_color;
-	endian_cb.leaning = 0.9;
+	endian_cb.leaning = 1.0;
 
 	options.data = &table;
 	options.font = ws.make_font(10, ws.text_color, scale);
+	options.extra_line_spacing = 0.1;
 	options.default_color = ws.dark_color;
 	options.hl_color = ws.dark_color;
 	options.sel_color = ws.dark_color;
 	options.vscroll = &scroll;
 	options.vscroll->content = &options;
 	ui.push_back(&options);
+
+	precision_dd.font = options.font;
 
 	back = ws.back_color;
 	edge_color = ws.dark_color;
