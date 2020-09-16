@@ -169,8 +169,9 @@ struct View_Object : Box {
 	Button::Theme theme_off = {};
 
 	Table table;
-	Map fields;
-	String_Vector temp_vec;
+	Map field_fmt;
+	String_Vector field_vec;
+	std::vector<Value_Format> format;
 
 	Struct *record = nullptr;
 	Source *source = nullptr;
@@ -218,10 +219,25 @@ struct Field_Formatting : Box {
 	Label title;
 	Edit_Box field_edit;
 	Drop_Down field_dd;
-	Data_View options;
 	Scroll scroll;
+	Data_View options;
+
+	Drop_Down string_dd;
+	Drop_Down brackets_dd;
+	Edit_Box separator_edit;
+	Edit_Box prefix_edit;
+	Edit_Box base_edit;
+	Edit_Box precision_edit;
+	Drop_Down floatfmt_dd;
+	Checkbox uppercase_cb;
+	Drop_Down sign_dd;
+	Checkbox endian_cb;
+
+	Drop_Down precision_dd;
 
 	Table table;
+
+	View_Object *object = nullptr;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

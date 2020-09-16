@@ -66,6 +66,24 @@ void write_dec(char *out, s64 n) {
 	*out++ = 0;
 }
 
+Rect_Int Rect::to_rect_int() const {
+	return {
+		(int)(x + 0.5),
+		(int)(y + 0.5),
+		(int)(w + 0.5),
+		(int)(h + 0.5)
+	};
+}
+
+Rect Rect_Int::to_rect() const {
+	return {
+		(float)x,
+		(float)y,
+		(float)w,
+		(float)h
+	};
+}
+
 Camera camera;
 Camera& get_default_camera() {
 	return camera;

@@ -197,8 +197,8 @@ void launch_edit_formatting(Workspace& ws, Box *box) {
 
 	auto new_box = dynamic_cast<Field_Formatting*>(ws.make_box(BoxFormatting));
 
-	int name_idx = ws.get_full_field_name(vo->record->fields.data[idx], vo->temp_vec);
-	char *name = &vo->temp_vec.pool[name_idx];
+	int name_idx = ws.get_full_field_name(vo->record->fields.data[idx], vo->field_vec);
+	char *name = &vo->field_vec.pool[name_idx];
 
 	new_box->field_edit.editor.text = name;
 }
@@ -212,14 +212,14 @@ void view_handler(UI_Element *elem, bool dbl_click) {
 }
 
 void View_Object::refresh(Point *cursor) {
-	Workspace *ws = parent;
+	Workspace& ws = *parent;
 
-	int n_sources = ws->sources.size();
+	int n_sources = ws.sources.size();
 	source_dd.content.resize(n_sources);
 	for (int i = 0; i < n_sources; i++)
-		source_dd.content[i] = (char*)ws->sources[i]->name.c_str();
+		source_dd.content[i] = (char*)ws.sources[i]->name.c_str();
 
-	struct_dd.external = &ws->struct_names;
+	struct_dd.external = &ws.struct_names;
 	if (!record || !source)
 		return;
 
@@ -228,19 +228,32 @@ void View_Object::refresh(Point *cursor) {
 	span.address = strtoull(addr_edit.editor.text.c_str(), nullptr, 16);
 	span.size = (record->total_size + 7) / 8;
 
+	field_vec.clear();
+
 	int idx = -1;
 	for (auto& row : view.data->columns[1]) {
 		idx++;
-		auto name = (const char*)row;
-		if (!name)
-			continue;
+		if (idx >= record->fields.n_fields)
+			break;
 
-		Bucket& buck = fields[name];
-		if ((buck.flags & FLAG_OCCUPIED) == 0)
-			continue;
+		Field& field = record->fields.data[idx];
+		int name_idx = ws.get_full_field_name(field, field_vec);
+		char *name = &field_vec.pool[name_idx];
 
-		Field *field = (Field*)buck.pointer;
-		format_field_value(*field, span, (char*&)view.data->columns[2][idx]);
+		Bucket& buck = field_fmt.insert(name);
+		Value_Format fmt = {};
+
+		if (buck.flags & FLAG_NEW) {
+			if (field.flags & FLAG_FLOAT)
+				fmt.floatfmt = FloatAuto;
+
+			buck.value = format.size();
+			format.push_back(fmt);
+		}
+		else
+			fmt = format[buck.value];
+
+		format_field_value(field, fmt, span, (char*&)view.data->columns[2][idx]);
 	}
 }
 
@@ -470,18 +483,12 @@ void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, Strin
 	int n_rows = ui->record->fields.n_fields;
 	ui->view.data->resize(n_rows);
 
-	ui->fields.release();
-
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->view.data, 0, i, false);
 
 		Field& f = ui->record->fields.data[i];
 		char *name = name_vector.at(f.field_name_idx);
 		ui->view.data->columns[1][i] = name;
-
-		Bucket& buck = ui->fields.insert(name);
-		buck.flags |= f.flags;
-		buck.pointer = &f;
 	}
 
 	ui->view.needs_redraw = true;

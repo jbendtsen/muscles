@@ -5,7 +5,7 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	if (!visible)
 		return;
 
-	Rect_Int r = view.to_screen_rect(box.x, box.y, box.w, box.h);
+	Rect_Int r = view.to_screen_rect(box);
 
 	int brd = edge_size * view.scale + 0.5;
 	Rect_Int edge_rect = {
@@ -16,9 +16,15 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	sdl_draw_rect(r, back, nullptr);
 
 	for (auto& e : ui) {
-		e->parent = this;
 		if (e->visible)
 			e->draw(view, r, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+	}
+
+	for (auto& e : ui) {
+		if (e->visible && e->use_post_draw) {
+			Rect_Int back = make_int_ui_box(r, e->pos, view.scale);
+			e->post_draw(view, back, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+		}
 	}
 
 	if (current_dd) {

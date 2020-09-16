@@ -136,6 +136,11 @@ void String_Vector::append_extra_zero() {
 	pool[head-1] = 0;
 }
 
+void String_Vector::clear() {
+	if (pool) memset(pool, 0, pool_size);
+	head = 0;
+}
+
 void *Arena::allocate(int size) {
 	if (size <= 0)
 		return nullptr;

@@ -622,6 +622,9 @@ void Editor::apply_scroll(Scroll *hscroll, Scroll *vscroll) {
 }
 
 void Editor::draw_selection_box(Renderer renderer, RGBA& color) {
+	if (!selected || primary.cursor == secondary.cursor)
+		return;
+
 	float line_pad = font_h * 0.15f;
 	Editor::Cursor *first  = primary.cursor < secondary.cursor ? &primary : &secondary;
 	Editor::Cursor *second = primary.cursor < secondary.cursor ? &secondary : &primary;

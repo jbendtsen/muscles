@@ -93,9 +93,15 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	field_edit.key_action = field_edit_handler;
 	ui.push_back(&field_edit);
 
+	scroll.back_color = ws.scroll_back;
+	scroll.default_color = ws.scroll_color;
+	scroll.hl_color = ws.scroll_hl_color;
+	scroll.sel_color = ws.scroll_sel_color;
+	ui.push_back(&scroll);
+
 	Column cols[] = {
 		{ColumnString, 0, 0.5, 0, 0, ""},
-		{ColumnEdit, 0, 0.5, 0, 0, ""},
+		{ColumnElement, 0, 0.5, 0, 0, ""},
 	};
 	table.init(cols, nullptr, 2, 10);
 
@@ -107,13 +113,55 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 		(void*)"Prefix",
 		(void*)"Precision",
 		(void*)"Floating-Point",
-		(void*)"Lettercase",
-		(void*)"Sign",
-		(void*)"Endian"
+		(void*)"Uppercase",
+		(void*)"Signedness",
+		(void*)"Big Endian"
+	};
+	table.columns[1] = {
+		(void*)&string_dd,
+		(void*)&brackets_dd,
+		(void*)&separator_edit,
+		(void*)&prefix_edit,
+		(void*)&base_edit,
+		(void*)&precision_edit,
+		(void*)&floatfmt_dd,
+		(void*)&uppercase_cb,
+		(void*)&sign_dd,
+		(void*)&endian_cb
 	};
 
-	options.data = &table;
+	string_dd.title = "auto";
+	string_dd.default_color = ws.dark_color;
 
+	brackets_dd.title = "[]";
+	brackets_dd.default_color = ws.dark_color;
+
+	separator_edit.default_color = ws.dark_color;
+
+	prefix_edit.default_color = ws.dark_color;
+
+	base_edit.default_color = ws.dark_color;
+
+	precision_edit.default_color = ws.dark_color;
+	precision_edit.dropdown = &precision_dd;
+
+	precision_dd.title = "auto";
+
+	floatfmt_dd.title = "auto";
+	floatfmt_dd.default_color = ws.dark_color;
+
+	uppercase_cb.default_color = ws.scroll_back;
+	uppercase_cb.sel_color = ws.cb_color;
+	uppercase_cb.leaning = 0.9;
+
+	sign_dd.title = "auto";
+	sign_dd.default_color = ws.dark_color;
+
+	endian_cb.default_color = ws.scroll_back;
+	endian_cb.sel_color = ws.cb_color;
+	endian_cb.leaning = 0.9;
+
+	options.data = &table;
 	options.font = ws.make_font(10, ws.text_color, scale);
 	options.default_color = ws.dark_color;
 	options.hl_color = ws.dark_color;
@@ -121,12 +169,6 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	options.vscroll = &scroll;
 	options.vscroll->content = &options;
 	ui.push_back(&options);
-
-	scroll.back_color = ws.scroll_back;
-	scroll.default_color = ws.scroll_color;
-	scroll.hl_color = ws.scroll_hl_color;
-	scroll.sel_color = ws.scroll_sel_color;
-	ui.push_back(&scroll);
 
 	back = ws.back_color;
 	edge_color = ws.dark_color;

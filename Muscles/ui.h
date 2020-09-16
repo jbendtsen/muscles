@@ -92,6 +92,7 @@ struct UI_Element {
 	bool active = true;
 	bool use_sf_cache = false;
 	bool use_default_cursor = false;
+	bool use_post_draw = false;
 
 	enum Element_Type elem_type;
 	enum CursorType cursor_type = CursorDefault;
@@ -140,6 +141,20 @@ struct UI_Element {
 	virtual ~UI_Element() {
 		sdl_destroy_texture(&tex_cache);
 	}
+};
+
+struct Data_View;
+
+struct Draw_Cell_Info {
+	Data_View *dv;
+	Camera *camera;
+	Renderer renderer;
+	Rect_Int dst;
+	Rect_Int src;
+	float y_max;
+	float line_off;
+	float sp_half;
+	float font_height;
 };
 
 void (*get_delete_box(void))(UI_Element*, bool);
@@ -194,6 +209,8 @@ struct Checkbox : UI_Element {
 	float text_off_x = 0.3;
 	float text_off_y = -0.15;
 
+	float leaning = -1.0; // -1 = left, 0 = centre, 1 = right
+
 	void toggle();
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
@@ -229,6 +246,8 @@ struct Data_View : UI_Element {
 	float column_spacing = 0.2;
 	float scroll_total = 0.2;
 
+	float total_spacing = 0;
+
 	bool show_column_names = false;
 
 	Render_Clip clip = {
@@ -238,6 +257,7 @@ struct Data_View : UI_Element {
 
 	float column_width(float total_width, float min_width, float font_height, float scale, int idx);
 	void draw_item_backing(Renderer renderer, RGBA& color, Rect_Int& back, float scale, int idx);
+	void draw_cell(Draw_Cell_Info& dci, void *cell, Column& header, Rect& r);
 
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
@@ -316,6 +336,7 @@ struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(ElemEditBox, CursorEdit), editor(this) {
 		action = get_edit_box_action();
 		editor.multiline = false;
+		use_post_draw = true;
 	}
 	~Edit_Box() {
 		sdl_destroy_texture(&icon);
@@ -359,6 +380,7 @@ struct Edit_Box : UI_Element {
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	//void update(Rect_Int& rect) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
+	void post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Hex_View : UI_Element {
@@ -537,6 +559,7 @@ struct Text_Editor : UI_Element {
 		action = get_text_editor_action();
 		editor.parent = this;
 		use_sf_cache = true;
+		use_post_draw = true;
 	}
 
 	bool mouse_held = false;
@@ -750,4 +773,6 @@ struct Workspace {
 };
 
 Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);
+Rect_Int make_int_ui_box(Rect_Int& box, Rect& elem, float scale);
+
 void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size);

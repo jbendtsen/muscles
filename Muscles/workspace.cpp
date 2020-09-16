@@ -112,21 +112,21 @@ Box *Workspace::make_box(BoxType btype, MenuType mtype) {
 			for (auto& elem : b->ui)
 				elem->parent = b;
 
+			Camera& view = get_default_camera();
+			float x = view.center_x - b->initial_width * view.scale / 2;
+			float y = view.center_y - b->initial_height * view.scale / 2;
+			Point p = view.to_world(x, y);
+
+			b->box = { p.x, p.y, b->initial_width, b->initial_height };
+
 			add_box(b);
 		}
 
 		box = b;
 	}
 
-	if (box) {
-		Camera& view = get_default_camera();
-		float x = view.center_x - box->initial_width * view.scale / 2;
-		float y = view.center_y - box->initial_height * view.scale / 2;
-		Point p = view.to_world(x, y);
-
-		box->box = { p.x, p.y, box->initial_width, box->initial_height };
+	if (box)
 		box->wake_up();
-	}
 
 	return box;
 }
@@ -474,6 +474,11 @@ void Workspace::update_structs(std::string& text) {
 	}
 }
 
+/*
+   This method gets the full name of a field in a struct instance, eg. player.position.x.
+   It retrieves names starting with the target field and working back up the heirarchy (eg. x, position, player)
+   By reversing each field name, then reversing the result at the end, the string is arranged in the desired order.
+*/
 int Workspace::get_full_field_name(Field& field, String_Vector& out_vec) {
 	Field *f = &field;
 	int start = out_vec.head;

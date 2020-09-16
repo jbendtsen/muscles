@@ -90,7 +90,6 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 	if (!use_sf_cache) {
 		Rect_Int back = make_int_ui_box(rect, pos, view.scale);
 		draw_element(nullptr, view, back, elem_hovered, box_hovered, focussed);
-		post_draw(view, back, elem_hovered, box_hovered, focussed);
 		return;
 	}
 
@@ -151,8 +150,6 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 
 	if (draw_existing)
 		sdl_apply_texture(tex_cache, r, nullptr, nullptr);
-
-	post_draw(view, r, elem_hovered, box_hovered, focussed);
 }
 
 void UI_Element::set_active(bool state) {
@@ -233,6 +230,23 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 	if (elem_hovered)
 		sdl_draw_rect(back, hl_color, renderer);
 
+	float font_height = font->render.text_height();
+	float gap_x = text_off_x * font_height;
+	float gap_y = text_off_y * font_height;
+
+	float text_x = back.x + gap_x;
+	float text_y = back.y + gap_y;
+
+	if (leaning < 0)
+		text_x += back.h;
+
+	font->render.draw_text_simple(renderer, text.c_str(), text_x, text_y);
+
+	float frac = clamp((leaning + 1) / 2, 0, 1);
+	float cb_x = frac * (back.w - back.h);
+	if (cb_x < 0) cb_x = 0;
+
+	back.x += cb_x;
 	back.w = back.h;
 	sdl_draw_rect(back, default_color, renderer);
 
@@ -247,15 +261,6 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 		};
 		sdl_draw_rect(check, sel_color, renderer);
 	}
-
-	float font_height = font->render.text_height();
-	float gap_x = text_off_x * font_height;
-	float gap_y = text_off_y * font_height;
-
-	float text_x = back.x + back.w + gap_x;
-	float text_y = back.y + gap_y;
-
-	font->render.draw_text_simple(renderer, text.c_str(), text_x, text_y);
 }
 
 bool Data_View::highlight(Camera& view, Point& inside) {
@@ -319,9 +324,9 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
 	float w = data->headers[idx].width;
 	if (w == 0)
-		return (total_width - min_width) * scale;
+		return (total_width - total_spacing - min_width) * scale;
 
-	w *= total_width * scale;
+	w *= (total_width - total_spacing) * scale;
 
 	if (data->headers[idx].max_size > 0) {
 		float max = data->headers[idx].max_size * font_height;
@@ -354,6 +359,85 @@ void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect_Int& back
 			h
 		};
 		sdl_draw_rect(r, color, renderer);
+	}
+}
+
+void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect& r) {
+	auto type = header.type;
+	if (type == ColumnString || type == ColumnDec || type == ColumnHex || type == ColumnFile || type == ColumnStdString) {
+		char *str = nullptr;
+		char buf[24];
+
+		if (type == ColumnString)
+			str = (char*)cell;
+		else if (type == ColumnDec) {
+			write_dec(buf, (s64)cell);
+			str = buf;
+		}
+		else if (type == ColumnHex) {
+			write_hex(buf, (u64)cell, header.count_per_cell);
+			str = buf;
+		}
+		else if (type == ColumnFile && cell)
+			str = ((File_Entry*)cell)->name;
+		else if (type == ColumnStdString && cell)
+			str = (char*)((std::string*)cell)->c_str();
+
+		if (str)
+			font->render.draw_text(info.renderer, (const char*)str, r.x, r.y - info.line_off, clip);
+	}
+	else if (type == ColumnImage && cell) {
+		sdl_get_texture_size(cell, &info.src.w, &info.src.h);
+		info.dst.x = r.x;
+		info.dst.y = r.y + info.sp_half;
+
+		if (info.dst.y + info.dst.h > info.y_max) {
+			int img_h = info.y_max - info.dst.y;
+			info.src.h = (float)(info.src.h * img_h) / (float)info.dst.h;
+			info.dst.h = img_h;
+		}
+
+		sdl_apply_texture(cell, info.dst, &info.src, info.renderer);
+	}
+	else if (type == ColumnCheckbox) {
+		float indent = info.font_height * 0.1;
+		info.dst.x = r.x + 0.5 + indent;
+		info.dst.y = r.y + info.sp_half + 0.5 + indent;
+		info.dst.w = 0.5 + info.font_height - 2*indent;
+		info.dst.h = info.dst.w;
+
+		if (info.dst.y + info.dst.h > info.y_max)
+			info.dst.h = info.y_max - info.dst.y;
+
+		sdl_draw_rect(info.dst, parent->parent->table_cb_back, info.renderer);
+
+		if (*(u8*)&cell == 2) {
+			indent = info.font_height * 0.15;
+			info.src.x = info.dst.x + 0.5 + indent;
+			info.src.y = info.dst.y + 0.5 + indent;
+			info.src.w = 0.5 + info.dst.w - 2*indent;
+			info.src.h = info.src.w;
+
+			if (info.src.y + info.src.h > info.y_max)
+				info.src.h = info.y_max - info.src.y;
+
+			sdl_draw_rect(info.src, parent->parent->cb_color, info.renderer);
+			info.src.x = info.src.y = 0;
+		}
+
+		info.dst.w = info.dst.h = info.font_height;
+	}
+	else if (type == ColumnElement && cell) {
+		auto elem = (UI_Element*)cell;
+		elem->font = font;
+		elem->parent = parent;
+		elem->visible = true;
+
+		float scale = info.camera->scale;
+		elem->pos = {0, 0, r.w / scale, r.h / scale};
+
+		Rect_Int back = r.to_rect_int();
+		elem->draw_element(info.renderer, *info.camera, back, false, false, false);
 	}
 }
 
@@ -398,12 +482,17 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	float table_w = pos.w;
 
 	scroll_total = column_spacing;
+	total_spacing = column_spacing;
+
+	for (int i = 0; i < n_cols; i++) {
+		scroll_total += data->headers[i].min_size + column_spacing;
+		total_spacing += column_spacing;
+	}
+
+	scroll_total *= font_units;
+	total_spacing *= font_units;
 
 	if (hscroll) {
-		for (int i = 0; i < n_cols; i++)
-			scroll_total += data->headers[i].min_size + column_spacing;
-		scroll_total *= font_height / view.scale;
-
 		hscroll->set_maximum(scroll_total, pos.w);
 
 		scroll_x = scroll_total - pos.w;
@@ -456,73 +545,8 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	clip.x_lower = x + scroll_x;
 	clip.y_upper = y_max;
 
-	auto draw_cell =
-	[this, &renderer, &dst, &src, y_max, line_off, sp_half, font_height]
-	(void *cell, Column& header, float x, float y) {
-		auto type = header.type;
-		if (type == ColumnString || type == ColumnDec || type == ColumnHex || type == ColumnFile || type == ColumnStdString) {
-			char *str = nullptr;
-			char buf[24];
-
-			if (type == ColumnString)
-				str = (char*)cell;
-			else if (type == ColumnDec) {
-				write_dec(buf, (s64)cell);
-				str = buf;
-			}
-			else if (type == ColumnHex) {
-				write_hex(buf, (u64)cell, header.count_per_cell);
-				str = buf;
-			}
-			else if (type == ColumnFile && cell)
-				str = ((File_Entry*)cell)->name;
-			else if (type == ColumnStdString && cell)
-				str = (char*)((std::string*)cell)->c_str();
-
-			if (str)
-				font->render.draw_text(renderer, (const char*)str, x, y - line_off, clip);
-		}
-		else if (type == ColumnImage && cell) {
-			sdl_get_texture_size(cell, &src.w, &src.h);
-			dst.x = x;
-			dst.y = y + sp_half;
-
-			if (dst.y + dst.h > y_max) {
-				int h = y_max - dst.y;
-				src.h = (float)(src.h * h) / (float)dst.h;
-				dst.h = h;
-			}
-
-			sdl_apply_texture(cell, dst, &src, renderer);
-		}
-		else if (type == ColumnCheckbox) {
-			float indent = font_height * 0.1;
-			dst.x = x + 0.5 + indent;
-			dst.y = y + sp_half + 0.5 + indent;
-			dst.w = 0.5 + font_height - 2*indent;
-			dst.h = dst.w;
-
-			if (dst.y + dst.h > y_max)
-				dst.h = y_max - dst.y;
-
-			sdl_draw_rect(dst, parent->parent->table_cb_back, renderer);
-
-			if (*(u8*)&cell == 2) {
-				indent = font_height * 0.15;
-				src.x = dst.x + 0.5 + indent;
-				src.y = dst.y + 0.5 + indent;
-				src.w = 0.5 + dst.w - 2*indent;
-				src.h = src.w;
-
-				if (src.y + src.h > y_max)
-					src.h = y_max - src.y;
-
-				sdl_draw_rect(src, parent->parent->cb_color, renderer);
-				src.x = src.y = 0;
-			}
-
-			dst.w = dst.h = font_height;
-		}
+	Draw_Cell_Info dci = {
+		this, &view, renderer, dst, src, y_max, line_off, sp_half, font_height
 	};
 
 	float table_off_y = y;
@@ -530,6 +554,16 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	for (int i = 0; i < n_cols && x < back.x + back.w; i++) {
 		float w = column_width(pos.w, scroll_total, font_height, view.scale, i);
 		clip.x_upper = x+w < x_max ? x+w : x_max;
+
+		Rect cell_rect = {x, y, w, line_h};
+
+		if (data->headers[i].type == ColumnElement) {
+			for (auto& cell : data->columns[i]) {
+				auto elem = (UI_Element*)cell;
+				if (elem)
+					elem->visible = false;
+			}
+		}
 
 		if (data->filtered >= 0) {
 			int n = -1;
@@ -550,9 +584,10 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 				auto thing = data->columns[i][idx];
 				if (!skip_draw)
-					draw_cell(thing, data->headers[i], x, y);
+					draw_cell(dci, thing, data->headers[i], cell_rect);
 
 				y += line_h;
+				cell_rect.y = y;
 			}
 		}
 		else {
@@ -571,7 +606,8 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 					Texture icon = data->branches[branch].closed ? icon_plus : icon_minus;
 					Column temp;
 					temp.type = ColumnImage;
-					draw_cell(icon, temp, x, y + font_height * 0.025);
+					cell_rect.y += font_height * 0.025;
+					draw_cell(dci, icon, temp, cell_rect);
 
 					int name_idx = data->branches[branch].name_idx;
 					if (name_idx >= 0)
@@ -588,10 +624,22 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 					auto thing = data->columns[i][idx];
 					if (!skip_draw)
-						draw_cell(thing, data->headers[i], x, y);
+						draw_cell(dci, thing, data->headers[i], cell_rect);
 				}
 
 				y += line_h;
+				cell_rect.y = y;
+			}
+		}
+
+		if (data->headers[i].type == ColumnElement) {
+			for (auto& cell : data->columns[i]) {
+				auto elem = (UI_Element*)cell;
+				if (elem && elem->visible && elem->use_post_draw) {
+					Rect_Int r = view.to_screen_rect(parent->box);
+					Rect_Int b = make_int_ui_box(r, elem->pos, view.scale);
+					elem->post_draw(view, b, false, false, false);
+				}
 			}
 		}
 
@@ -961,14 +1009,16 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 
 		sdl_draw_rect(r, caret, renderer);
 	}
+}
 
+void Edit_Box::post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
 	if (!dropdown)
 		return;
 
 	dropdown->pos = pos;
 	if (dropdown->dropped) {
 		Point p = view.to_screen(parent->box.x + pos.x, parent->box.y + pos.y);
-		dropdown->draw_menu(renderer, view, p.x, p.y + pos.h * view.scale);
+		dropdown->draw_menu(nullptr, view, p.x, p.y + pos.h * view.scale);
 	}
 }
 

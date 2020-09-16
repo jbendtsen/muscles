@@ -53,9 +53,13 @@ struct Point {
 	float x, y;
 };
 
+struct Rect_Int;
+
 struct Rect {
 	float x, y;
 	float w, h;
+
+	Rect_Int to_rect_int() const;
 
 	bool contains(Point& p) const {
 		return p.x >= x && p.x < x+w && p.y >= y && p.y < y+h;
@@ -69,14 +73,7 @@ struct Rect_Int {
 	int x, y;
 	int w, h;
 
-	Rect to_rect() const {
-		return {
-			(float)x,
-			(float)y,
-			(float)w,
-			(float)h
-		};
-	}
+	Rect to_rect() const;
 
 	bool contains(Point& p) const {
 		return p.x >= x && p.x < x+w && p.y >= y && p.y < y+h;
@@ -237,6 +234,8 @@ struct String_Vector {
 
 	char *allocate(int size);
 	void append_extra_zero();
+
+	void clear();
 };
 
 #define MAX_FNAME 112
@@ -265,7 +264,7 @@ enum ColumnType {
 	ColumnStdString,
 	ColumnImage,
 	ColumnCheckbox,
-	ColumnEdit
+	ColumnElement
 };
 
 // Column Type, Count Per Cell, Fractional Width, Minimum Heights, Maximum Heights, Name
@@ -434,12 +433,12 @@ struct Camera {
 		};
 	}
 
-	Rect_Int to_screen_rect(float px, float py, float w, float h) const {
+	Rect_Int to_screen_rect(Rect r) const {
 		return {
-			(int)(center_x + (px - x) * scale + 0.5),
-			(int)(center_y + (py - y) * scale + 0.5),
-			(int)(w * scale + 0.5),
-			(int)(h * scale + 0.5)
+			(int)(center_x + (r.x - x) * scale + 0.5),
+			(int)(center_y + (r.y - y) * scale + 0.5),
+			(int)(r.w * scale + 0.5),
+			(int)(r.h * scale + 0.5)
 		};
 	}
 };
@@ -738,7 +737,59 @@ void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
 
+enum StringStyle {
+	StringAuto = 0,
+	StringNone,
+	StringBA,
+	StringAscii
+};
+
+enum BracketsStyle {
+	BracketsAuto = 0,
+	BracketsNone,
+	BracketsSquare,
+	BracketsParen,
+	BracketsCurly
+};
+
+enum PrecisionStyle {
+	PrecisionAuto = -2,
+	PrecisionField
+};
+
+enum FloatStyle {
+	FloatNone = 0,
+	FloatAuto,
+	FloatFixed,
+	FloatScientific
+};
+
+enum SignStyle {
+	SignAuto = 0,
+	SignSigned,
+	SignUnsigned
+};
+
+#define SEPARATOR_LEN 4
+#define PREFIX_LEN    4
+
+struct Value_Format {
+	enum StringStyle string = StringAuto;
+	enum BracketsStyle brackets = BracketsAuto;
+	char separator[4] = {0};
+	char prefix[4] = {0};
+	int base = 10;
+	union {
+		enum PrecisionStyle precision = PrecisionAuto;
+		int digits;
+	};
+	enum FloatStyle floatfmt = FloatNone;
+	bool uppercase = false;
+	enum SignStyle sign = SignAuto;
+	bool big_endian = false;
+};
+
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
 
-void format_field_value(Field& field, Span& span, char*& cell);
+void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell);

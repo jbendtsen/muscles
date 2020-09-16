@@ -75,7 +75,7 @@ char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field) {
 	return name;
 }
 
-void format_field_value(Field& field, Span& span, char*& cell) {
+void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell) {
 	if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
 		return;
 
