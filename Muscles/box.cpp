@@ -226,7 +226,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 		if (!hl && this == hover && !moving) {
 			if (elem->pos.contains(inside)) {
-				Point p = {inside.x - elem->pos.x, inside.x - elem->pos.y};
+				Point p = {inside.x - elem->pos.x, inside.y - elem->pos.y};
 				elem->scroll_handler(view, input, p);
 
 				if (!elem->use_default_cursor && !parent->cursor_set) {

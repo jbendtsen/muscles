@@ -70,7 +70,6 @@ void Field_Formatting::handle_zoom(Workspace& ws, float new_scale) {
 
 	set_icon(separator_edit);
 	set_icon(prefix_edit);
-	set_icon(base_edit);
 	set_icon(precision_edit);
 }
 
@@ -130,8 +129,8 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 		(void*)"String",
 		(void*)"Array Brackets",
 		(void*)"Array Separator",
-		(void*)"Base",
 		(void*)"Prefix",
+		(void*)"Base",
 		(void*)"Precision",
 		(void*)"Floating-Point",
 		(void*)"Uppercase",
@@ -176,11 +175,7 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	prefix_edit.text_off_y = -0.1;
 
 	base_edit.default_color = ws.scroll_back;
-	base_edit.caret = ws.text_color;
-	base_edit.icon_color = arrow_color;
-	base_edit.icon_right = true;
-	base_edit.manage_icon = false;
-	base_edit.text_off_y = -0.1;
+	base_edit.text_off_y = -0.25;
 
 	precision_edit.default_color = ws.scroll_back;
 	precision_edit.caret = ws.text_color;

@@ -73,6 +73,7 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 
 	if (!use_sf_cache) {
 		Rect_Int back = make_int_ui_box(rect, pos, view.scale);
+		screen = back;
 		draw_element(nullptr, view, back, elem_hovered, box_hovered, focussed);
 		return;
 	}
@@ -113,8 +114,10 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 	}
 
 	if (!draw_existing) {
-		if (!soft_draw)
+		if (!soft_draw) {
 			back = make_int_ui_box(rect, pos, view.scale);
+			screen = back;
+		}
 
 		draw_element(renderer, view, back, elem_hovered, box_hovered, focussed);
 
@@ -202,7 +205,7 @@ void Button::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 		sdl_apply_texture(icon, box, nullptr, renderer);
 	}
 
-	theme->font->render.draw_text_simple(renderer, text.c_str(), back.x + x, back.y + y_offset * font_height);
+	theme->font->render.draw_text_simple(renderer, text.c_str(), back.x + x, back.y + y);
 }
 
 void Checkbox::toggle() {
@@ -437,7 +440,7 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 
 		float scale = info.camera->scale;
 		elem->pos = {0, 0, back.w / scale, back.h / scale};
-		elem->table_cell_rect = back;
+		elem->screen = back;
 
 		elem->draw_element(info.renderer, *info.camera, back, false, false, false);
 	}
@@ -682,8 +685,8 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 
 				auto elem = (UI_Element*)cell;
 				Point inside = {
-					cursor.x - (elem->table_cell_rect.x - box.x) / view.scale,
-					cursor.y - (elem->table_cell_rect.y - box.y) / view.scale
+					cursor.x - (elem->screen.x - box.x) / view.scale,
+					cursor.y - (elem->screen.y - box.y) / view.scale
 				};
 
 				elem->mouse_handler(view, input, inside, hovered);
@@ -717,16 +720,52 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 	needs_redraw = true;
 }
 
-void Data_View::scroll_handler(Camera& view, Input& input, Point& inside) {
+bool Data_View::scroll_handler(Camera& view, Input& input, Point& inside) {
+	bool scrolled = false;
+
+	if (data && data->has_ui_elements) {
+		Rect_Int box = view.to_screen_rect(parent->box);
+		int n_cols = data->column_count();
+
+		for (int i = 0; i < n_cols; i++) {
+			if (data->headers[i].type != ColumnElement)
+				continue;
+
+			for (auto& cell : data->columns[i]) {
+				if (!cell)
+					continue;
+
+				auto elem = (UI_Element*)cell;
+				Point inside_elem = {
+					inside.x - (elem->screen.x - screen.x) / view.scale,
+					inside.y - (elem->screen.y - screen.y) / view.scale
+				};
+
+				if (elem->pos.contains(inside_elem)) {
+					scrolled = elem->scroll_handler(view, input, inside_elem);
+					if (scrolled) {
+						needs_redraw = true;
+						return true;
+					}
+				}
+			}
+		}
+	}
+
 	Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
 	if (scroll && input.scroll_y > 0) {
 		scroll->scroll(-1);
-		needs_redraw = true;
+		scrolled = true;
 	}
 	if (scroll && input.scroll_y < 0) {
 		scroll->scroll(1);
-		needs_redraw = true;
+		scrolled = true;
 	}
+
+	if (scrolled)
+		needs_redraw = true;
+
+	return scrolled;
 }
 
 void Data_View::deselect() {
@@ -1301,22 +1340,28 @@ void Hex_View::key_handler(Camera& view, Input& input) {
 	}
 }
 
-void Hex_View::scroll_handler(Camera& view, Input& input, Point& inside) {
+bool Hex_View::scroll_handler(Camera& view, Input& input, Point& inside) {
 	if (!scroll)
-		return;
+		return false;
 
 	int delta = columns;
 	if (input.lshift || input.rshift)
 		delta *= vis_rows;
 
+	bool scrolled = false;
 	if (input.scroll_y > 0) {
 		scroll->scroll(-delta);
-		needs_redraw = true;
+		scrolled = true;
 	}
 	if (input.scroll_y < 0) {
 		scroll->scroll(delta);
-		needs_redraw = true;
+		scrolled = true;
 	}
+
+	if (scrolled)
+		needs_redraw = true;
+
+	return scrolled;
 }
 
 void Hex_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1367,9 +1412,6 @@ void Label::update(Camera& view, Rect_Int& rect) {
 }
 
 void Label::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
-	//float font_height = font->render.text_height();
-	//float pad = padding * font_height;
-
 	clip.x_upper = back.x + back.w;
 	font->render.draw_text(renderer, text.c_str(), back.x, back.y, clip);
 }
@@ -1421,7 +1463,7 @@ void Number_Edit::affect_number(int delta) {
 	}
 }
 
-void Number_Edit::scroll_handler(Camera& view, Input& input, Point& inside) {
+bool Number_Edit::scroll_handler(Camera& view, Input& input, Point& inside) {
 	int delta = 0;
 	if (input.scroll_y > 0)
 		delta = 1;
@@ -1429,6 +1471,7 @@ void Number_Edit::scroll_handler(Camera& view, Input& input, Point& inside) {
 		delta = -1;
 
 	affect_number(delta);
+	return delta != 0;
 }
 
 void Number_Edit::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
@@ -1456,9 +1499,8 @@ void Number_Edit::draw_element(Renderer renderer, Camera& view, Rect_Int& back, 
 	r.w -= end_w - 1.0;
 	sdl_draw_rect(r, default_color, renderer);
 
-	float pad = font_h * 0.15;
-	float text_x = back.x + pad;
-	float text_y = back.y - pad;
+	float text_x = back.x + font_h * text_off_x;
+	float text_y = back.y + font_h * text_off_y;
 
 	clip.x_upper = back.x + back.w - end_w;
 
@@ -1713,16 +1755,23 @@ void Text_Editor::default_action(Camera& view, bool dbl_click) {
 	parent->active_edit = &editor;
 }
 
-void Text_Editor::scroll_handler(Camera& view, Input& input, Point& inside) {
+bool Text_Editor::scroll_handler(Camera& view, Input& input, Point& inside) {
 	Scroll *scroll = input.lshift || input.rshift ? hscroll : vscroll;
+	bool scrolled = false;
+
 	if (scroll && input.scroll_y > 0) {
 		scroll->scroll(-font->render.text_height());
-		needs_redraw = true;
+		scrolled = true;
 	}
 	if (scroll && input.scroll_y < 0) {
 		scroll->scroll(font->render.text_height());
-		needs_redraw = true;
+		scrolled = true;
 	}
+
+	if (scrolled)
+		needs_redraw = true;
+
+	return scrolled;
 }
 
 void Text_Editor::update(Camera& view, Rect_Int& rect) {

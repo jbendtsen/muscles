@@ -227,7 +227,7 @@ struct Field_Formatting : Box {
 	Drop_Down brackets_dd;
 	Edit_Box separator_edit;
 	Edit_Box prefix_edit;
-	Edit_Box base_edit;
+	Number_Edit base_edit;
 	Edit_Box precision_edit;
 	Drop_Down floatfmt_dd;
 	Checkbox uppercase_cb;
