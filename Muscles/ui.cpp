@@ -943,10 +943,28 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	else
 		sdl_draw_rect(back, default_color, renderer);
 
-	float gap_y = title_off_y * font->render.text_height();
-
 	float text_w = font->render.text_width(title);
-	float text_x = (pos.w * view.scale - text_w) / 2;
+	float font_h = font->render.text_height();
+
+	float pad_x = title_pad_x * font_h;
+	float gap_y = title_off_y * font_h;
+
+	float w = pos.w * view.scale;
+	float x = 0;
+
+	if (icon) {
+		Rect_Int r = { back.x, back.y, icon_length, icon_length };
+
+		w -= icon_length;
+		if (!icon_right)
+			x = icon_length;
+		else
+			r.x += back.w - icon_length;
+
+		sdl_apply_texture(icon, r, nullptr, renderer);
+	}
+
+	float text_x = x + pad_x + leaning * (w - text_w - 2*pad_x);
 
 	font->render.draw_text_simple(renderer, title, back.x + text_x, back.y + gap_y);
 }
@@ -1107,10 +1125,8 @@ void Edit_Box::post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool b
 		return;
 
 	dropdown->pos = pos;
-	if (dropdown->dropped) {
-		Point p = view.to_screen(parent->box.x + pos.x, parent->box.y + pos.y);
-		dropdown->draw_menu(nullptr, view, p.x, p.y + pos.h * view.scale);
-	}
+	if (dropdown->dropped)
+		dropdown->draw_menu(nullptr, view, screen.x, screen.y + pos.h * view.scale);
 }
 
 void Hex_View::set_region(u64 address, u64 size) {

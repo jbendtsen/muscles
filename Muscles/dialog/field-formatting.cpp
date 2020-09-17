@@ -55,6 +55,11 @@ void Field_Formatting::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
 	maxm.img = ws.maxm;
 
+	precision_dd.font = options.font;
+	base_edit.font = options.font;
+
+	base_edit.make_icon(new_scale);
+
 	float height = get_edit_height(field_edit, new_scale);
 	field_edit.update_icon(IconTriangle, height, new_scale);
 
@@ -62,15 +67,20 @@ void Field_Formatting::handle_zoom(Workspace& ws, float new_scale) {
 	sdl_destroy_texture(&option_arrow);
 	option_arrow = make_triangle(arrow_color, row_h, row_h);
 
-	auto set_icon = [this, row_h](Edit_Box& edit) {
+	auto set_icon =
+	[this, row_h]<typename T>(T& edit) {
 		edit.icon = option_arrow;
 		edit.icon_length = row_h;
 		edit.needs_redraw = true;
 	};
 
+	set_icon(string_dd);
+	set_icon(brackets_dd);
 	set_icon(separator_edit);
 	set_icon(prefix_edit);
 	set_icon(precision_edit);
+	set_icon(floatfmt_dd);
+	set_icon(sign_dd);
 }
 
 void Field_Formatting::on_close() {
@@ -153,11 +163,13 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	string_dd.title = "auto";
 	string_dd.default_color = ws.scroll_back;
 	string_dd.hl_color = ws.hl_color;
+	string_dd.leaning = 1.0;
 	string_dd.title_off_y = -0.1;
 
 	brackets_dd.title = "[]";
 	brackets_dd.default_color = ws.scroll_back;
 	brackets_dd.hl_color = ws.hl_color;
+	brackets_dd.leaning = 1.0;
 	brackets_dd.title_off_y = -0.1;
 
 	separator_edit.default_color = ws.scroll_back;
@@ -175,6 +187,7 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	prefix_edit.text_off_y = -0.1;
 
 	base_edit.default_color = ws.scroll_back;
+	base_edit.sel_color = ws.scroll_back;
 	base_edit.text_off_y = -0.25;
 
 	precision_edit.default_color = ws.scroll_back;
@@ -191,6 +204,7 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	floatfmt_dd.default_color = ws.scroll_back;
 	floatfmt_dd.hl_color = ws.hl_color;
 	floatfmt_dd.title_off_y = -0.1;
+	floatfmt_dd.leaning = 1.0;
 
 	uppercase_cb.default_color = ws.scroll_back;
 	uppercase_cb.sel_color = ws.cb_color;
@@ -200,6 +214,7 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	sign_dd.default_color = ws.scroll_back;
 	sign_dd.hl_color = ws.hl_color;
 	sign_dd.title_off_y = -0.1;
+	sign_dd.leaning = 1.0;
 
 	endian_cb.default_color = ws.scroll_back;
 	endian_cb.sel_color = ws.cb_color;
@@ -214,8 +229,6 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	options.vscroll = &scroll;
 	options.vscroll->content = &options;
 	ui.push_back(&options);
-
-	precision_dd.font = options.font;
 
 	back = ws.back_color;
 	edge_color = ws.dark_color;

@@ -28,8 +28,8 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	}
 
 	if (current_dd) {
-		Rect back = make_ui_box(r, current_dd->pos, view.scale);
-		current_dd->draw_menu(nullptr, view, back.x, back.y + back.h);
+		Rect_Int& dd = current_dd->screen;
+		current_dd->draw_menu(nullptr, view, dd.x, dd.y + dd.h);
 	}
 }
 

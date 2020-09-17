@@ -314,11 +314,18 @@ struct Drop_Down : UI_Element {
 	bool dropped = false;
 	int sel = -1;
 
-	float title_off_x = 0.3;
 	float item_off_x = 0.8;
+	float title_pad_x = 0.05;
 	float title_off_y = 0.03;
+
+	float leaning = 0.5;
+
 	float line_height = 1.2f;
 	float width = 150;
+
+	bool icon_right = true;
+	int icon_length = 0;
+	Texture icon = nullptr;
 
 	const char *title = nullptr;
 	std::vector<char*> content;
