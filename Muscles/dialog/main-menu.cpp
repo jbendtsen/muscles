@@ -200,12 +200,12 @@ void Main_Menu::handle_zoom(Workspace& ws, float new_scale) {
 }
 
 Main_Menu::Main_Menu(Workspace& ws) {
-	process_back = {0.8, 0.8, 0.8, 1.0};
-	process_outline = {0.6, 0.6, 0.6, 1.0};
+	process_back = ws.process_back;
+	process_outline = ws.process_outline;
 
-	file_back = {0.8, 0.8, 0.8, 1.0};
-	file_fold = {0.9, 0.9, 0.9, 1.0};
-	file_line = {0.5, 0.5, 0.5, 1.0};
+	file_back = ws.file_back;
+	file_fold = ws.file_fold;
+	file_line = ws.file_line;
 
 	float scale = get_default_camera().scale;
 

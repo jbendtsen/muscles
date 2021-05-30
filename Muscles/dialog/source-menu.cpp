@@ -354,7 +354,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		up.update_size(scale);
 
 		div.visible = true;
-		div.default_color = {0.5, 0.6, 0.8, 1.0};
+		div.default_color = ws.div_color;
 		div.pos.h = 1.5;
 
 		path.visible = true;

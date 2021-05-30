@@ -652,8 +652,12 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			if ((p.flags & prim_mask) == prim_mask) {
 
 				const u32 ext_mask = prim_mask | FLAG_EXTERNAL;
-				while ((p.flags & ext_mask) == ext_mask)
+				int old_value = p.value;
+				while ((p.flags & ext_mask) == ext_mask) {
 					p = definitions[definitions.sv->at(p.value)];
+					if (p.value == old_value)
+						break;
+				}
 
 				if ((p.flags & prim_mask) == prim_mask) {
 					f->flags |= p.flags & 0xff; // 0xff captures the relevant flags for a primitive

@@ -737,6 +737,12 @@ struct Workspace {
 	RGBA cb_color = {0.55, 0.7, 0.9, 1.0};
 	RGBA sel_color = {0.45, 0.5, 0.6, 1.0};
 
+	RGBA process_back = {0.8, 0.8, 0.8, 1.0};
+	RGBA process_outline = {0.6, 0.6, 0.6, 1.0};
+	RGBA file_back = {0.8, 0.8, 0.8, 1.0};
+	RGBA file_fold = {0.9, 0.9, 0.9, 1.0};
+	RGBA file_line = {0.5, 0.5, 0.5, 1.0};
+
 	Font_Face face = nullptr;
 	std::vector<Font*> fonts;
 	Font *default_font = nullptr;

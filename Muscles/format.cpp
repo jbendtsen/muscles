@@ -107,8 +107,19 @@ void format_field_value(Field& field, Value_Format& format, Span& span, char*& c
 			}
 		}
 
-		strcpy(cell, "0x");
+		bool negative = (field.flags & FLAG_SIGNED) && (n >= 1LL << (u64)(field.bit_size - 1LL));
+		const char *prefix = "0x";
+		int pref_len = 2;
+
+		if (negative) {
+			n = -n;
+			n &= (1LL << (u64)field.bit_size) - 1LL;
+			prefix = "-0x";
+			pref_len = 3;
+		}
+
+		strcpy(cell, prefix);
 		int digits = count_hex_digits(n);
-		write_hex(&cell[2], n, digits);
+		write_hex(&cell[pref_len], n, digits);
 	}
 }

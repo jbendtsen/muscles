@@ -287,7 +287,7 @@ View_Object::View_Object(Workspace& ws) {
 	maxm.img = ws.maxm;
 	ui.push_back(&maxm);
 
-	title_edit.placeholder = "<instance>";
+	title_edit.placeholder = "Instance";
 	title_edit.ph_font = ws.make_font(12, ws.ph_text_color, scale);
 	title_edit.font = ws.default_font;
 	title_edit.caret = ws.caret_color;
