@@ -7,11 +7,11 @@ having to manually decode hex dumps. Currently runs on Windows, with plans to wr
 
 <img style="float: right;" src="https://raw.githubusercontent.com/jbendtsen/muscles/master/images/snap1.png" alt="screenshot" width="100%">
 
-TODO:
-	- Replace field formatting with type options
-		- Bind formatting options like base and prefix to a type, the same way a type has signedness and size
-	- Fix various C parsing bugs (eg. circular typedef dependencies)
-	- "Taskbar" feature to minimise/maximise windows
-	- Mechanism for writing data back to the file/process
-	- Support for Linux using /proc/_pid_/mem
-	- Develop an AST to allow for things like calculating addresses of objects, the first step toward tracking objects in containers and allocators
+## TODO
+* Replace field formatting with type options
+	- Bind formatting options like base and prefix to a type, the same way a type has signedness and size
+* Fix various C parsing bugs (eg. circular typedef dependencies)
+* "Taskbar" feature to minimise/maximise windows
+* Mechanism for writing data back to the file/process
+* Support for Linux using /proc/_pid_/mem
+* Develop an AST to allow for things like calculating addresses of objects, the first step toward tracking objects in containers and allocators
