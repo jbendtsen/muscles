@@ -297,7 +297,7 @@ void Table::clear_data() {
 }
 
 inline void lowify(char *str) {
-	for (int i = 0; i < str[i]; i++)
+	for (int i = 0; str[i]; i++)
 		str[i] = str[i] >= 'a' && str[i] <= 'z' ? str[i] - 0x20 : str[i];
 }
 

@@ -1,4 +1,5 @@
 #include "muscles.h"
+#include <charconv>
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field) {
 	char *fname = in_vec.at(field.field_name_idx);
@@ -75,7 +76,7 @@ char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field) {
 	return name;
 }
 
-void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell) {
+void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell, int cell_len) {
 	if (field.array_len > 0 || field.flags & FLAG_COMPOSITE || field.bit_size > 64 || field.bit_size <= 0)
 		return;
 
@@ -84,6 +85,8 @@ void format_field_value(Field& field, Value_Format& format, Span& span, char*& c
 		strcpy(cell, "???");
 		return;
 	}
+
+	memset(cell, 0, cell_len);
 
 	if (field.array_len == 0 && field.bit_size <= 64) {
 		u64 n = 0;
@@ -107,19 +110,27 @@ void format_field_value(Field& field, Value_Format& format, Span& span, char*& c
 			}
 		}
 
-		bool negative = (field.flags & FLAG_SIGNED) && (n >= 1LL << (u64)(field.bit_size - 1LL));
-		const char *prefix = "0x";
-		int pref_len = 2;
-
-		if (negative) {
-			n = -n;
-			n &= (1LL << (u64)field.bit_size) - 1LL;
-			prefix = "-0x";
-			pref_len = 3;
+		if (field.flags & FLAG_FLOAT) {
+			if (field.bit_size == 32)
+				std::to_chars(cell, cell + cell_len, *(float*)&n);
+			else if (field.bit_size == 64)
+				std::to_chars(cell, cell + cell_len, *(double*)&n);
 		}
+		else {
+			bool negative = (field.flags & FLAG_SIGNED) && (n >= 1LL << (u64)(field.bit_size - 1LL));
+			const char *prefix = "0x";
+			int pref_len = 2;
 
-		strcpy(cell, prefix);
-		int digits = count_hex_digits(n);
-		write_hex(&cell[pref_len], n, digits);
+			if (negative) {
+				n = -n;
+				n &= (1LL << (u64)field.bit_size) - 1LL;
+				prefix = "-0x";
+				pref_len = 3;
+			}
+
+			strcpy(cell, prefix);
+			int digits = count_hex_digits(n);
+			write_hex(&cell[pref_len], n, digits);
+		}
 	}
 }

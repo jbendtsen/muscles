@@ -253,7 +253,7 @@ void View_Object::refresh(Point *cursor) {
 		else
 			fmt = format[buck.value];
 
-		format_field_value(field, fmt, span, (char*&)view.data->columns[2][idx]);
+		format_field_value(field, fmt, span, (char*&)view.data->columns[2][idx], view.data->headers[2].count_per_cell);
 	}
 }
 

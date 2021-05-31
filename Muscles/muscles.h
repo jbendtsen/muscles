@@ -793,4 +793,4 @@ struct Value_Format {
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
 char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
 
-void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell);
+void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell, int cell_len);
