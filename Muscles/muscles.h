@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <set>
+#include <cstring>
 
 #define MIN_CHAR ' '
 #define MAX_CHAR '~'
@@ -641,21 +642,23 @@ struct Source {
 	void gather_data(Arena& arena);
 };
 
+const char *get_folder_separator();
+const char *get_root_folder();
+const char *get_project_path();
+
+bool is_folder(const char *name);
+
 std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path);
 
 void get_process_id_list(std::vector<s64>& list);
 int get_process_names(std::vector<s64> *list, Map& icon_map, std::vector<void*>& icons, std::vector<void*>& pids, std::vector<void*>& names, int count_per_cell);
 
-const char *get_folder_separator();
-const char *get_root_folder();
-bool is_folder(const char *name);
-
 void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena);
 
 void refresh_file_region(Source& source, Arena& arena);
-void refresh_process_regions(Source& source, Arena& arena);
-
 void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena);
+
+void refresh_process_regions(Source& source, Arena& arena);
 void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena);
 
 void close_source(Source& source);

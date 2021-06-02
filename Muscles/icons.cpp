@@ -1,4 +1,5 @@
 #include "muscles.h"
+#include <cmath>
 
 static inline u32 rgba_to_u32(RGBA color) {
 	return ((u32)((u8)(color.r * 255.0)) << 24) |
@@ -7,7 +8,7 @@ static inline u32 rgba_to_u32(RGBA color) {
 		(u8)(color.a * 255.0);
 }
 
-static inline int abs(int x) {
+static inline int _abs(int x) {
 	return x < 0 ? -x : x;
 }
 
@@ -70,7 +71,7 @@ Texture make_triangle(RGBA& color, int width, int height, bool up) {
 
 			float lum = 0.0;
 			if (y >= y_begin) {
-				double l = y_inter - (abs(x * x_dil) + y);
+				double l = y_inter - (_abs(x * x_dil) + y);
 				lum = clamp(l * intensity, 0.0, 1.0);
 			}
 
@@ -132,8 +133,8 @@ Texture make_cross_icon(RGBA& color, int length) {
 	
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < length; j++) {
-			int d1 = abs(i - j);
-			int d2 = abs(i - ((length - 1) - j));
+			int d1 = _abs(i - j);
+			int d2 = _abs(i - ((length - 1) - j));
 
 			float lum = 0.0;
 			if (d1 == weak || d2 == weak)
@@ -335,8 +336,8 @@ Texture make_divider_icon(RGBA& color, int width, int height, double gap, double
 				continue;
 			}
 
-			x = abs(x);
-			y = abs(y);
+			x = _abs(x);
+			y = _abs(y);
 			double g1 = x + y;
 			double g2 = y - x;
 
@@ -344,7 +345,7 @@ Texture make_divider_icon(RGBA& color, int width, int height, double gap, double
 			if (g1 >= inner && g1 < 0.5 && g2 < end) {
 				double mid = (inner + 0.5) / 2.0;
 				double slope = 0.5 - mid;
-				lum = 1.0 - (abs(g1 - mid) / slope);
+				lum = 1.0 - (_abs(g1 - mid) / slope);
 				lum = clamp(lum * sharpness, 0.0, 1.0);
 
 				double edge = end - g2;
@@ -407,7 +408,7 @@ Texture make_goto_icon(RGBA& color, int length) {
 				}
 			}
 
-			double head = 1.0 - (y + abs(x - arrow_x) * arrow_squish) / arrow_size;
+			double head = 1.0 - (y + _abs(x - arrow_x) * arrow_squish) / arrow_size;
 			if (cy >= 0.0 && head > 0.0)
 				lum = clamp(head / arrow_fade, 0.0, 1.0);
 
@@ -501,7 +502,7 @@ Texture make_plus_minus_icon(RGBA& color, int length, bool plus) {
 			double y = ((double)i + 0.5) / len - 0.5;
 
 			double dist = sqrt(x * x + y * y);
-			double curve = abs(x*y);
+			double curve = _abs(x*y);
 			curve *= curve;
 			double thres = radius + squareness * curve;
 

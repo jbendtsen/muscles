@@ -193,10 +193,10 @@ void Button::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 	float y = y_offset * font_height;
 
 	if (icon) {
-		Rect box = {back.x, back.y, font_height, font_height};
+		Rect box = {(float)back.x, (float)back.y, font_height, font_height};
 
 		if (icon_right)
-			box.x += back.w - x - font_height;
+			box.x += (float)back.w - x - font_height;
 		else {
 			box.x += x;
 			x += font_height * 1.2f;
@@ -355,9 +355,9 @@ void Data_View::draw_item_backing(Renderer renderer, RGBA& color, Rect_Int& back
 	if (h > 0) {
 		Rect_Int r = {
 			back.x,
-			back.y + y,
+			(int)((float)back.y + y),
 			back.w,
-			h
+			(int)h
 		};
 		sdl_draw_rect(r, color, renderer);
 	}
@@ -513,8 +513,13 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	float x_start = back.x + col_space - scroll_x;
 
 	if (show_column_names) {
-		Rect header = {back.x, 0, back.w, header_height * view.scale};
-		header.y = back.y - header.h;
+		float scaled_head_h = header_height * view.scale;
+		Rect header = {
+			(float)back.x,
+			(float)back.y - scaled_head_h,
+			(float)back.w,
+			scaled_head_h
+		};
 		sdl_draw_rect(header, back_color, renderer);
 
 		float x = x_start;
@@ -544,7 +549,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	float line_sp = (font->line_spacing + extra_line_spacing) * font_height;
 	float line_h = font_height + line_sp;
 
-	Rect_Int dst = {0, 0, font_height, font_height};
+	Rect_Int dst = {0, 0, (int)font_height, (int)font_height};
 	Rect_Int src = {0};
 
 	clip.x_lower = x + scroll_x;
@@ -849,9 +854,9 @@ void Divider::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool
 	sdl_draw_rect(back, default_color, renderer);
 
 	if (icon) {
-		Rect box = {
-			back.x + (back.w - (float)icon_w) / 2,
-			back.y + (back.h - (float)icon_h) / 2,
+		Rect_Int box = {
+			back.x + (back.w - icon_w) / 2,
+			back.y + (back.h - icon_h) / 2,
 			icon_w,
 			icon_h
 		};
@@ -1110,8 +1115,8 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 		float caret_y = (float)caret_off_y * height;
 
 		Rect_Int r = {
-			back.x + x + cur_x - offset,
-			back.y + gap_y + (int)caret_y + gap_y,
+			(int)((float)back.x + x + cur_x - offset),
+			(int)((float)back.y + 2.0f*gap_y + caret_y),
 			(int)caret_w,
 			(int)height
 		};
@@ -1636,10 +1641,10 @@ void Scroll::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 	}
 
 	Rect_Int scroll_rect = {
-		back.x + (float)(x * view.scale + 0.5),
-		back.y + (float)(y * view.scale + 0.5),
-		w,
-		h
+		back.x + (int)(x * view.scale + 0.5),
+		back.y + (int)(y * view.scale + 0.5),
+		(int)(w + 0.5),
+		(int)(h + 0.5)
 	};
 
 	RGBA *color = &default_color;

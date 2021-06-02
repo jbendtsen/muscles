@@ -1,8 +1,6 @@
 #include "muscles.h"
 #include "ui.h"
 
-#define PROJECT_PATH "C:/Users/Jack/source/repos/Muscles"
-
 #define FONT_MONO "RobotoMono-Regular.ttf"
 #define FONT_SANS "OpenSans-Regular.ttf"
 
@@ -93,7 +91,7 @@ int run() {
 	if (!sdl_init("Muscles", 960, 540))
 		return 1;
 
-	std::string path = PROJECT_PATH;
+	std::string path(get_project_path());
 	path += "/Fonts/";
 	path += FONT_MONO;
 	Font_Face face = load_font_face(path.c_str());

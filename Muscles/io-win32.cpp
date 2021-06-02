@@ -1,24 +1,18 @@
 #include "muscles.h"
-#include "io.h"
-
 #include <algorithm>
 
 #include <windows.h>
 #include <Psapi.h>
 #include <DbgHelp.h>
 
-void close_source(Source& source) {
-	if (source.handle) {
-		CloseHandle(source.handle);
-		source.handle = nullptr;
-	}
-}
-
 const char *get_folder_separator() {
 	return "\\";
 }
 const char *get_root_folder() {
 	return "C:\\";
+}
+const char *get_project_path() {
+	return "C:/Users/Jack/source/repos/Muscles";
 }
 
 bool is_folder(const char *name) {
@@ -30,6 +24,34 @@ bool is_folder(const char *name) {
 	bool folder = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 	FindClose(h);
 	return folder;
+}
+
+HANDLE open_file(LPCSTR name) {
+	return CreateFileA(
+		name,
+		GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr
+	);
+}
+
+std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path) {
+	std::pair<int, std::unique_ptr<u8[]>> buf = {0, nullptr};
+	HANDLE h = open_file(path.c_str());
+	if (!h)
+		return buf;
+
+	BY_HANDLE_FILE_INFORMATION info = {0};
+	GetFileInformationByHandle(h, &info);
+	buf.first = info.nFileSizeLow;
+	buf.second = std::make_unique<u8[]>(buf.first);
+
+	DWORD retrieved = 0;
+	ReadFile(h, buf.second.get(), buf.first, &retrieved, nullptr);
+	return buf;
 }
 
 Texture load_icon(const char *path);
@@ -207,34 +229,6 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 			return strcmp(a->name, b->name) < 0;
 		});
 	}
-}
-
-HANDLE open_file(LPCSTR name) {
-	return CreateFileA(
-		name,
-		GENERIC_READ,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		nullptr
-	);
-}
-
-std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path) {
-	std::pair<int, std::unique_ptr<u8[]>> buf = {0, nullptr};
-	HANDLE h = open_file(path.c_str());
-	if (!h)
-		return buf;
-
-	BY_HANDLE_FILE_INFORMATION info = {0};
-	GetFileInformationByHandle(h, &info);
-	buf.first = info.nFileSizeLow;
-	buf.second = std::make_unique<u8[]>(buf.first);
-
-	DWORD retrieved = 0;
-	ReadFile(h, buf.second.get(), buf.first, &retrieved, nullptr);
-	return buf;
 }
 
 void refresh_file_region(Source& source, Arena& arena) {
@@ -459,5 +453,12 @@ void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& aren
 		SIZE_T retrieved = 0;
 		ReadProcessMemory(proc, (LPCVOID)s.address, (LPVOID)&source.buffer[s.offset], s.size, &retrieved);
 		s.retrieved = retrieved;
+	}
+}
+
+void close_source(Source& source) {
+	if (source.handle) {
+		CloseHandle(source.handle);
+		source.handle = nullptr;
 	}
 }
