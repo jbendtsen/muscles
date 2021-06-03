@@ -392,7 +392,7 @@ void refresh_process_regions(Source& source) {
 		auto& reg = source.regions_map.data[i];
 		reg.flags &= ~FLAG_NEW;
 		if (reg.size == IMAGE_HEADER_PAGE_SIZE)
-			find_section_names(proc, reg.base, header, source.sections, arena);
+			find_section_names(proc, reg.base, header, source.sections, source.arena);
 
 		char *exe = nullptr;
 		int len = GetMappedFileNameA(proc, (LPVOID)reg.base, name, PROCESS_BASE_NAME_SIZE);
@@ -406,7 +406,7 @@ void refresh_process_regions(Source& source) {
 
 		if (exe || s_name) {
 			if (!reg.name)
-				reg.name = (char*)arena.allocate(PROCESS_NAME_LEN);
+				reg.name = (char*)source.arena.allocate(PROCESS_NAME_LEN);
 
 			snprintf(reg.name, PROCESS_NAME_LEN-1, "%s%s%s",
 				exe ? exe : "",
