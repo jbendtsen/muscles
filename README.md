@@ -3,7 +3,7 @@
 
 Written in C++ with SDL, it is designed to provide an informed view of the current state of another process in real time,
 allowing the user to understand what the program is doing in terms of its variables (with types) within objects – as opposed to
-having to manually decode hex dumps. Currently runs on Windows, with plans to write a backend for Linux.
+having to manually decode hex dumps. Currently targets Windows and Linux.
 
 <img style="float: right;" src="https://raw.githubusercontent.com/jbendtsen/muscles/master/images/snap1.png" alt="screenshot" width="100%">
 
@@ -13,5 +13,4 @@ having to manually decode hex dumps. Currently runs on Windows, with plans to wr
 * Fix various C parsing bugs (eg. circular typedef dependencies)
 * "Taskbar" feature to minimise/maximise windows
 * Mechanism for writing data back to the file/process
-* Support for Linux using /proc/_pid_/mem
 * Develop an AST to allow for things like calculating addresses of objects, the first step toward tracking objects in containers and allocators
