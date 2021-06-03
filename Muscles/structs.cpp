@@ -12,6 +12,7 @@ bool is_symbol(char c) {
 		c != '_';
 }
 
+// TODO: don't split up floating point literals into separate tokens, eg. "3", ".", "141"
 void tokenize(String_Vector& tokens, const char *text, int sz) {
 	const char *in = text;
 	const char *word = text;
@@ -134,8 +135,13 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 }
 
 // TODO: Expand upon this function to allow for constant variable lookup
-u64 evaluate_number(char *token) {
-	return strtoull(token, nullptr, 0);
+Value64 evaluate_number(char *token, bool as_float = false) {
+	Value64 value;
+	if (as_float)
+		value.d = atof(token);
+	else
+		value.i = strtoull(token, nullptr, 0);
+	return value;
 }
 
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens) {
@@ -355,7 +361,7 @@ void add_struct_instances(Struct *current_st, Struct *embed, char **tokens, Stri
 			t = next;
 			next = advance_word(next);
 
-			int n = (int)evaluate_number(t);
+			int n = (int)evaluate_number(t).i;
 			if (n > 0) {
 				if (f->array_len > 0)
 					f->array_len *= n;
@@ -515,7 +521,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 		else if (!outside_struct && is_symbol(*t)) {
 			// Bitfield
 			if (!strcmp(t, ":")) { // the bitfield symbol ':' must have a length of 1
-				int n = (int)evaluate_number(next);
+				int n = (int)evaluate_number(next).i;
 				if (n >= 0) {
 					if (n == 0) {
 						f->reset();
@@ -540,7 +546,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 
 			// Calculate array length. Each successive array dimension is simply multiplied with the current array length.
 			if (*t == '[') {
-				int n = (int)evaluate_number(next);
+				int n = (int)evaluate_number(next).i;
 				if (n > 0) {
 					if (f->array_len > 0)
 						f->array_len *= n;
@@ -552,6 +558,22 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 			if (*t == '*') {
 				f->flags |= FLAG_POINTER;
 				f->pointer_levels = strlen(t);
+			}
+
+			if (*t == '=') {
+				f->flags |= FLAG_VALUE_INITED;
+				f->value = evaluate_number(next, f->flags & FLAG_FLOAT);
+/*
+				std::string msg;
+				if (f->field_name_idx >= 0)
+					msg = name_vector.at(f->field_name_idx);
+				else
+					msg = "<unnamed>";
+
+				msg += " = ";
+				msg += (f->flags & FLAG_FLOAT) ? std::to_string(f->value.d) : std::to_string(f->value.i);
+				sdl_log_string(msg.c_str());
+*/
 			}
 
 			// End of the current field

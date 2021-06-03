@@ -32,6 +32,11 @@ int count_hex_digits(u64 num);
 void write_hex(char *out, u64 n, int n_digits);
 void write_dec(char *out, s64 n);
 
+union Value64 {
+	u64 i;
+	double d;
+};
+
 struct Glyph {
 	int atlas_x;
 	int atlas_y;
@@ -688,6 +693,7 @@ void close_source(Source& source);
 #define FLAG_ENUM          0x0200
 #define FLAG_ENUM_ELEMENT  0x0400
 #define FLAG_TYPEDEF       0x0800
+#define FLAG_VALUE_INITED  0x1000
 
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000
@@ -716,6 +722,8 @@ struct Field {
 	int array_len;
 	int pointer_levels;
 	u32 flags;
+
+	Value64 value;
 
 	void reset() {
 		memset(this, 0, sizeof(Field));
