@@ -88,7 +88,8 @@ Camera& get_default_camera() {
 }
 
 int run() {
-	if (!sdl_init("Muscles", 960, 540))
+	Workspace ctx;
+	if (!sdl_init("Muscles", 960, 540, ctx.colors.background))
 		return 1;
 
 	std::string path(get_project_path());
@@ -98,7 +99,7 @@ int run() {
 	if (!face)
 		return 2;
 
-	Workspace ctx(face);
+	ctx.init(face);
 	Input input;
 
 	while (true) {

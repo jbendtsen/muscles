@@ -193,9 +193,9 @@ View_Definitions::View_Definitions(Workspace& ws) {
 
 	tabs.add(tab_names, 4);
 	tabs.font = ws.default_font;
-	tabs.default_color = ws.dark_color;
-	tabs.sel_color = ws.scroll_back;
-	tabs.hl_color = ws.hl_color;
+	tabs.default_color = ws.colors.dark;
+	tabs.sel_color = ws.colors.scroll_back;
+	tabs.hl_color = ws.colors.hl;
 	tabs.event = [](Tabs *tabs) {
 		if (tabs->sel >= 0) {
 			auto ui = dynamic_cast<View_Definitions*>(tabs->parent);
@@ -204,23 +204,23 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	};
 	ui.push_back(&tabs);
 
-	vscroll.back_color = ws.scroll_back;
-	vscroll.default_color = ws.scroll_color;
-	vscroll.hl_color = ws.scroll_hl_color;
-	vscroll.sel_color = ws.scroll_sel_color;
+	vscroll.back_color = ws.colors.scroll_back;
+	vscroll.default_color = ws.colors.scroll;
+	vscroll.hl_color = ws.colors.scroll_hl;
+	vscroll.sel_color = ws.colors.scroll_sel;
 
-	hscroll.back_color = ws.scroll_back;
-	hscroll.default_color = ws.scroll_color;
-	hscroll.hl_color = ws.scroll_hl_color;
-	hscroll.sel_color = ws.scroll_sel_color;
+	hscroll.back_color = ws.colors.scroll_back;
+	hscroll.default_color = ws.colors.scroll;
+	hscroll.hl_color = ws.colors.scroll_hl;
+	hscroll.sel_color = ws.colors.scroll_sel;
 	hscroll.vertical = false;
 
 	view.show_column_names = true;
-	view.font = ws.make_font(11, ws.text_color, scale);
-	view.default_color = ws.scroll_back;
-	view.hl_color = ws.hl_color;
-	view.sel_color = ws.hl_color;
-	view.back_color = ws.scroll_back;
+	view.font = ws.make_font(11, ws.colors.text, scale);
+	view.default_color = ws.colors.scroll_back;
+	view.hl_color = ws.colors.hl;
+	view.sel_color = ws.colors.hl;
+	view.back_color = ws.colors.scroll_back;
 	view.hscroll = &hscroll;
 	view.hscroll->content = &view;
 	view.vscroll = &vscroll;
@@ -241,8 +241,8 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	ui.push_back(&vscroll);
 	ui.push_back(&hscroll);
 
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 
 	initial_width = 400;
 	initial_height = 450;

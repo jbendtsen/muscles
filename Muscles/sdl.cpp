@@ -65,7 +65,7 @@ Texture sdl_bake_sw_render() {
 	return SDL_CreateTextureFromSurface(renderer, sf_cache);
 }
 
-bool sdl_init(const char *title, int width, int height) {
+bool sdl_init(const char *title, int width, int height, RGBA bg_color) {
 	int res = SDL_Init(SDL_INIT_VIDEO);
 	if (res != 0) {
 		SDL_Log("SDL_Init() failed (%d)", res);
@@ -105,7 +105,9 @@ bool sdl_init(const char *title, int width, int height) {
 		return false;
 	}
 
-	back_color.r = back_color.g = back_color.b = 0;
+	back_color.r = (int)(bg_color.r * 255.0f);
+	back_color.g = (int)(bg_color.g * 255.0f);
+	back_color.b = (int)(bg_color.b * 255.0f);
 	SDL_SetRenderDrawColor(renderer, back_color.r, back_color.g, back_color.b, 255);
 	return true;
 }

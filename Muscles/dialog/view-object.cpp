@@ -288,11 +288,11 @@ View_Object::View_Object(Workspace& ws) {
 	ui.push_back(&maxm);
 
 	title_edit.placeholder = "Instance";
-	title_edit.ph_font = ws.make_font(12, ws.ph_text_color, scale);
+	title_edit.ph_font = ws.make_font(12, ws.colors.ph_text, scale);
 	title_edit.font = ws.default_font;
-	title_edit.caret = ws.caret_color;
+	title_edit.caret = ws.colors.caret;
 	title_edit.caret.a = 0.6;
-	title_edit.default_color = ws.dark_color;
+	title_edit.default_color = ws.colors.dark;
 	ui.push_back(&title_edit);
 
 	hide_meta.padding = 0;
@@ -305,33 +305,33 @@ View_Object::View_Object(Workspace& ws) {
 		ui->update_hide_meta_button(view.scale);
 	};
 	hide_meta.active_theme = {
-		ws.light_color,
-		ws.light_hl_color,
-		ws.light_hl_color,
+		ws.colors.light,
+		ws.colors.light_hl,
+		ws.colors.light_hl,
 		nullptr
 	};
 	hide_meta.inactive_theme = hide_meta.active_theme;
-	hide_meta.default_color = ws.text_color;
+	hide_meta.default_color = ws.colors.text;
 	hide_meta.default_color.a = 0.8;
 	ui.push_back(&hide_meta);
 
-	hscroll.back_color = ws.scroll_back;
-	hscroll.default_color = ws.scroll_color;
-	hscroll.hl_color = ws.scroll_hl_color;
-	hscroll.sel_color = ws.scroll_sel_color;
+	hscroll.back_color = ws.colors.scroll_back;
+	hscroll.default_color = ws.colors.scroll;
+	hscroll.hl_color = ws.colors.scroll_hl;
+	hscroll.sel_color = ws.colors.scroll_sel;
 	hscroll.vertical = false;
 	ui.push_back(&hscroll);
 
-	vscroll.back_color = ws.scroll_back;
-	vscroll.default_color = ws.scroll_color;
-	vscroll.hl_color = ws.scroll_hl_color;
-	vscroll.sel_color = ws.scroll_sel_color;
+	vscroll.back_color = ws.colors.scroll_back;
+	vscroll.default_color = ws.colors.scroll;
+	vscroll.hl_color = ws.colors.scroll_hl;
+	vscroll.sel_color = ws.colors.scroll_sel;
 	ui.push_back(&vscroll);
 
 	view.font = ws.default_font;
-	view.default_color = ws.dark_color;
-	view.hl_color = ws.hl_color;
-	view.sel_color = ws.light_color;
+	view.default_color = ws.colors.dark;
+	view.hl_color = ws.colors.hl;
+	view.sel_color = ws.colors.light;
 	view.action = view_handler;
 	view.use_sf_cache = false;
 	view.hscroll = &hscroll;
@@ -352,7 +352,7 @@ View_Object::View_Object(Workspace& ws) {
 
 	ui.push_back(&view);
 
-	struct_label.font = ws.make_font(11, ws.text_color, scale);
+	struct_label.font = ws.make_font(11, ws.colors.text, scale);
 	struct_label.text = "Struct:";
 	struct_label.padding = 0;
 	ui.push_back(&struct_label);
@@ -368,25 +368,25 @@ View_Object::View_Object(Workspace& ws) {
 	ui.push_back(&addr_label);
 
 	auto mm = dynamic_cast<Main_Menu*>(ws.first_box_of_type(BoxMain));
-	RGBA icon_color = ws.text_color;
+	RGBA icon_color = ws.colors.text;
 	icon_color.a = 0.7;
 
 	addr_edit.font = addr_label.font;
-	addr_edit.caret = ws.caret_color;
-	addr_edit.default_color = ws.dark_color;
+	addr_edit.caret = ws.colors.caret;
+	addr_edit.default_color = ws.colors.dark;
 	ui.push_back(&addr_edit);
 
 	source_dd.visible = false;
 	source_dd.font = source_label.font;
-	source_dd.default_color = ws.back_color;
-	source_dd.hl_color = ws.hl_color;
-	source_dd.sel_color = ws.active_color;
+	source_dd.default_color = ws.colors.back;
+	source_dd.hl_color = ws.colors.hl;
+	source_dd.sel_color = ws.colors.active;
 	source_dd.width = 250;
 	ui.push_back(&source_dd);
 
 	source_edit.font = source_label.font;
-	source_edit.caret = ws.caret_color;
-	source_edit.default_color = ws.dark_color;
+	source_edit.caret = ws.colors.caret;
+	source_edit.default_color = ws.colors.dark;
 	source_edit.icon_color = icon_color;
 	source_edit.icon_right = true;
 	source_edit.dropdown = &source_dd;
@@ -395,15 +395,15 @@ View_Object::View_Object(Workspace& ws) {
 
 	struct_dd.visible = false;
 	struct_dd.font = struct_label.font;
-	struct_dd.default_color = ws.back_color;
-	struct_dd.hl_color = ws.hl_color;
-	struct_dd.sel_color = ws.active_color;
+	struct_dd.default_color = ws.colors.back;
+	struct_dd.hl_color = ws.colors.hl;
+	struct_dd.sel_color = ws.colors.active;
 	struct_dd.width = 250;
 	ui.push_back(&struct_dd);
 
 	struct_edit.font = struct_label.font;
-	struct_edit.caret = ws.caret_color;
-	struct_edit.default_color = ws.dark_color;
+	struct_edit.caret = ws.colors.caret;
+	struct_edit.default_color = ws.colors.dark;
 	struct_edit.icon_color = icon_color;
 	struct_edit.icon_right = true;
 	struct_edit.dropdown = &struct_dd;
@@ -411,15 +411,15 @@ View_Object::View_Object(Workspace& ws) {
 	ui.push_back(&struct_edit);
 
 	theme_on = {
-		ws.dark_color,
-		ws.light_color,
-		ws.light_color,
-		ws.make_font(10, ws.text_color, scale)
+		ws.colors.dark,
+		ws.colors.light,
+		ws.colors.light,
+		ws.make_font(10, ws.colors.text, scale)
 	};
 	theme_off = {
-		ws.back_color,
-		ws.light_color,
-		ws.light_color,
+		ws.colors.back,
+		ws.colors.light,
+		ws.colors.light,
 		theme_on.font
 	};
 
@@ -443,8 +443,8 @@ View_Object::View_Object(Workspace& ws) {
 	rclick_menu.push_back(edit_item);
 
 	refresh_every = 1;
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 
 	initial_width = 400;
 	initial_height = 450;

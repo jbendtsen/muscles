@@ -410,7 +410,7 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 		if (info.dst.y + info.dst.h > info.y_max)
 			info.dst.h = info.y_max - info.dst.y;
 
-		sdl_draw_rect(info.dst, parent->parent->table_cb_back, info.renderer);
+		sdl_draw_rect(info.dst, parent->parent->colors.table_cb_back, info.renderer);
 
 		if (*(u8*)&cell == 2) {
 			indent = info.font_height * 0.15;
@@ -422,7 +422,7 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 			if (info.src.y + info.src.h > info.y_max)
 				info.src.h = info.y_max - info.src.y;
 
-			sdl_draw_rect(info.src, parent->parent->cb_color, info.renderer);
+			sdl_draw_rect(info.src, parent->parent->colors.cb, info.renderer);
 			info.src.x = info.src.y = 0;
 		}
 

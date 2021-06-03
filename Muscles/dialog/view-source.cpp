@@ -370,7 +370,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	ui.push_back(&title);
 
 	if (menu_type == MenuProcess) {
-		div.default_color = ws.div_color;
+		div.default_color = ws.colors.div;
 		div.breadth = 2;
 		div.vertical = true;
 		div.moveable = true;
@@ -380,13 +380,13 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		ui.push_back(&div);
 
 		reg_title.text = "Regions";
-		reg_title.font = ws.make_font(10, ws.text_color, scale);
+		reg_title.font = ws.make_font(10, ws.colors.text, scale);
 		ui.push_back(&reg_title);
 
-		reg_scroll.back_color = ws.scroll_back;
-		reg_scroll.default_color = ws.scroll_color;
-		reg_scroll.hl_color = ws.scroll_hl_color;
-		reg_scroll.sel_color = ws.scroll_sel_color;
+		reg_scroll.back_color = ws.colors.scroll_back;
+		reg_scroll.default_color = ws.colors.scroll;
+		reg_scroll.hl_color = ws.colors.scroll_hl;
+		reg_scroll.sel_color = ws.colors.scroll_sel;
 		reg_scroll.breadth = 12;
 		ui.push_back(&reg_scroll);
 
@@ -399,10 +399,10 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		ui.push_back(&reg_lat_scroll);
 
 		reg_table.action = regions_handler;
-		reg_table.font = ws.make_font(9, ws.text_color, scale);
-		reg_table.default_color = ws.dark_color;
-		reg_table.hl_color = ws.hl_color;
-		reg_table.sel_color = ws.light_color;
+		reg_table.font = ws.make_font(9, ws.colors.text, scale);
+		reg_table.default_color = ws.colors.dark;
+		reg_table.hl_color = ws.colors.hl;
+		reg_table.sel_color = ws.colors.light;
 		reg_table.column_spacing = 0.5;
 		reg_table.vscroll = &reg_scroll;
 		reg_table.vscroll->content = &reg_table;
@@ -424,9 +424,9 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 		ui.push_back(&reg_table);
 
 		reg_search.font = reg_title.font;
-		reg_search.caret = ws.caret_color;
-		reg_search.default_color = ws.dark_color;
-		reg_search.icon_color = ws.text_color;
+		reg_search.caret = ws.colors.caret;
+		reg_search.default_color = ws.colors.dark;
+		reg_search.icon_color = ws.colors.text;
 		reg_search.icon_color.a = 0.6;
 		reg_search.key_action = region_search_handler;
 		ui.push_back(&reg_search);
@@ -446,7 +446,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	float goto_font_size = 10;
 	hex_title.text = "Data";
-	hex_title.font = ws.make_font(goto_font_size, ws.text_color, scale);
+	hex_title.font = ws.make_font(goto_font_size, ws.colors.text, scale);
 	ui.push_back(&hex_title);
 
 	size_label.font = hex_title.font;
@@ -456,34 +456,34 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	ui.push_back(&size_label);
 
-	hex_scroll.back_color = ws.scroll_back;
-	hex_scroll.default_color = ws.scroll_color;
-	hex_scroll.hl_color = ws.scroll_hl_color;
-	hex_scroll.sel_color = ws.scroll_sel_color;
+	hex_scroll.back_color = ws.colors.scroll_back;
+	hex_scroll.default_color = ws.colors.scroll;
+	hex_scroll.hl_color = ws.colors.scroll_hl;
+	hex_scroll.sel_color = ws.colors.scroll_sel;
 	ui.push_back(&hex_scroll);
 
-	hex.font = ws.make_font(8, ws.text_color, scale);
-	hex.default_color = ws.dark_color;
-	hex.back_color = ws.back_color;
-	hex.caret = ws.caret_color;
+	hex.font = ws.make_font(8, ws.colors.text, scale);
+	hex.default_color = ws.colors.dark;
+	hex.back_color = ws.colors.back;
+	hex.caret = ws.colors.caret;
 	hex.scroll = &hex_scroll;
 	ui.push_back(&hex);
 
-	goto_box.caret = ws.caret_color;
-	goto_box.default_color = ws.dark_color;
+	goto_box.caret = ws.colors.caret;
+	goto_box.default_color = ws.colors.dark;
 	goto_box.font = hex_title.font;
 	goto_box.key_action = goto_handler;
 
-	goto_box.icon_color = ws.text_color;
+	goto_box.icon_color = ws.colors.text;
 	goto_box.icon_color.a = 0.6;
 	goto_box.ph_font = ws.make_font(goto_font_size, goto_box.icon_color, scale);
 	ui.push_back(&goto_box);
 
 	addr_box.font = size_label.font;
 	addr_box.text = "O";
-	addr_box.default_color = ws.scroll_back;
-	addr_box.hl_color = ws.light_color;
-	addr_box.sel_color = ws.cb_color;
+	addr_box.default_color = ws.colors.scroll_back;
+	addr_box.hl_color = ws.colors.light;
+	addr_box.sel_color = ws.colors.cb;
 	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / scale;
 	addr_box.pos.w = 2 * addr_box.pos.h;
 	ui.push_back(&addr_box);
@@ -508,8 +508,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	ui.push_back(&ascii_box);
 
 	columns.font = size_label.font;
-	columns.default_color = ws.dark_color;
-	columns.sel_color = ws.dark_color;
+	columns.default_color = ws.colors.dark;
+	columns.sel_color = ws.colors.dark;
 	columns.editor.text = "16";
 	columns.pos.w = 40;
 	columns.pos.h = addr_box.pos.h;
@@ -517,8 +517,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	ui.push_back(&columns);
 
 	refresh_every = 1;
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 	initial_width = 600;
 	initial_height = 400;
 	min_width = 400;

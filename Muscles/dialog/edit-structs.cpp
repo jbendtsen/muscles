@@ -222,21 +222,21 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	ui.push_back(&title);
 
 	file_menu.title = "File";
-	file_menu.font = ws.make_font(11, ws.text_color, scale);
+	file_menu.font = ws.make_font(11, ws.colors.text, scale);
 	file_menu.action = file_menu_handler;
-	file_menu.default_color = ws.back_color;
-	file_menu.hl_color = ws.hl_color;
-	file_menu.sel_color = ws.active_color;
+	file_menu.default_color = ws.colors.back;
+	file_menu.hl_color = ws.colors.hl;
+	file_menu.sel_color = ws.colors.active;
 	file_menu.width = 100;
 	file_menu.content = {
 		(char*)"Open"
 	};
 	ui.push_back(&file_menu);
 
-	edit.default_color = ws.scroll_back;
-	edit.sel_color = ws.inactive_outline_color;
-	edit.caret_color = ws.caret_color;
-	edit.font = ws.make_font(10, ws.text_color, scale);
+	edit.default_color = ws.colors.scroll_back;
+	edit.sel_color = ws.colors.inactive_outline;
+	edit.caret_color = ws.colors.caret;
+	edit.font = ws.make_font(10, ws.colors.text, scale);
 	edit.editor.text = "struct Test {\n\tint a;\n\tint b;\n};";
 	edit.key_action = structs_edit_handler;
 	edit.hscroll = &edit_hscroll;
@@ -245,31 +245,31 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	edit.vscroll->content = &edit;
 	ui.push_back(&edit);
 
-	edit_hscroll.back_color = ws.scroll_back;
-	edit_hscroll.default_color = ws.scroll_color;
-	edit_hscroll.hl_color = ws.scroll_hl_color;
-	edit_hscroll.sel_color = ws.scroll_sel_color;
+	edit_hscroll.back_color = ws.colors.scroll_back;
+	edit_hscroll.default_color = ws.colors.scroll;
+	edit_hscroll.hl_color = ws.colors.scroll_hl;
+	edit_hscroll.sel_color = ws.colors.scroll_sel;
 	edit_hscroll.vertical = false;
 	ui.push_back(&edit_hscroll);
 
-	edit_vscroll.back_color = ws.scroll_back;
-	edit_vscroll.default_color = ws.scroll_color;
-	edit_vscroll.hl_color = ws.scroll_hl_color;
-	edit_vscroll.sel_color = ws.scroll_sel_color;
+	edit_vscroll.back_color = ws.colors.scroll_back;
+	edit_vscroll.default_color = ws.colors.scroll;
+	edit_vscroll.hl_color = ws.colors.scroll_hl;
+	edit_vscroll.sel_color = ws.colors.scroll_sel;
 	ui.push_back(&edit_vscroll);
 
-	show_cb.font = ws.make_font(10, ws.text_color, scale);
+	show_cb.font = ws.make_font(10, ws.colors.text, scale);
 	show_cb.text = "Show Output";
-	show_cb.default_color = ws.scroll_back;
-	show_cb.hl_color = ws.light_color;
-	show_cb.sel_color = ws.cb_color;
+	show_cb.default_color = ws.colors.scroll_back;
+	show_cb.hl_color = ws.colors.light;
+	show_cb.sel_color = ws.colors.cb;
 	show_cb.pos.h = show_cb.font->render.text_height() * 1.1f / scale;
 	show_cb.pos.w = 14 * show_cb.font->render.digit_width();
 	show_cb.action = show_cb_handler;
 	ui.push_back(&show_cb);
 
 	div.visible = false;
-	div.default_color = ws.div_color;
+	div.default_color = ws.colors.div;
 	div.breadth = 2;
 	div.vertical = true;
 	div.moveable = true;
@@ -279,27 +279,27 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 	ui.push_back(&div);
 
 	out_hscroll.visible = false;
-	out_hscroll.back_color = ws.scroll_back;
-	out_hscroll.default_color = ws.scroll_color;
-	out_hscroll.hl_color = ws.scroll_hl_color;
-	out_hscroll.sel_color = ws.scroll_sel_color;
+	out_hscroll.back_color = ws.colors.scroll_back;
+	out_hscroll.default_color = ws.colors.scroll;
+	out_hscroll.hl_color = ws.colors.scroll_hl;
+	out_hscroll.sel_color = ws.colors.scroll_sel;
 	out_hscroll.vertical = false;
 	ui.push_back(&out_hscroll);
 
 	out_vscroll.visible = false;
-	out_vscroll.back_color = ws.scroll_back;
-	out_vscroll.default_color = ws.scroll_color;
-	out_vscroll.hl_color = ws.scroll_hl_color;
-	out_vscroll.sel_color = ws.scroll_sel_color;
+	out_vscroll.back_color = ws.colors.scroll_back;
+	out_vscroll.default_color = ws.colors.scroll;
+	out_vscroll.hl_color = ws.colors.scroll_hl;
+	out_vscroll.sel_color = ws.colors.scroll_sel;
 	ui.push_back(&out_vscroll);
 
 	output.visible = false;
 	output.show_column_names = true;
 	output.font = edit.font;
-	output.default_color = ws.dark_color;
-	output.hl_color = ws.hl_color;
-	output.sel_color = ws.hl_color;
-	output.back_color = ws.back_color;
+	output.default_color = ws.colors.dark;
+	output.hl_color = ws.colors.hl;
+	output.sel_color = ws.colors.hl;
+	output.back_color = ws.colors.back;
 	output.hscroll = &out_hscroll;
 	output.hscroll->content = &output;
 	output.vscroll = &out_vscroll;
@@ -317,8 +317,8 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 
 	box_type = BoxStructs;
 	//refresh_every = 1;
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 	initial_width = 400;
 	initial_height = 450;
 	min_width = flex_min_width;

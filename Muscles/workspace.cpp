@@ -2,23 +2,23 @@
 #include "ui.h"
 #include "dialog/dialog.h"
 
-Workspace::Workspace(Font_Face face) {
+void Workspace::init(Font_Face face) {
 	this->face = face;
 
 	sdl_get_dpi(dpi_w, dpi_h);
 
 	adjust_scale(1.0, 1.0);
 
-	default_font = new Font(face, 12, text_color, dpi_w, dpi_h);
+	default_font = new Font(face, 12, colors.text, dpi_w, dpi_h);
 	fonts.push_back(default_font);
 
-	inactive_font = new Font(face, 12, inactive_text_color, dpi_w, dpi_h);
+	inactive_font = new Font(face, 12, colors.inactive_text, dpi_w, dpi_h);
 	fonts.push_back(inactive_font);
 
 	// Fonts that are added to the 'fonts' vector are resized upon zooming in/out.
 	// This is why we create separate fonts for 'rclick_menu', even though they use the same parameters.
-	rclick_menu.font = new Font(face, 12, text_color, dpi_w, dpi_h);
-	rclick_menu.inactive_font = new Font(face, 12, inactive_text_color, dpi_w, dpi_h);
+	rclick_menu.font = new Font(face, 12, colors.text, dpi_w, dpi_h);
+	rclick_menu.inactive_font = new Font(face, 12, colors.inactive_text, dpi_w, dpi_h);
 
 	Menu_Item test_item = {0, (char*)"Item A", nullptr};
 	default_rclick_menu.push_back(test_item);
@@ -59,11 +59,11 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 		f->adjust_scale(new_scale, dpi_w, dpi_h);
 
 	sdl_destroy_texture(&cross);
-	cross = make_cross_icon(text_color, cross_size * new_scale);
+	cross = make_cross_icon(colors.text, cross_size * new_scale);
 
 	sdl_destroy_texture(&maxm);
 	float length = cross_size * new_scale;
-	maxm = make_rectangle(text_color, length, length, 0, 0, 0.08);
+	maxm = make_rectangle(colors.text, length, length, 0, 0, 0.08);
 
 	for (auto& b : boxes)
 		b->handle_zoom(*this, new_scale);
@@ -402,14 +402,14 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 	}
 
 	if (show_rclick_menu) {
-		sdl_draw_rect(rclick_menu.rect, back_color, nullptr);
+		sdl_draw_rect(rclick_menu.rect, colors.back, nullptr);
 
 		int item_h = rclick_menu.get_item_height();
 		if (rclick_menu.hl >= 0) {
 			Rect_Int r = rclick_menu.rect;
 			r.y += rclick_menu.hl * item_h;
 			r.h = item_h;
-			sdl_draw_rect(r, hl_color, nullptr);
+			sdl_draw_rect(r, colors.hl, nullptr);
 		}
 
 		auto& list = *rclick_menu.list;

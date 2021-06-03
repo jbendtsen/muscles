@@ -272,26 +272,26 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	maxm.action = get_maximize_box();
 	maxm.img = ws.maxm;
 
-	scroll.back_color = ws.scroll_back;
-	scroll.default_color = ws.scroll_color;
-	scroll.hl_color = ws.scroll_hl_color;
-	scroll.sel_color = ws.scroll_sel_color;
+	scroll.back_color = ws.colors.scroll_back;
+	scroll.default_color = ws.colors.scroll;
+	scroll.hl_color = ws.colors.scroll_hl;
+	scroll.sel_color = ws.colors.scroll_sel;
 
 	title.font = ws.default_font;
 
 	menu.data = &table;
-	menu.default_color = ws.back_color;
-	menu.hl_color = ws.hl_color;
-	menu.sel_color = ws.hl_color;
+	menu.default_color = ws.colors.back;
+	menu.hl_color = ws.colors.hl;
+	menu.sel_color = ws.colors.hl;
 	menu.font = ws.default_font;
 	menu.vscroll = &scroll;
 	menu.vscroll->content = &menu;
 
-	search.caret = ws.caret_color;
-	search.default_color = ws.dark_color;
-	search.sel_color = ws.inactive_outline_color;
-	search.font = ws.make_font(9, ws.text_color, scale);
-	search.icon_color = ws.text_color;
+	search.caret = ws.colors.caret;
+	search.default_color = ws.colors.dark;
+	search.sel_color = ws.colors.inactive_outline;
+	search.font = ws.make_font(9, ws.colors.text, scale);
+	search.icon_color = ws.colors.text;
 	search.icon_color.a = 0.7;
 	search.key_action = [](Edit_Box* edit, Input& input) {
 		Data_View *menu = &dynamic_cast<Source_Menu*>(edit->parent)->menu;
@@ -339,33 +339,33 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		up.icon_right = true;
 
 		float up_font_size = 10;
-		Font *up_font = ws.make_font(up_font_size, ws.text_color, scale);
+		Font *up_font = ws.make_font(up_font_size, ws.colors.text, scale);
 
 		h = up_font->render.text_height();
 		up.icon = make_folder_icon(folder_dark, folder_light, h, h);
 
 		up.active_theme = {
-			ws.light_color,
-			ws.light_color,
-			ws.light_color,
+			ws.colors.light,
+			ws.colors.light,
+			ws.colors.light,
 			up_font
 		};
 		up.inactive_theme = up.active_theme;
 		up.update_size(scale);
 
 		div.visible = true;
-		div.default_color = ws.div_color;
+		div.default_color = ws.colors.div;
 		div.pos.h = 1.5;
 
 		path.visible = true;
 		path.font = up_font;
-		path.default_color = ws.dark_color;
-		path.sel_color = ws.inactive_outline_color;
-		path.caret = ws.caret_color;
+		path.default_color = ws.colors.dark;
+		path.sel_color = ws.colors.inactive_outline;
+		path.caret = ws.colors.caret;
 		path.placeholder = get_root_folder();
 		path.key_action = file_path_handler;
 
-		RGBA ph_color = ws.text_color;
+		RGBA ph_color = ws.colors.text;
 		ph_color.a = 0.75;
 		path.ph_font = ws.make_font(up_font_size, ph_color, scale);
 
@@ -377,7 +377,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		initial_height = 300;
 	}
 
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 	expungable = true;
 }

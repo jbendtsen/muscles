@@ -201,21 +201,21 @@ void Main_Menu::handle_zoom(Workspace& ws, float new_scale) {
 }
 
 Main_Menu::Main_Menu(Workspace& ws) {
-	process_back = ws.process_back;
-	process_outline = ws.process_outline;
+	process_back = ws.colors.process_back;
+	process_outline = ws.colors.process_outline;
 
-	file_back = ws.file_back;
-	file_fold = ws.file_fold;
-	file_line = ws.file_line;
+	file_back = ws.colors.file_back;
+	file_fold = ws.colors.file_fold;
+	file_line = ws.colors.file_line;
 
 	float scale = get_default_camera().scale;
 
 	sources_dd.title = "Sources";
-	sources_dd.font = ws.make_font(11, ws.text_color, scale);
+	sources_dd.font = ws.make_font(11, ws.colors.text, scale);
 	sources_dd.action = sources_main_menu_handler;
-	sources_dd.default_color = ws.back_color;
-	sources_dd.hl_color = ws.hl_color;
-	sources_dd.sel_color = ws.active_color;
+	sources_dd.default_color = ws.colors.back;
+	sources_dd.hl_color = ws.colors.hl;
+	sources_dd.sel_color = ws.colors.active;
 	sources_dd.width = 150;
 	sources_dd.content = {
 		(char*)"Add File",
@@ -225,9 +225,9 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	edit_dd.title = "Edit";
 	edit_dd.font = sources_dd.font;
 	edit_dd.action = edit_main_menu_handler;
-	edit_dd.default_color = ws.back_color;
-	edit_dd.hl_color = ws.hl_color;
-	edit_dd.sel_color = ws.active_color;
+	edit_dd.default_color = ws.colors.back;
+	edit_dd.hl_color = ws.colors.hl;
+	edit_dd.sel_color = ws.colors.active;
 	edit_dd.width = 150;
 	edit_dd.content = {
 		(char*)"New Object",
@@ -239,9 +239,9 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	view_dd.title = "View";
 	view_dd.font = sources_dd.font;
 	view_dd.action = view_main_menu_handler;
-	view_dd.default_color = ws.back_color;
-	view_dd.hl_color = ws.hl_color;
-	view_dd.sel_color = ws.active_color;
+	view_dd.default_color = ws.colors.back;
+	view_dd.hl_color = ws.colors.hl;
+	view_dd.sel_color = ws.colors.active;
 	view_dd.width = 140;
 	view_dd.content = {
 		(char*)"<source>",
@@ -251,10 +251,10 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	sources_view.show_column_names = true;
 	sources_view.action = table_main_menu_handler;
 	sources_view.font = ws.default_font;
-	sources_view.default_color = ws.dark_color;
-	sources_view.hl_color = ws.hl_color;
-	sources_view.sel_color = ws.light_color;
-	sources_view.back_color = ws.back_color;
+	sources_view.default_color = ws.colors.dark;
+	sources_view.hl_color = ws.colors.hl;
+	sources_view.sel_color = ws.colors.light;
+	sources_view.back_color = ws.colors.back;
 
 	Column sources_cols[] = {
 		{ColumnImage, 0, 0.1, 0, 1.2, ""},
@@ -269,16 +269,16 @@ Main_Menu::Main_Menu(Workspace& ws) {
 		open_view_source(*elem->parent->parent, view->sel_row);
 	};
 	button.active_theme = {
-		ws.light_color,
-		ws.light_color,
-		ws.hl_color,
-		ws.make_font(11, ws.text_color, scale)
+		ws.colors.light,
+		ws.colors.light,
+		ws.colors.hl,
+		ws.make_font(11, ws.colors.text, scale)
 	};
 	button.inactive_theme = {
-		ws.inactive_color,
-		ws.inactive_color,
-		ws.inactive_color,
-		ws.make_font(11, ws.inactive_text_color, scale)
+		ws.colors.inactive,
+		ws.colors.inactive,
+		ws.colors.inactive,
+		ws.make_font(11, ws.colors.inactive_text, scale)
 	};
 	button.text = "View";
 	button.active = false;
@@ -293,8 +293,8 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	refresh_every = 1;
 	initial_width = 400;
 	initial_height = 200;
-	back = ws.back_color;
-	edge_color = ws.dark_color;
+	back = ws.colors.back;
+	edge_color = ws.colors.dark;
 }
 
 void opening_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -333,9 +333,9 @@ Opening_Menu::Opening_Menu(Workspace& ws) {
 	title.text = "Muscles";
 
 	menu.font = ws.default_font;
-	menu.hl_color = ws.hl_color;
-	menu.sel_color = ws.hl_color;
-	menu.default_color = ws.back_color;
+	menu.hl_color = ws.colors.hl;
+	menu.sel_color = ws.colors.hl;
+	menu.default_color = ws.colors.back;
 
 	Column menu_column = { ColumnString, 0, 1, 0, 0, "" };
 	table.init(&menu_column, nullptr, 1, 2);
@@ -348,7 +348,7 @@ Opening_Menu::Opening_Menu(Workspace& ws) {
 	ui.push_back(&title);
 	ui.push_back(&menu);
 
-	back = ws.back_color;
+	back = ws.colors.back;
 	initial_width = 160;
 	initial_height = 100;
 	visible = true;

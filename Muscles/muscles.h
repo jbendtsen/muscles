@@ -121,7 +121,7 @@ void sdl_log_last_error();
 Renderer sdl_acquire_sw_renderer(int w, int h);
 Texture sdl_bake_sw_render();
 
-bool sdl_init(const char *title, int width, int height);
+bool sdl_init(const char *title, int width, int height, RGBA bg_color);
 void sdl_close();
 
 bool sdl_poll_input(Input& input);
