@@ -7,6 +7,9 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define PAGE_SIZE 0x1000
+#define PROC_NAME_MAX 512
+
 const char *get_folder_separator() {
 	return "/";
 }
@@ -65,11 +68,11 @@ std::pair<int, std::unique_ptr<u8[]>> read_small_file(const char *path) {
 		return buf;
 	}
 
-	buf.second = std::make_unique<u8[]>(4096);
-	buf.first = read(fd, buf.second.get(), 4096);
+	buf.second = std::make_unique<u8[]>(PAGE_SIZE);
+	buf.first = read(fd, buf.second.get(), PAGE_SIZE);
 	close(fd);
 
-	if (buf.first < 4096)
+	if (buf.first < PAGE_SIZE)
 		buf.second[buf.first] = 0;
 
 	return buf;
@@ -217,7 +220,7 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 	}
 }
 
-void refresh_file_region(Source& source, Arena& arena) {
+void refresh_file_region(Source& source) {
 	if (source.regions.size() <= 0)
 		source.regions.push_back({});
 
@@ -241,7 +244,7 @@ void refresh_file_region(Source& source, Arena& arena) {
 	reg.flags = (s.st_mode & S_IRWXU) / S_IXUSR;
 }
 
-void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena) {
+void refresh_file_spans(Source& source, std::vector<Span>& input) {
 	if (source.fd <= 0)
 		source.fd = open((char*)source.identifier, O_RDONLY);
 
@@ -257,14 +260,154 @@ void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena) 
 	}
 }
 
-void refresh_process_regions(Source& source, Arena& arena) {
-	
+void refresh_process_regions(Source& source) {
+	char maps_path[32];
+	char err_msg[128];
+
+	snprintf(maps_path, 32, "/proc/%d/maps", source.pid);
+	int maps_fd = open(maps_path, O_RDONLY);
+	if (maps_fd < 0) {
+		snprintf(err_msg, 128, "Error: could not open %s", maps_path);
+		sdl_log_string(err_msg);
+		return;
+	}
+
+	int idx = 0;
+	int size = 0;
+	int retrieved = 0;
+	do {
+		if (idx >= source.proc_map_pages.size())
+			source.proc_map_pages.resize(idx + 1);
+
+		char*& buf = source.proc_map_pages[idx];
+		if (!buf)
+			buf = new char[PAGE_SIZE];
+
+		retrieved = read(maps_fd, buf, PAGE_SIZE);
+		if (retrieved < 0) {
+			snprintf(err_msg, 100, "Error: failed to read from offset %d in %s", size, maps_path);
+			sdl_log_string(err_msg);
+		}
+
+		size += retrieved;
+		idx++;
+	}
+	while (retrieved == PAGE_SIZE);
+
+	close(maps_fd);
+
+	source.regions.resize(0);
+
+	source.arena.rewind();
+	source.arena.set_rewind_point();
+
+	int mode = 0;
+	u64 start = 0;
+	u64 end = 0;
+	int pms = 0;
+	int flag_count = 0;
+	char name_buf[PROC_NAME_MAX];
+	int name_size = 0;
+
+	for (int i = 0; i < size; i++) {
+		char *page = source.proc_map_pages[i / PAGE_SIZE];
+		int off = i % PAGE_SIZE;
+		char c = page[off];
+
+		switch (mode) {
+			case 0:
+			{
+				if (c == '-')
+					mode = 1;
+				else if (c >= '0' && c <= '9')
+					start = (start << 4LL) | (u64)(c - '0');
+				else if (c >= 'a' && c <= 'f')
+					start = (start << 4LL) | (u64)(c - 'a' + 10);
+				break;
+			}
+			case 1:
+			{
+				if (c == ' ')
+					mode = 2;
+				else if (c >= '0' && c <= '9')
+					end = (end << 4LL) | (u64)(c - '0');
+				else if (c >= 'a' && c <= 'f')
+					end = (end << 4LL) | (u64)(c - 'a' + 10);
+				break;
+			}
+			case 2:
+			{
+				if (flag_count < 3) {
+					pms |= (c == "rwx"[flag_count]) << (2 - flag_count);
+					flag_count++;
+				}
+				else {
+					flag_count = 0;
+					mode = 3;
+				}
+				break;
+			}
+			case 3:
+			{
+				if (c == ' ' || c == '\t')
+					name_size = 0;
+				else if (name_size < PROC_NAME_MAX && c != '\n')
+					name_buf[name_size++] = c;
+
+				if (c != '\n' && i < size-1)
+					break;
+
+				char *name = nullptr;
+				if (name_size > 0) {
+					name = (char*)source.arena.allocate(name_size + 1);
+					memcpy(name, name_buf, name_size);
+				}
+
+				source.regions.push_back((Region){
+					.name = name,
+					.base = start,
+					.size = end - start,
+					.flags = (u32)pms
+				});
+
+				mode = 0;
+				start = 0;
+				end = 0;
+				pms = 0;
+				flag_count = 0;
+				name_size = 0;
+				break;
+			}
+		}
+	}
 }
 
-void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena) {
-	
+void refresh_process_spans(Source& source, std::vector<Span>& input) {
+	char mem_path[32];
+	snprintf(mem_path, 32, "/proc/%d/mem", source.pid);
+
+	if (source.fd <= 0) {
+		source.fd = open(mem_path, O_RDONLY);
+		if (source.fd < 0) {
+			char msg[128];
+			snprintf(msg, 128, "Error: could not open %s", mem_path);
+			sdl_log_string(msg);
+
+			for (auto& s : input)
+				s.retrieved = 0;
+			return;
+		}
+	}
+
+	for (auto& s : input) {
+		lseek64(source.fd, s.address, SEEK_SET);
+		s.retrieved = read(source.fd, (void*)&source.buffer[s.offset], s.size);
+	}
 }
 
 void close_source(Source& source) {
-	
+	if (source.fd > 0) {
+		close(source.fd);
+		source.fd = 0;
+	}
 }

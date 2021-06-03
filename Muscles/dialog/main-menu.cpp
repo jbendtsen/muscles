@@ -103,7 +103,7 @@ static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 
 	const char *path_str = path.c_str();
 	for (auto& s : ws->sources) {
-		if (s->type == SourceFile && !strcmp(path_str, (const char*)s->identifier));
+		if (s->type == SourceFile && !strcmp(path_str, (const char*)s->identifier))
 			return;
 	}
 

@@ -231,7 +231,7 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 	}
 }
 
-void refresh_file_region(Source& source, Arena& arena) {
+void refresh_file_region(Source& source) {
 	if (source.regions.size() <= 0)
 		source.regions.push_back({});
 
@@ -256,7 +256,7 @@ void refresh_file_region(Source& source, Arena& arena) {
 	reg.name = (char*)source.name.c_str();
 }
 
-void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena) {
+void refresh_file_spans(Source& source, std::vector<Span>& input) {
 	if (!source.handle)
 		source.handle = open_file((LPCSTR)source.identifier);
 
@@ -302,7 +302,7 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map,
 			section_map.place_at(idx, {
 				.name = arena.alloc_string((char*)section->Name),
 				.base = key,
-				.offset = section->VirtualAddress
+				//.offset = section->VirtualAddress
 			});
 			section_map.next_level_maybe();
 		}
@@ -313,7 +313,7 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map,
 	return n_sections > 0;
 }
 
-void refresh_process_regions(Source& source, Arena& arena) {
+void refresh_process_regions(Source& source) {
 	source.regions_map.ensure(1024);
 	source.sections.ensure(256);
 
@@ -444,7 +444,7 @@ void refresh_process_regions(Source& source, Arena& arena) {
 		});
 }
 
-void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena) {
+void refresh_process_spans(Source& source, std::vector<Span>& input) {
 	auto& proc = (HANDLE&)source.handle;
 	if (!proc)
 		proc = OpenProcess(PROCESS_ALL_ACCESS, false, source.pid);

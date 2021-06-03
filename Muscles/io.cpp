@@ -27,7 +27,7 @@ void Source::deactivate_span(int idx) {
 	}
 }
 
-void Source::gather_data(Arena& arena) {
+void Source::gather_data() {
 	if (spans.size() < 1)
 		return;
 
@@ -114,9 +114,9 @@ void Source::gather_data(Arena& arena) {
 	buf_size = size;
 
 	if (type == SourceFile)
-		refresh_file_spans(*this, io, arena);
+		refresh_file_spans(*this, io);
 	else if (type == SourceProcess)
-		refresh_process_spans(*this, io, arena);
+		refresh_process_spans(*this, io);
 
 	int n_spans = io.size();
 	for (auto& idx : index) {

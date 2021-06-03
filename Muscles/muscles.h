@@ -201,10 +201,14 @@ struct Arena {
 
 	Arena() = default;
 	~Arena() {
-		for (auto& p : pools)
+		for (auto& p : pools) {
 			delete[] p;
-		for (auto& p : big_pools)
+			p = nullptr;
+		}
+		for (auto& p : big_pools) {
 			delete[] p;
+			p = nullptr;
+		}
 	}
 
 	void *allocate(int size);
@@ -563,7 +567,7 @@ struct Region {
 	char *name = nullptr;
 	u64 base = 0;
 	u64 size = 0;
-	u32 offset = 0;
+	//u32 offset = 0;
 	u32 flags = 0;
 };
 
@@ -617,6 +621,8 @@ struct Source {
 	SourceType type = SourceNone;
 	std::string name;
 
+	Arena arena;
+
 	int pid = 0;
 	void *identifier = nullptr;
 
@@ -627,6 +633,9 @@ struct Source {
 
 	u8 *buffer = nullptr;
 	int buf_size = 0;
+
+	// list of pages, where each page is 4k of text loaded from /proc/<pid>/maps
+	std::vector<char*> proc_map_pages;
 
 	Region_Map regions_map;
 	Region_Map sections;
@@ -643,7 +652,7 @@ struct Source {
 
 	int request_span();
 	void deactivate_span(int idx);
-	void gather_data(Arena& arena);
+	void gather_data();
 };
 
 const char *get_folder_separator();
@@ -659,11 +668,11 @@ int get_process_names(std::vector<s64> *list, Map& icon_map, std::vector<void*>&
 
 void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena);
 
-void refresh_file_region(Source& source, Arena& arena);
-void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena);
+void refresh_file_region(Source& source);
+void refresh_file_spans(Source& source, std::vector<Span>& input);
 
-void refresh_process_regions(Source& source, Arena& arena);
-void refresh_process_spans(Source& source, std::vector<Span>& input, Arena& arena);
+void refresh_process_regions(Source& source);
+void refresh_process_spans(Source& source, std::vector<Span>& input);
 
 void close_source(Source& source);
 

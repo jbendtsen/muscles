@@ -251,20 +251,19 @@ void Workspace::reset_primitives() {
 }
 
 void Workspace::refresh_sources() {
-	Arena* arena = &get_default_arena();
 	auto& sources = (std::vector<Source*>&)this->sources;
 	for (auto& s : sources) {
 		s->region_refreshed = false;
 		if (!s->block_region_refresh && s->timer % s->refresh_region_rate == 0) {
 			if (s->type == SourceFile)
-				refresh_file_region(*s, *arena);
+				refresh_file_region(*s);
 			else if (s->type == SourceProcess)
-				refresh_process_regions(*s, *arena);
+				refresh_process_regions(*s);
 
 			s->region_refreshed = true;
 		}
 		if (s->timer % s->refresh_span_rate == 0) {
-			s->gather_data(*arena);
+			s->gather_data();
 		}
 		s->timer++;
 	}
