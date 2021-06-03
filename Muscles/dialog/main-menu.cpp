@@ -101,14 +101,15 @@ static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 	auto ui = dynamic_cast<Main_Menu*>(box);
 	auto ws = box->parent;
 
+	const char *path_str = path.c_str();
 	for (auto& s : ws->sources) {
-		if (s->type == SourceFile && path == (const char*)s->identifier)
+		if (s->type == SourceFile && !strcmp(path_str, (const char*)s->identifier));
 			return;
 	}
 
 	Source *s = new Source();
 	s->type = SourceFile;
-	s->identifier = (void*)get_default_arena().alloc_string((char*)path.c_str());
+	s->identifier = (void*)get_default_arena().alloc_string((char*)path_str);
 	s->name = file->name;
 	s->refresh_span_rate = 1;
 	ws->sources.push_back(s);

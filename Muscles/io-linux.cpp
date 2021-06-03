@@ -2,7 +2,10 @@
 #include <algorithm>
 
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <dirent.h>
+#include <errno.h>
+#include <unistd.h>
 
 const char *get_folder_separator() {
 	return "/";
@@ -48,6 +51,30 @@ std::pair<int, std::unique_ptr<u8[]>> read_file(std::string& path) {
 	return read_file(path.c_str());
 }
 
+std::pair<int, std::unique_ptr<u8[]>> read_small_file(const char *path) {
+	std::pair<int, std::unique_ptr<u8[]>> buf = {0, nullptr};
+
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return buf;
+
+	struct stat s;
+	int res = fstat(fd, &s);
+	if (res != 0 || (s.st_mode & S_IFMT) == S_IFDIR) {
+		close(fd);
+		return buf;
+	}
+
+	buf.second = std::make_unique<u8[]>(4096);
+	buf.first = read(fd, buf.second.get(), 4096);
+	close(fd);
+
+	if (buf.first < 4096)
+		buf.second[buf.first] = 0;
+
+	return buf;
+}
+
 Texture load_icon(const char *path);
 
 void get_process_id_list(std::vector<s64>& list) {
@@ -55,8 +82,14 @@ void get_process_id_list(std::vector<s64>& list) {
 	list.resize(0);
 
 	DIR *d = opendir("/proc");
-	struct dirent *ent;
+	if (!d) {
+		std::string msg("Error: could not open /proc: ");
+		msg += std::to_string(errno);
+		sdl_log_string(msg.c_str());
+		return;
+	}
 
+	struct dirent *ent;
 	while ((ent = readdir(d))) {
 		s64 pid = 0;
 		bool is_num = ent->d_name[0] != 0;
@@ -89,7 +122,7 @@ int get_process_names(std::vector<s64> *full_list, Map& icon_map, std::vector<vo
 		int pid = (int)(*list)[i];
 		sprintf(path, "/proc/%d/comm", pid);
 
-		auto buf = read_file((const char*)path);
+		auto buf = read_small_file((const char*)path);
 		if (!buf.first)
 			continue;
 
@@ -119,7 +152,8 @@ void enumerate_files(char *path, std::vector<File_Entry*>& files, Arena& arena) 
 
 	char full_name[1024];
 	const int MAX_LEN = 512;
-	int path_len = strlen(full_name);
+
+	int path_len = strlen(path);
 	if (path_len > MAX_LEN)
 		path_len = MAX_LEN;
 
@@ -189,7 +223,8 @@ void refresh_file_region(Source& source, Arena& arena) {
 
 	Region& reg = source.regions[0];
 
-	//if (!source.handle) source.handle = open_file((LPCSTR)source.identifier);
+	if (source.fd <= 0)
+		source.fd = open((char*)source.identifier, O_RDONLY);
 
 	reg.flags = 0;
 	reg.base = 0;
@@ -207,7 +242,19 @@ void refresh_file_region(Source& source, Arena& arena) {
 }
 
 void refresh_file_spans(Source& source, std::vector<Span>& input, Arena& arena) {
-	
+	if (source.fd <= 0)
+		source.fd = open((char*)source.identifier, O_RDONLY);
+
+	s64 offset;
+	for (auto& s : input) {
+		if (s.size <= 0)
+			continue;
+
+		offset = s.address;
+		lseek64(source.fd, offset, SEEK_SET);
+
+		s.retrieved = read(source.fd, &source.buffer[s.offset], s.size);
+	}
 }
 
 void refresh_process_regions(Source& source, Arena& arena) {

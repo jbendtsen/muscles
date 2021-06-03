@@ -619,7 +619,11 @@ struct Source {
 
 	int pid = 0;
 	void *identifier = nullptr;
-	void *handle = nullptr;
+
+	union {
+		int fd = 0;
+		void *handle;
+	};
 
 	u8 *buffer = nullptr;
 	int buf_size = 0;

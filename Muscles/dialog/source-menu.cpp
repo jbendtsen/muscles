@@ -183,7 +183,7 @@ void file_path_handler(Edit_Box *edit, Input& input) {
 			if (len < 111) {
 				File_Entry file = {0};
 				strcpy(file.name, str.c_str() + off);
-				callback(caller, str, nullptr);
+				callback(caller, str, &file);
 			}
 		}
 

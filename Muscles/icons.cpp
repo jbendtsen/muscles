@@ -8,18 +8,21 @@ static inline u32 rgba_to_u32(RGBA color) {
 		(u8)(color.a * 255.0);
 }
 
-static inline int _abs(int x) {
+static inline int abs_i(int x) {
+	return x < 0 ? -x : x;
+}
+static inline double abs_d(double x) {
 	return x < 0 ? -x : x;
 }
 
-static inline float clamp(float f, float min, float max) {
+static inline float clamp_f(float f, float min, float max) {
 	if (f < min)
 		return min;
 	if (f > max)
 		return max;
 	return f;
 }
-static inline double clamp(double f, double min, double max) {
+static inline double clamp_d(double f, double min, double max) {
 	if (f < min)
 		return min;
 	if (f > max)
@@ -39,7 +42,7 @@ Texture make_circle(RGBA& color, int diameter) {
 		float x = -diameter / 2;
 		for (int j = 0; j < diameter; j++) {
 			float dist = sqrt((double)(x * x + y * y));
-			float lum = 0.5 + clamp(radius - dist, -1, 1) / 2;
+			float lum = 0.5 + clamp_f(radius - dist, -1, 1) / 2;
 
 			shade.a = color.a * lum;
 			pixels[i * diameter + j] = rgba_to_u32(shade);
@@ -71,8 +74,8 @@ Texture make_triangle(RGBA& color, int width, int height, bool up) {
 
 			float lum = 0.0;
 			if (y >= y_begin) {
-				double l = y_inter - (_abs(x * x_dil) + y);
-				lum = clamp(l * intensity, 0.0, 1.0);
+				double l = y_inter - (abs_d(x * x_dil) + y);
+				lum = clamp_d(l * intensity, 0.0, 1.0);
 			}
 
 			shade.a = color.a * lum;
@@ -133,8 +136,8 @@ Texture make_cross_icon(RGBA& color, int length) {
 	
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < length; j++) {
-			int d1 = _abs(i - j);
-			int d2 = _abs(i - ((length - 1) - j));
+			int d1 = abs_i(i - j);
+			int d2 = abs_i(i - ((length - 1) - j));
 
 			float lum = 0.0;
 			if (d1 == weak || d2 == weak)
@@ -336,8 +339,8 @@ Texture make_divider_icon(RGBA& color, int width, int height, double gap, double
 				continue;
 			}
 
-			x = _abs(x);
-			y = _abs(y);
+			x = abs_d(x);
+			y = abs_d(y);
 			double g1 = x + y;
 			double g2 = y - x;
 
@@ -345,11 +348,11 @@ Texture make_divider_icon(RGBA& color, int width, int height, double gap, double
 			if (g1 >= inner && g1 < 0.5 && g2 < end) {
 				double mid = (inner + 0.5) / 2.0;
 				double slope = 0.5 - mid;
-				lum = 1.0 - (_abs(g1 - mid) / slope);
-				lum = clamp(lum * sharpness, 0.0, 1.0);
+				lum = 1.0 - (abs_d(g1 - mid) / slope);
+				lum = clamp_d(lum * sharpness, 0.0, 1.0);
 
 				double edge = end - g2;
-				edge = clamp(edge * sharpness / slope, 0.0, 1.0);
+				edge = clamp_d(edge * sharpness / slope, 0.0, 1.0);
 				lum *= edge;
 			}
 
@@ -408,9 +411,9 @@ Texture make_goto_icon(RGBA& color, int length) {
 				}
 			}
 
-			double head = 1.0 - (y + _abs(x - arrow_x) * arrow_squish) / arrow_size;
+			double head = 1.0 - (y + abs_d(x - arrow_x) * arrow_squish) / arrow_size;
 			if (cy >= 0.0 && head > 0.0)
-				lum = clamp(head / arrow_fade, 0.0, 1.0);
+				lum = clamp_d(head / arrow_fade, 0.0, 1.0);
 
 			shade.a = color.a * lum;
 			pixels[i*length+j] = lum == 0 ? 0 : rgba_to_u32(shade);
@@ -475,7 +478,7 @@ Texture make_glass_icon(RGBA& color, int length) {
 				       smooth_edges(handle_y, handle_height, handle_fade);
 			}
 
-			shade.a = color.a * clamp(lum, 0.0, 1.0);
+			shade.a = color.a * clamp_d(lum, 0.0, 1.0);
 			pixels[i*length+j] = lum > 0.0 ? rgba_to_u32(shade) : 0;
 		}
 	}
@@ -502,13 +505,13 @@ Texture make_plus_minus_icon(RGBA& color, int length, bool plus) {
 			double y = ((double)i + 0.5) / len - 0.5;
 
 			double dist = sqrt(x * x + y * y);
-			double curve = _abs(x*y);
+			double curve = abs_d(x*y);
 			curve *= curve;
 			double thres = radius + squareness * curve;
 
 			double lum = 0.0;
 			if (dist < thres && thres < max_threshold)
-				lum = clamp(sharpness * (thres - dist) / thres, 0.0, 1.0);
+				lum = clamp_d(sharpness * (thres - dist) / thres, 0.0, 1.0);
 
 			if (x >= -end && x < end && y >= -end && y < end) {
 				if ((plus && x >= -thicc && x < thicc) || (y >= -thicc && y < thicc))

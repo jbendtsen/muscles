@@ -25,7 +25,7 @@ for d in dirs:
 
 		cpp_list.append(d + "/" + f)
 
-command = "g++"
+command = "g++ -g"
 for l in libs:
 	command += " -l" + l
 for i in includes:
