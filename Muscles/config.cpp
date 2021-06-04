@@ -6,7 +6,7 @@ void load_config(Workspace& ws, std::string& path) {
 	colors.insert("background").value        = 0x000000ff;
 	colors.insert("text").value              = 0xffffffff;
 	colors.insert("ph_text").value           = 0xffffffb2;
-	colors.insert("outline").value           = 0x6699ccff;
+	colors.insert("outline").value           = 0x0c3380ff; //0x6699ccff;
 	colors.insert("back").value              = 0x1933b2ff;
 	colors.insert("dark").value              = 0x0c3380ff;
 	colors.insert("light").value             = 0x2659d8ff;

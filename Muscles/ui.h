@@ -614,34 +614,34 @@ struct Text_Editor : UI_Element {
 };
 
 struct Colors {
-	RGBA background = {0, 0, 0, 1};
-	RGBA text = {1, 1, 1, 1};
-	RGBA ph_text = {1, 1, 1, 0.7};
-	RGBA outline = {0.4, 0.6, 0.8, 1.0};
-	RGBA back = {0.1, 0.2, 0.7, 1.0};
-	RGBA dark = {0.05, 0.2, 0.5, 1.0};
-	RGBA light = {0.15, 0.35, 0.85, 1.0};
-	RGBA light_hl = {0.2, 0.5, 1.0, 1.0};
-	RGBA table_cb_back = {0, 0.05, 0.2, 1.0};
-	RGBA hl = {0.2, 0.4, 0.7, 1.0};
-	RGBA active = {0.1, 0.25, 0.8, 1.0};
-	RGBA inactive = {0.2, 0.3, 0.5, 1.0};
-	RGBA inactive_text = {0.7, 0.7, 0.7, 1.0};
-	RGBA inactive_outline = {0.55, 0.6, 0.65, 1.0};
-	RGBA scroll_back = {0, 0.15, 0.4, 1.0};
-	RGBA scroll = {0.4, 0.45, 0.55, 1.0};
-	RGBA scroll_hl = {0.6, 0.63, 0.7, 1.0};
-	RGBA scroll_sel = {0.8, 0.8, 0.8, 1.0};
-	RGBA div = {0.5, 0.6, 0.8, 1.0};
-	RGBA caret = {0.9, 0.9, 0.9, 1.0};
-	RGBA cb = {0.55, 0.7, 0.9, 1.0};
-	RGBA sel = {0.45, 0.5, 0.6, 1.0};
+	RGBA background;
+	RGBA text;
+	RGBA ph_text;
+	RGBA outline;
+	RGBA back;
+	RGBA dark;
+	RGBA light;
+	RGBA light_hl;
+	RGBA table_cb_back;
+	RGBA hl;
+	RGBA active;
+	RGBA inactive;
+	RGBA inactive_text;
+	RGBA inactive_outline;
+	RGBA scroll_back;
+	RGBA scroll;
+	RGBA scroll_hl;
+	RGBA scroll_sel;
+	RGBA div;
+	RGBA caret;
+	RGBA cb;
+	RGBA sel;
 
-	RGBA process_back = {0.8, 0.8, 0.8, 1.0};
-	RGBA process_outline = {0.6, 0.6, 0.6, 1.0};
-	RGBA file_back = {0.8, 0.8, 0.8, 1.0};
-	RGBA file_fold = {0.9, 0.9, 0.9, 1.0};
-	RGBA file_line = {0.5, 0.5, 0.5, 1.0};
+	RGBA process_back;
+	RGBA process_outline;
+	RGBA file_back;
+	RGBA file_fold;
+	RGBA file_line;
 };
 
 enum BoxType {
