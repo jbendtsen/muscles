@@ -230,9 +230,6 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	options.vscroll->content = &options;
 	ui.push_back(&options);
 
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
-
 	initial_width = 350;
 	initial_height = 280;
 }

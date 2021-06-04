@@ -13,7 +13,7 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	};
 	sdl_draw_rect(edge_rect, edge_color, nullptr);
 
-	sdl_draw_rect(r, back, nullptr);
+	sdl_draw_rect(r, back_color, nullptr);
 
 	for (auto& e : ui) {
 		if (e->visible)

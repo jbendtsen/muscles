@@ -694,6 +694,7 @@ void close_source(Source& source);
 #define FLAG_ENUM_ELEMENT  0x0400
 #define FLAG_TYPEDEF       0x0800
 #define FLAG_VALUE_INITED  0x1000
+#define FIELD_FLAGS        0x1fff
 
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000
@@ -758,6 +759,7 @@ struct Struct {
 	Field_Vector fields;
 };
 
+void set_primitives(Map& definitions);
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);

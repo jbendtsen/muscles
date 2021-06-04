@@ -123,6 +123,7 @@ void Region_Map::next_level() {
 	data = new_regions;
 }
 
+// Returns the corresponding bucket for a key, where the bucket is either empty or occupied (with collision resolution if occupied).
 int Map::get(const char *str, int len) {
 	if (len <= 0) len = strlen(str);
 	u32 hash = murmur3_32(str, len, seed);
@@ -130,10 +131,15 @@ int Map::get(const char *str, int len) {
 	int mask = (1 << log2_slots) - 1;
 	int idx = hash & mask;
 
+	// If the bucket is not occupied, return it immediately.
+	// Don't assume that the caller wants anything to happen to the bucket if it's not in use.
 	Bucket *buck = &data[idx];
 	if ((buck->flags & FLAG_OCCUPIED) == 0)
 		return idx;
-		
+
+	// If the bucket is occupied, check that it's not a collision by comparing the keys, starting from this bucket onwards.
+	// If at any point we find a bucket that is not occupied, we immediately return that bucket.
+	// Until then, given that we are looking at occupied buckets, if we find a matching key we return that bucket.
 	int end = (idx + mask) & mask;
 	while (idx != end && (data[idx].flags & FLAG_OCCUPIED)) {
 		if (!memcmp(str, sv->at(data[idx].name_idx), len))

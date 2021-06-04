@@ -443,12 +443,8 @@ View_Object::View_Object(Workspace& ws) {
 	rclick_menu.push_back(edit_item);
 
 	refresh_every = 1;
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
-
 	initial_width = 400;
 	initial_height = 450;
-
 	min_width = 300;
 	min_height = 200;
 	expungable = true;

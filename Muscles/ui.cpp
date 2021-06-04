@@ -1,7 +1,7 @@
 #include "muscles.h"
 #include "ui.h"
 
-static inline float clamp(float f, float min, float max) {
+static inline float clamp_f(float f, float min, float max) {
 	if (f < min)
 		return min;
 	if (f > max && max >= min)
@@ -229,7 +229,7 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 
 	font->render.draw_text_simple(renderer, text.c_str(), text_x, text_y);
 
-	float frac = clamp((leaning + 1) / 2, 0, 1);
+	float frac = clamp_f((leaning + 1) / 2, 0, 1);
 	float cb_x = frac * (back.w - back.h);
 	if (cb_x < 0) cb_x = 0;
 
@@ -844,7 +844,7 @@ void Divider::mouse_handler(Camera& view, Input& input, Point& cursor, bool hove
 
 	if (held) {
 		float cur = vertical ? cursor.x : cursor.y;
-		position = clamp(cur - hold_pos, minimum, maximum);
+		position = clamp_f(cur - hold_pos, minimum, maximum);
 	}
 
 	needs_redraw = true;
@@ -1573,7 +1573,7 @@ void Scroll::engage(Point& p) {
 
 void Scroll::scroll(double delta) {
 	double old_pos = position;
-	position = clamp(position + delta, 0, maximum - view_span);
+	position = clamp_f(position + delta, 0, maximum - view_span);
 
 	double epsilon = 0.01;
 	needs_redraw = abs(position - old_pos) > epsilon;

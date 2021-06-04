@@ -293,8 +293,6 @@ Main_Menu::Main_Menu(Workspace& ws) {
 	refresh_every = 1;
 	initial_width = 400;
 	initial_height = 200;
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
 }
 
 void opening_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -348,7 +346,6 @@ Opening_Menu::Opening_Menu(Workspace& ws) {
 	ui.push_back(&title);
 	ui.push_back(&menu);
 
-	back = ws.colors.back;
 	initial_width = 160;
 	initial_height = 100;
 	visible = true;

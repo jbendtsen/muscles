@@ -317,8 +317,6 @@ Edit_Structs::Edit_Structs(Workspace& ws) {
 
 	box_type = BoxStructs;
 	//refresh_every = 1;
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
 	initial_width = 400;
 	initial_height = 450;
 	min_width = flex_min_width;

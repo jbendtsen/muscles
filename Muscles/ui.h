@@ -704,7 +704,7 @@ struct Box {
 	int edge = 0;
 
 	Rect box = {};
-	RGBA back = {};
+	RGBA back_color = {};
 	RGBA edge_color = {};
 
 	std::vector<Menu_Item> rclick_menu;
@@ -796,7 +796,6 @@ struct Workspace {
 	Font *make_font(float size, RGBA& color, float scale);
 
 	void refresh_sources();
-	void reset_primitives();
 
 	void adjust_scale(float old_scale, float new_scale);
 	void prepare_rclick_menu(Camera& view, Point& cursor);
@@ -810,3 +809,5 @@ Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);
 Rect_Int make_int_ui_box(Rect_Int& box, Rect& elem, float scale);
 
 void reposition_box_buttons(Image& cross, Image& maxm, float box_w, float size);
+
+void load_config(Workspace& ws, std::string& path);

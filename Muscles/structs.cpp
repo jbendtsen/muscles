@@ -2,8 +2,29 @@
 
 #define PADDING(offset, align) ((align) - ((offset) % (align))) % (align)
 
-// A list of primitive types in the form of a vector. This lets us potentially add new primitives at run-time.
-int pointer_size = 64; // bits
+const int pointer_size = 64; // bits
+
+void set_primitives(Map& definitions) {
+	u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+	auto set = [flags](Bucket& buck, u32 type, u64 value) {
+		buck.flags |= flags | type;
+		buck.value = value;
+	};
+
+	set(definitions.insert("char"), FLAG_SIGNED, 8);
+	set(definitions.insert("int8_t"), FLAG_SIGNED, 8);
+	set(definitions.insert("uint8_t"), 0, 8);
+	set(definitions.insert("short"), FLAG_SIGNED, 16);
+	set(definitions.insert("int16_t"), FLAG_SIGNED, 16);
+	set(definitions.insert("uint16_t"), 0, 16);
+	set(definitions.insert("int"), FLAG_SIGNED, 32);
+	set(definitions.insert("int32_t"), FLAG_SIGNED, 32);
+	set(definitions.insert("uint32_t"), 0, 32);
+	set(definitions.insert("long"), FLAG_SIGNED, 32);
+	set(definitions.insert("long long"), FLAG_SIGNED, 64);
+	set(definitions.insert("float"), FLAG_FLOAT, 32);
+	set(definitions.insert("double"), FLAG_FLOAT, 64);
+}
 
 bool is_symbol(char c) {
 	return !(c >= '0' && c <= '9') &&

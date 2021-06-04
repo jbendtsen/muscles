@@ -89,10 +89,17 @@ Camera& get_default_camera() {
 
 int run() {
 	Workspace ctx;
+
+	std::string path(get_project_path());
+	int project_path_len = path.size();
+	path += "/config.cfg";
+
+	load_config(ctx, path);
+
 	if (!sdl_init("Muscles", 960, 540, ctx.colors.background))
 		return 1;
 
-	std::string path(get_project_path());
+	path.resize(project_path_len);
 	path += "/Fonts/";
 	path += FONT_MONO;
 	Font_Face face = load_font_face(path.c_str());

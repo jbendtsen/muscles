@@ -377,7 +377,5 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 		initial_height = 300;
 	}
 
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
 	expungable = true;
 }

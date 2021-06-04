@@ -486,6 +486,8 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	addr_box.sel_color = ws.colors.cb;
 	addr_box.pos.h = addr_box.font->render.text_height() * 1.1f / scale;
 	addr_box.pos.w = 2 * addr_box.pos.h;
+	addr_box.checked = true;
+	addr_box.action = nullptr;
 	ui.push_back(&addr_box);
 
 	hex_box.font = size_label.font;
@@ -517,8 +519,6 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	ui.push_back(&columns);
 
 	refresh_every = 1;
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
 	initial_width = 600;
 	initial_height = 400;
 	min_width = 400;

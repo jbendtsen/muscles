@@ -337,13 +337,11 @@ void refresh_process_regions(Source& source) {
 			}
 			case 2:
 			{
-				if (flag_count < 3) {
+				if (flag_count >= 3)
+					mode = 3;
+				else {
 					pms |= (c == "rwx"[flag_count]) << (2 - flag_count);
 					flag_count++;
-				}
-				else {
-					flag_count = 0;
-					mode = 3;
 				}
 				break;
 			}

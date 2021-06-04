@@ -241,9 +241,6 @@ View_Definitions::View_Definitions(Workspace& ws) {
 	ui.push_back(&vscroll);
 	ui.push_back(&hscroll);
 
-	back = ws.colors.back;
-	edge_color = ws.colors.dark;
-
 	initial_width = 400;
 	initial_height = 450;
 }
