@@ -1218,7 +1218,7 @@ float Hex_View::print_hex_row(Renderer renderer, Span& span, int idx, float x, f
 		x += pad * (i % 2 == 1);
 	}
 
-	return dst.x + pad;
+	return x + pad;
 }
 
 void Hex_View::print_ascii_row(Renderer renderer, Span& span, int idx, float x, float y, Render_Clip& clip, Rect_Int& box) {
