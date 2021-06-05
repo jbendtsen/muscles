@@ -258,7 +258,7 @@ void View_Object::refresh(Point *cursor) {
 }
 
 void View_Object::prepare_rclick_menu(Context_Menu& menu, Camera& camera, Point& cursor) {
-	rclick_menu[0].flags = view.hl_row >= 0 ? 0 : FLAG_INACTIVE;
+	rclick_menu_items[0].flags = view.hl_row >= 0 ? 0 : FLAG_INACTIVE;
 }
 
 void View_Object::handle_zoom(Workspace& ws, float new_scale) {
@@ -440,7 +440,7 @@ View_Object::View_Object(Workspace& ws) {
 	ui.push_back(&sel_btn);
 
 	Menu_Item edit_item = {0, (char*)"Edit Formatting", launch_edit_formatting};
-	rclick_menu.push_back(edit_item);
+	rclick_menu_items.push_back(edit_item);
 
 	refresh_every = 1;
 	initial_width = 400;

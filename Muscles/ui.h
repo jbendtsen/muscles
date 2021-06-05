@@ -709,7 +709,7 @@ struct Box {
 	RGBA back_color = {};
 	RGBA edge_color = {};
 
-	std::vector<Menu_Item> rclick_menu;
+	std::vector<Menu_Item> rclick_menu_items;
 
 	std::vector<UI_Element*> ui;
 

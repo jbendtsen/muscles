@@ -306,7 +306,7 @@ void Workspace::update(Camera& view, Input& input, Point& cursor) {
 			if (hover) {
 				rclick_box = hover;
 				rclick_box->prepare_rclick_menu(rclick_menu, view, cursor);
-				rclick_menu.list = &rclick_box->rclick_menu;
+				rclick_menu.list = &rclick_box->rclick_menu_items;
 			}
 			else {
 				rclick_box = nullptr;

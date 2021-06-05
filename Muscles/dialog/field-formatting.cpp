@@ -165,12 +165,14 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	string_dd.hl_color = ws.colors.hl;
 	string_dd.leaning = 1.0;
 	string_dd.title_off_y = -0.1;
+	string_dd.parent = this;
 
 	brackets_dd.title = "[]";
 	brackets_dd.default_color = ws.colors.scroll_back;
 	brackets_dd.hl_color = ws.colors.hl;
 	brackets_dd.leaning = 1.0;
 	brackets_dd.title_off_y = -0.1;
+	brackets_dd.parent = this;
 
 	separator_edit.default_color = ws.colors.scroll_back;
 	separator_edit.caret = ws.colors.text;
@@ -178,6 +180,7 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	separator_edit.icon_right = true;
 	separator_edit.manage_icon = false;
 	separator_edit.text_off_y = -0.1;
+	separator_edit.parent = this;
 
 	prefix_edit.default_color = ws.colors.scroll_back;
 	prefix_edit.caret = ws.colors.text;
@@ -185,10 +188,12 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	prefix_edit.icon_right = true;
 	prefix_edit.manage_icon = false;
 	prefix_edit.text_off_y = -0.1;
+	prefix_edit.parent = this;
 
 	base_edit.default_color = ws.colors.scroll_back;
 	base_edit.sel_color = ws.colors.scroll_back;
 	base_edit.text_off_y = -0.25;
+	base_edit.parent = this;
 
 	precision_edit.default_color = ws.colors.scroll_back;
 	precision_edit.caret = ws.colors.text;
@@ -197,28 +202,34 @@ Field_Formatting::Field_Formatting(Workspace& ws) {
 	precision_edit.icon_right = true;
 	precision_edit.manage_icon = false;
 	precision_edit.dropdown = &precision_dd;
+	precision_edit.parent = this;
 
 	precision_dd.title = "auto";
+	precision_dd.parent = this;
 
 	floatfmt_dd.title = "auto";
 	floatfmt_dd.default_color = ws.colors.scroll_back;
 	floatfmt_dd.hl_color = ws.colors.hl;
 	floatfmt_dd.title_off_y = -0.1;
 	floatfmt_dd.leaning = 1.0;
+	floatfmt_dd.parent = this;
 
 	uppercase_cb.default_color = ws.colors.scroll_back;
 	uppercase_cb.sel_color = ws.colors.cb;
 	uppercase_cb.leaning = 1.0;
+	uppercase_cb.parent = this;
 
 	sign_dd.title = "auto";
 	sign_dd.default_color = ws.colors.scroll_back;
 	sign_dd.hl_color = ws.colors.hl;
 	sign_dd.title_off_y = -0.1;
 	sign_dd.leaning = 1.0;
+	sign_dd.parent = this;
 
 	endian_cb.default_color = ws.colors.scroll_back;
 	endian_cb.sel_color = ws.colors.cb;
 	endian_cb.leaning = 1.0;
+	endian_cb.parent = this;
 
 	options.data = &table;
 	options.font = ws.make_font(10, ws.colors.text, scale);
