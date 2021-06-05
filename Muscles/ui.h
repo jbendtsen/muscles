@@ -419,6 +419,8 @@ struct Hex_View : UI_Element {
 	RGBA caret = {};
 	RGBA back_color = {};
 
+	String_Vector hex_vec;
+
 	u64 region_address = 0;
 	u64 region_size = 0;
 

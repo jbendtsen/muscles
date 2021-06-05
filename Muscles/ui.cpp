@@ -1192,31 +1192,21 @@ float Hex_View::print_address(Renderer renderer, u64 address, float x, float y, 
 
 float Hex_View::print_hex_row(Renderer renderer, Span& span, int idx, float x, float y, Rect_Int& box, float pad) {
 	Rect_Int src, dst;
+	int n_chars = columns * 2;
+	char *hex_row = &hex_vec.pool[idx * 2];
 
-	for (int i = 0; i < columns * 2; i++) {
-		const Glyph *gl = nullptr;
-		int digit = 0;
-		if (i + idx * 2 < span.retrieved * 2) {
-			digit = span.data[idx + i/2];
-			if (i % 2 == 0)
-				digit >>= 4;
-			digit &= 0xf;
-
-			char c = digit <= 9 ? '0' + digit : 'a' - 10 + digit;
-			gl = &font->render.glyphs[c - MIN_CHAR];
-		}
-		else
-			gl = &font->render.glyphs['?' - MIN_CHAR];
+	for (int i = 0; i < n_chars && x < box.w; i++) {
+		const Glyph *gl = &font->render.glyphs[hex_row[i]];
 
 		src.x = gl->atlas_x;
 		src.y = gl->atlas_y;
 		src.w = gl->img_w;
 		src.h = gl->img_h;
-
+/*
 		float clip_x = x + pad + gl->left;
 		if (clip_x + src.w > box.w)
 			src.w = box.w - clip_x;
-
+*/
 		dst.x = box.x + x + gl->left;
 		dst.y = box.y + y - gl->top;
 		dst.w = src.w;
@@ -1225,14 +1215,10 @@ float Hex_View::print_hex_row(Renderer renderer, Span& span, int idx, float x, f
 		sdl_apply_texture(font->render.tex, dst, &src, renderer);
 
 		x += gl->box_w;
-		if (i % 2 == 1)
-			x += pad;
-
-		if (x >= box.w)
-			break;
+		x += pad * (i % 2 == 1);
 	}
 
-	return x + pad;
+	return dst.x + pad;
 }
 
 void Hex_View::print_ascii_row(Renderer renderer, Span& span, int idx, float x, float y, Render_Clip& clip, Rect_Int& box) {
@@ -1329,6 +1315,19 @@ void Hex_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 
 	auto& span = source->spans[span_idx];
 	int left = span.size;
+
+	int n_chars = span.size * 2;
+	int end = span.retrieved * 2;
+	hex_vec.try_expand(n_chars);
+
+	for (int i = 0; i < end; i++) {
+		int digit = span.data[i/2];
+		digit >>= 4 * (i % 2 == 0);
+		digit &= 0xf;
+		hex_vec.pool[i] = (digit <= 9 ? '0' + digit : 'a' - 10 + digit) - MIN_CHAR;
+	}
+	if (n_chars > end)
+		memset(hex_vec.pool + end, '?' - MIN_CHAR, n_chars - end);
 
 	while (left > 0) {
 		int idx = span.size - left;
