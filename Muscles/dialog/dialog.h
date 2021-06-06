@@ -20,9 +20,9 @@ struct Main_Menu : Box {
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	Drop_Down sources_dd;
-	Drop_Down search_dd;
 	Drop_Down edit_dd;
 	Drop_Down view_dd;
+	Drop_Down search_dd;
 	Data_View sources_view;
 	Button button;
 
@@ -220,9 +220,45 @@ struct Search_Menu : Box {
 	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
+	void update_reveal_button(float scale);
+
 	Image cross;
 	Image maxm;
 	Label title;
+
+	Label source_lbl;
+	Edit_Box source_edit;
+	Drop_Down source_dd;
+
+	Label addr_lbl;
+	Edit_Box start_addr_edit;
+	Edit_Box end_addr_edit;
+
+	Label type_lbl;
+	Edit_Box type_edit;
+	Drop_Down type_dd;
+
+	Label method_lbl;
+	Edit_Box method_edit;
+	Drop_Down method_dd;
+
+	Label value_lbl;
+	Edit_Box value1_edit;
+	Edit_Box value2_edit;
+
+	Button search_btn;
+	Button cancel_btn;
+	Button reveal_btn;
+
+	//Progress_Bar progress_bar;
+	Label results_lbl;
+	Label result_count_lbl;
+
+	Data_View results;
+	Scroll vscroll;
+
+	float reveal_btn_length = 20;
+	bool params_revealed = true;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

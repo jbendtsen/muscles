@@ -20,13 +20,13 @@ void Main_Menu::update_ui(Camera& view) {
 	sources_dd.pos = { dd_x, y, 80, 25 };
 	dd_x += sources_dd.pos.w;
 
-	search_dd.pos = { dd_x, y, 72, 25 };
-	dd_x += search_dd.pos.w;
-
 	edit_dd.pos = { dd_x, y, 56, 25 };
 	dd_x += edit_dd.pos.w;
 
 	view_dd.pos = { dd_x, y, 56, 25 };
+	dd_x += view_dd.pos.w;
+
+	search_dd.pos = { dd_x, y, 72, 25 };
 
 	y += sources_dd.pos.h + border;
 
@@ -240,18 +240,6 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 		(char*)"Add Process"
 	};
 
-	search_dd.title = "Search";
-	search_dd.font = sources_dd.font;
-	search_dd.action = search_main_menu_handler;
-	search_dd.default_color = ws.colors.back;
-	search_dd.hl_color = ws.colors.hl;
-	search_dd.sel_color = ws.colors.active;
-	search_dd.width = 150;
-	search_dd.content = {
-		(char*)"For Single Value",
-		(char*)"For Object"
-	};
-
 	edit_dd.title = "Edit";
 	edit_dd.font = sources_dd.font;
 	edit_dd.action = edit_main_menu_handler;
@@ -275,6 +263,18 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 	view_dd.width = 140;
 	view_dd.content = {
 		(char*)"<source>"
+	};
+
+	search_dd.title = "Search";
+	search_dd.font = sources_dd.font;
+	search_dd.action = search_main_menu_handler;
+	search_dd.default_color = ws.colors.back;
+	search_dd.hl_color = ws.colors.hl;
+	search_dd.sel_color = ws.colors.active;
+	search_dd.width = 150;
+	search_dd.content = {
+		(char*)"Single Value",
+		(char*)"Object"
 	};
 
 	sources_view.show_column_names = true;
@@ -314,9 +314,9 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 	button.update_size(scale);
 
 	ui.push_back(&sources_dd);
-	ui.push_back(&search_dd);
 	ui.push_back(&edit_dd);
 	ui.push_back(&view_dd);
+	ui.push_back(&search_dd);
 	ui.push_back(&sources_view);
 	ui.push_back(&button);
 

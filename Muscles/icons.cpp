@@ -125,12 +125,12 @@ Texture make_rectangle(RGBA& color, int width, int height, float left, float top
 	return sdl_create_texture(pixels.get(), width, height);
 }
 
-Texture make_cross_icon(RGBA& color, int length) {
+Texture make_cross_icon(RGBA& color, int length, float inner, float outer) {
 	auto pixels = std::make_unique<u32[]>(length * length);
 
 	float l = (float)length + 0.5;
-	int strong = l / 24;
-	int weak = l / 16;
+	int strong = (int)(l * inner);
+	int weak = (int)(l * outer);
 
 	RGBA shade = color;
 	

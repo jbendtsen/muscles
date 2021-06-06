@@ -167,7 +167,7 @@ enum IconType {
 Texture make_circle(RGBA& color, int diameter);
 Texture make_triangle(RGBA& color, int width, int height, bool up = false);
 Texture make_rectangle(RGBA& color, int width, int height, float left, float top, float thickness);
-Texture make_cross_icon(RGBA& color, int length);
+Texture make_cross_icon(RGBA& color, int length, float inner, float outer);
 Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
 Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
 Texture make_process_icon(RGBA& back, RGBA& outline, int length);

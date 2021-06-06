@@ -644,6 +644,7 @@ struct Colors {
 	RGBA file_back;
 	RGBA file_fold;
 	RGBA file_line;
+	RGBA cancel;
 };
 
 enum BoxType {

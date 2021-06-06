@@ -30,6 +30,7 @@ void load_config(Workspace& ws, std::string& path) {
 	colors.insert("file_back").value         = 0xccccccff;
 	colors.insert("file_fold").value         = 0xe5e5e5ff;
 	colors.insert("file_line").value         = 0x808080ff;
+	colors.insert("cancel").value            = 0xffffffff;
 
 	auto cfg_file = read_file(path);
 	if (cfg_file.second) {
@@ -98,4 +99,5 @@ void load_config(Workspace& ws, std::string& path) {
 	set_color(ws.colors.file_back, colors["file_back"].value);
 	set_color(ws.colors.file_fold, colors["file_fold"].value);
 	set_color(ws.colors.file_line, colors["file_line"].value);
+	set_color(ws.colors.cancel, colors["cancel"].value);
 }

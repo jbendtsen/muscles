@@ -59,7 +59,7 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 		f->adjust_scale(new_scale, dpi_w, dpi_h);
 
 	sdl_destroy_texture(&cross);
-	cross = make_cross_icon(colors.text, cross_size * new_scale);
+	cross = make_cross_icon(colors.text, cross_size * new_scale, 0.042, 0.0625);
 
 	sdl_destroy_texture(&maxm);
 	float length = cross_size * new_scale;
