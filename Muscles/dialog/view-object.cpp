@@ -189,26 +189,9 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 	ui->view.needs_redraw = true;
 }
 
-void launch_edit_formatting(Workspace& ws, Box *box) {
-	auto vo = dynamic_cast<View_Object*>(box);
-	int idx = vo->view.data->get_table_index(vo->view.sel_row);
-	if (idx < 0 || !vo->record)
-		return;
-
-	auto new_box = dynamic_cast<Field_Formatting*>(ws.make_box(BoxFormatting));
-
-	int name_idx = ws.get_full_field_name(vo->record->fields.data[idx], vo->field_vec);
-	char *name = &vo->field_vec.pool[name_idx];
-
-	new_box->field_edit.editor.text = name;
-}
-
 void view_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
-
 	table->sel_row = table->hl_row;
-	if (dbl_click)
-		launch_edit_formatting(*elem->parent->parent, elem->parent);
 }
 
 void View_Object::refresh(Point *cursor) {
@@ -255,10 +238,6 @@ void View_Object::refresh(Point *cursor) {
 
 		format_field_value(field, fmt, span, (char*&)view.data->columns[2][idx], view.data->headers[2].count_per_cell);
 	}
-}
-
-void View_Object::prepare_rclick_menu(Context_Menu& menu, Camera& camera, Point& cursor) {
-	rclick_menu_items[0].flags = view.hl_row >= 0 ? 0 : FLAG_INACTIVE;
 }
 
 void View_Object::handle_zoom(Workspace& ws, float new_scale) {
@@ -438,9 +417,6 @@ View_Object::View_Object(Workspace& ws) {
 	sel_btn.update_size(scale);
 	sel_btn.action = [](UI_Element *elem, Camera&, bool dbl_click) { dynamic_cast<View_Object*>(elem->parent)->select_view_type(false); };
 	ui.push_back(&sel_btn);
-
-	Menu_Item edit_item = {0, (char*)"Edit Formatting", launch_edit_formatting};
-	rclick_menu_items.push_back(edit_item);
 
 	refresh_every = 1;
 	initial_width = 400;

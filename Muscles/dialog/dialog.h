@@ -139,7 +139,6 @@ struct View_Object : Box {
 	
 	void update_ui(Camera& view) override;
 	void refresh(Point *cursor) override;
-	void prepare_rclick_menu(Context_Menu& menu, Camera& view, Point& cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 	void on_close() override;
 
@@ -206,42 +205,6 @@ struct View_Definitions : Box {
 	std::vector<Table*> tables;
 
 	Arena arena;
-};
-
-struct Field_Formatting : Box {
-	Field_Formatting(Workspace& ws);
-
-	void update_ui(Camera& view) override;
-	void handle_zoom(Workspace& ws, float new_scale) override;
-	void on_close() override;
-
-	Image cross;
-	Image maxm;
-	Label title;
-	Edit_Box field_edit;
-	Drop_Down field_dd;
-	Scroll scroll;
-	Data_View options;
-
-	Drop_Down string_dd;
-	Drop_Down brackets_dd;
-	Edit_Box separator_edit;
-	Edit_Box prefix_edit;
-	Number_Edit base_edit;
-	Edit_Box precision_edit;
-	Drop_Down floatfmt_dd;
-	Checkbox uppercase_cb;
-	Drop_Down sign_dd;
-	Checkbox endian_cb;
-
-	Drop_Down precision_dd;
-
-	Texture option_arrow = nullptr;
-	RGBA arrow_color = {};
-
-	Table table;
-
-	View_Object *object = nullptr;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

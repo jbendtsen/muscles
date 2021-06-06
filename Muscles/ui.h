@@ -654,8 +654,7 @@ enum BoxType {
 	BoxViewSource,
 	BoxStructs,
 	BoxObject,
-	BoxDefinitions,
-	BoxFormatting
+	BoxDefinitions
 };
 
 enum MenuType {

@@ -99,9 +99,6 @@ Box *Workspace::make_box(BoxType btype, MenuType mtype) {
 			case BoxDefinitions:
 				b = new View_Definitions(*this);
 				break;
-			case BoxFormatting:
-				b = new Field_Formatting(*this);
-				break;
 		}
 
 		if (b) {
