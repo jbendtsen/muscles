@@ -653,14 +653,17 @@ enum BoxType {
 	BoxOpenSource,
 	BoxViewSource,
 	BoxStructs,
-	BoxObject,
-	BoxDefinitions
+	BoxViewObject,
+	BoxDefinitions,
+	BoxSearch
 };
 
 enum MenuType {
 	MenuDefault = 0,
 	MenuProcess,
-	MenuFile
+	MenuFile,
+	MenuValue,
+	MenuObject
 };
 
 struct Workspace;
@@ -687,7 +690,10 @@ struct Context_Menu {
 };
 
 struct Box {
-	BoxType box_type;
+	static const BoxType box_type_meta = BoxDefault;
+	BoxType box_type = BoxDefault;
+	enum MenuType menu_type = MenuDefault;
+
 	bool expungable = false; // the expungables
 	bool visible = false;
 	bool moving = false;
@@ -785,15 +791,12 @@ struct Workspace {
 
 	void init(Font_Face face);
 
-	Box *make_box(BoxType btype, MenuType mtype = MenuDefault);
-
 	Box *box_under_cursor(Camera& view, Point& cur, Point& inside);
 	void add_box(Box *b);
 	void delete_box(int idx);
 	void delete_box(Box *b);
 	void bring_to_front(Box *b);
 
-	Box *first_box_of_type(BoxType type);
 	Font *make_font(float size, RGBA& color, float scale);
 
 	void refresh_sources();
@@ -804,6 +807,56 @@ struct Workspace {
 
 	void update_structs(std::string& text);
 	int get_full_field_name(Field& field, String_Vector& out_vec);
+
+	template<typename B>
+	B *first_box_of_type() {
+		static_assert(std::is_base_of_v<Box, B>);
+
+		for (auto& b : boxes) {
+			if (b->box_type == B::box_type_meta)
+				return dynamic_cast<B*>(b);
+		}
+		return nullptr;
+	}
+
+	template<typename B>
+	B *make_box(MenuType mtype = MenuDefault) {
+		static_assert(std::is_base_of_v<Box, B>);
+
+		B *box = first_box_of_type<B>();
+		if (box && !box->expungable) {
+			box->visible = true;
+			bring_to_front(box);
+		}
+		else {
+			B *b = new B(*this, mtype);
+			b->box_type = B::box_type_meta;
+			b->menu_type = mtype;
+			b->parent = this;
+			b->visible = true;
+
+			for (auto& elem : b->ui)
+				elem->parent = b;
+
+			Camera& view = get_default_camera();
+			float x = view.center_x - b->initial_width * view.scale / 2;
+			float y = view.center_y - b->initial_height * view.scale / 2;
+			Point p = view.to_world(x, y);
+
+			b->box = { p.x, p.y, b->initial_width, b->initial_height };
+
+			b->edge_color = colors.outline;
+			b->back_color = colors.back;
+
+			add_box(b);
+			box = b;
+		}
+
+		if (box)
+			box->wake_up();
+
+		return box;
+	}
 };
 
 Rect make_ui_box(Rect_Int& box, Rect& elem, float scale);

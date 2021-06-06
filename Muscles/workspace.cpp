@@ -29,7 +29,7 @@ void Workspace::init(Font_Face face) {
 	std::string text = "struct Test {\n\tint a;\n\tint b\n;};";
 	update_structs(text);
 
-	make_box(BoxOpening);
+	make_box<Opening_Menu>();
 }
 
 Workspace::~Workspace() {
@@ -67,68 +67,6 @@ void Workspace::adjust_scale(float old_scale, float new_scale) {
 
 	for (auto& b : boxes)
 		b->handle_zoom(*this, new_scale);
-}
-
-Box *Workspace::make_box(BoxType btype, MenuType mtype) {
-	Box *box = first_box_of_type(btype);
-	if (box && !box->expungable) {
-		box->visible = true;
-		bring_to_front(box);
-	}
-	else {
-		Box *b = nullptr;
-		switch (btype) {
-			case BoxOpening:
-				b = new Opening_Menu(*this);
-				break;
-			case BoxMain:
-				b = new Main_Menu(*this);
-				break;
-			case BoxOpenSource:
-				b = new Source_Menu(*this, mtype);
-				break;
-			case BoxViewSource:
-				b = new View_Source(*this, mtype);
-				break;
-			case BoxStructs:
-				b = new Edit_Structs(*this);
-				break;
-			case BoxObject:
-				b = new View_Object(*this);
-				break;
-			case BoxDefinitions:
-				b = new View_Definitions(*this);
-				break;
-		}
-
-		if (b) {
-			b->box_type = btype;
-			b->parent = this;
-			b->visible = true;
-
-			for (auto& elem : b->ui)
-				elem->parent = b;
-
-			Camera& view = get_default_camera();
-			float x = view.center_x - b->initial_width * view.scale / 2;
-			float y = view.center_y - b->initial_height * view.scale / 2;
-			Point p = view.to_world(x, y);
-
-			b->box = { p.x, p.y, b->initial_width, b->initial_height };
-
-			b->edge_color = colors.outline;
-			b->back_color = colors.back;
-
-			add_box(b);
-		}
-
-		box = b;
-	}
-
-	if (box)
-		box->wake_up();
-
-	return box;
 }
 
 void Workspace::add_box(Box *b) {
@@ -218,14 +156,6 @@ Font *Workspace::make_font(float size, RGBA& color, float scale) {
 	fonts.push_back(f);
 	f->adjust_scale(scale, dpi_w, dpi_h);
 	return f;
-}
-
-Box *Workspace::first_box_of_type(BoxType type) {
-	for (auto& b : boxes) {
-		if (b->box_type == type)
-			return b;
-	}
-	return nullptr;
 }
 
 void Workspace::refresh_sources() {
@@ -435,7 +365,7 @@ void Workspace::update_structs(std::string& text) {
 	char *tokens_alias = tokens.pool;
 	parse_c_struct(structs, &tokens_alias, name_vector, definitions);
 
-	auto view_defs = dynamic_cast<View_Definitions*>(first_box_of_type(BoxDefinitions));
+	auto view_defs = first_box_of_type<View_Definitions>();
 	if (view_defs)
 		view_defs->update_tables();
 
@@ -446,7 +376,7 @@ void Workspace::update_structs(std::string& text) {
 	}
 
 	for (auto& b : boxes) {
-		if (b->box_type == BoxObject)
+		if (b->box_type == BoxViewObject)
 			populate_object_table((View_Object*)b, structs, name_vector);
 	}
 }

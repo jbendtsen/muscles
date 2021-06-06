@@ -149,7 +149,7 @@ void View_Definitions::handle_zoom(Workspace& ws, float new_scale) {
 	view.icon_minus = make_plus_minus_icon(color, len, false);
 }
 
-View_Definitions::View_Definitions(Workspace& ws) {
+View_Definitions::View_Definitions(Workspace& ws, MenuType mtype) {
 	float scale = get_default_camera().scale;
 
 	cross.action = get_delete_box();

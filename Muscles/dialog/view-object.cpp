@@ -255,7 +255,7 @@ void View_Object::on_close() {
 	source->deactivate_span(span_idx);
 }
 
-View_Object::View_Object(Workspace& ws) {
+View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	float scale = get_default_camera().scale;
 
 	cross.action = get_delete_box();
@@ -346,7 +346,7 @@ View_Object::View_Object(Workspace& ws) {
 	addr_label.padding = 0;
 	ui.push_back(&addr_label);
 
-	auto mm = dynamic_cast<Main_Menu*>(ws.first_box_of_type(BoxMain));
+	auto mm = ws.first_box_of_type<Main_Menu>();
 	RGBA icon_color = ws.colors.text;
 	icon_color.a = 0.7;
 

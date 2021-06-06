@@ -123,7 +123,7 @@ void open_view_source(Workspace& ws, int idx) {
 		return;
 
 	MenuType type = ws.sources[idx]->type == SourceFile ? MenuFile : MenuProcess;
-	auto vs = dynamic_cast<View_Source*>(ws.make_box(BoxViewSource, type));
+	auto vs = ws.make_box<View_Source>(type);
 	vs->open_source(ws.sources[idx]);
 }
 
@@ -135,7 +135,7 @@ void sources_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	if (dd->sel == 0 || dd->sel == 1) {
 		Workspace *ws = dd->parent->parent;
 		MenuType type = dd->sel == 0 ? MenuFile : MenuProcess;
-		auto sm = dynamic_cast<Source_Menu*>(ws->make_box(BoxOpenSource, type));
+		auto sm = ws->make_box<Source_Menu>(type);
 		sm->caller = dd->parent;
 		sm->open_file_handler = open_file_handler;
 		sm->open_process_handler = open_process_handler;
@@ -152,8 +152,12 @@ void edit_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = (Main_Menu*)dd->parent;
 	Workspace *ws = dd->parent->parent;
 
-	BoxType types[] = {BoxObject, BoxStructs, BoxDefinitions};
-	ws->make_box(types[dd->sel]);
+	if (dd->sel == 0)
+		ws->make_box<View_Object>();
+	else if (dd->sel == 1)
+		ws->make_box<Edit_Structs>();
+	else if (dd->sel == 2)
+		ws->make_box<View_Definitions>();
 
 	dd->parent->set_dropdown(nullptr);
 }
@@ -200,7 +204,7 @@ void Main_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	}
 }
 
-Main_Menu::Main_Menu(Workspace& ws) {
+Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 	process_back = ws.colors.process_back;
 	process_outline = ws.colors.process_outline;
 
@@ -302,7 +306,7 @@ void opening_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 		case 0: // New workspace
 		{
 			Workspace *ws = table->parent->parent;
-			ws->make_box(BoxMain);
+			ws->make_box<Main_Menu>();
 			break;
 		}
 	}
@@ -326,7 +330,7 @@ void Opening_Menu::update_ui(Camera& view) {
 	menu.pos.h = box.h - menu.pos.y - border;
 }
 
-Opening_Menu::Opening_Menu(Workspace& ws) {
+Opening_Menu::Opening_Menu(Workspace& ws, MenuType mtype) {
 	title.font = ws.default_font;
 	title.text = "Muscles";
 

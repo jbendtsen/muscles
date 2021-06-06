@@ -1,7 +1,8 @@
 #pragma once
 
 struct Opening_Menu : Box {
-	Opening_Menu(Workspace& ws);
+	static const BoxType box_type_meta = BoxOpening;
+	Opening_Menu(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
 
@@ -11,7 +12,8 @@ struct Opening_Menu : Box {
 };
 
 struct Main_Menu : Box {
-	Main_Menu(Workspace& ws);
+	static const BoxType box_type_meta = BoxMain;
+	Main_Menu(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
 	void refresh(Point *cursor) override;
@@ -36,7 +38,7 @@ struct Main_Menu : Box {
 };
 
 struct Source_Menu : Box {
-	enum MenuType menu_type;
+	static const BoxType box_type_meta = BoxOpenSource;
 	Source_Menu(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
@@ -68,7 +70,7 @@ struct Source_Menu : Box {
 };
 
 struct View_Source : Box {
-	enum MenuType menu_type;
+	static const BoxType box_type_meta = BoxViewSource;
 	View_Source(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
@@ -109,7 +111,8 @@ struct View_Source : Box {
 };
 
 struct Edit_Structs : Box {
-	Edit_Structs(Workspace& ws);
+	static const BoxType box_type_meta = BoxStructs;
+	Edit_Structs(Workspace& ws, MenuType mtype);
 	
 	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
@@ -135,7 +138,8 @@ struct Edit_Structs : Box {
 };
 
 struct View_Object : Box {
-	View_Object(Workspace& ws);
+	static const BoxType box_type_meta = BoxViewObject;
+	View_Object(Workspace& ws, MenuType mtype);
 	
 	void update_ui(Camera& view) override;
 	void refresh(Point *cursor) override;
@@ -184,7 +188,8 @@ struct View_Object : Box {
 };
 
 struct View_Definitions : Box {
-	View_Definitions(Workspace& ws);
+	static const BoxType box_type_meta = BoxDefinitions;
+	View_Definitions(Workspace& ws, MenuType mtype);
 	
 	void update_ui(Camera& view) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;

@@ -352,9 +352,7 @@ void View_Source::on_close() {
 	hex.source->deactivate_span(hex.span_idx);
 }
 
-View_Source::View_Source(Workspace& ws, MenuType mtype)
-	: menu_type(mtype)
-{
+View_Source::View_Source(Workspace& ws, MenuType mtype) {
 	float scale = get_default_camera().scale;
 
 	cross.action = get_delete_box();
@@ -369,7 +367,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 	title.padding = 0;
 	ui.push_back(&title);
 
-	if (menu_type == MenuProcess) {
+	if (mtype == MenuProcess) {
 		div.default_color = ws.colors.div;
 		div.breadth = 2;
 		div.vertical = true;
@@ -451,7 +449,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype)
 
 	size_label.font = hex_title.font;
 
-	if (menu_type == MenuFile)
+	if (mtype == MenuFile)
 		size_label.padding = 0;
 
 	ui.push_back(&size_label);

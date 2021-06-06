@@ -257,9 +257,7 @@ void Source_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	search.update_icon(IconGlass, height, new_scale);
 }
 
-Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
-	: menu_type(mtype)
-{
+Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 	up.visible = false;
 	div.visible = false;
 	path.visible = false;
@@ -306,7 +304,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype)
 	ui.push_back(&cross);
 	ui.push_back(&maxm);
 
-	if (menu_type == MenuProcess) {
+	if (mtype == MenuProcess) {
 		title.text = "Open Process";
 		menu.action = process_menu_handler;
 

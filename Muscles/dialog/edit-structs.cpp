@@ -157,7 +157,7 @@ static void file_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 		return;
 
 	Workspace& ws = *menu->parent->parent;
-	auto sm = dynamic_cast<Source_Menu*>(ws.make_box(BoxOpenSource, MenuFile));
+	auto sm = ws.make_box<Source_Menu>(MenuFile);
 	sm->open_file_handler = open_file_handler;
 	sm->caller = menu->parent;
 
@@ -205,7 +205,7 @@ void Edit_Structs::wake_up() {
 	structs_edit_handler(&edit, blank);
 }
 
-Edit_Structs::Edit_Structs(Workspace& ws) {
+Edit_Structs::Edit_Structs(Workspace& ws, MenuType mtype) {
 	float scale = get_default_camera().scale;
 
 	cross.action = get_delete_box();
