@@ -20,6 +20,7 @@ struct Main_Menu : Box {
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	Drop_Down sources_dd;
+	Drop_Down search_dd;
 	Drop_Down edit_dd;
 	Drop_Down view_dd;
 	Data_View sources_view;
@@ -210,6 +211,18 @@ struct View_Definitions : Box {
 	std::vector<Table*> tables;
 
 	Arena arena;
+};
+
+struct Search_Menu : Box {
+	static const BoxType box_type_meta = BoxSearch;
+	Search_Menu(Workspace& ws, MenuType mtype);
+
+	void update_ui(Camera& view) override;
+	void handle_zoom(Workspace& ws, float new_scale) override;
+
+	Image cross;
+	Image maxm;
+	Label title;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

@@ -809,12 +809,20 @@ struct Workspace {
 	int get_full_field_name(Field& field, String_Vector& out_vec);
 
 	template<typename B>
-	B *first_box_of_type() {
+	B *first_box_of_type(MenuType mtype = MenuDefault) {
 		static_assert(std::is_base_of_v<Box, B>);
 
-		for (auto& b : boxes) {
-			if (b->box_type == B::box_type_meta)
-				return dynamic_cast<B*>(b);
+		if (mtype != MenuDefault) {
+			for (auto& b : boxes) {
+				if (b->box_type == B::box_type_meta && b->menu_type == mtype)
+					return dynamic_cast<B*>(b);
+			}
+		}
+		else {
+			for (auto& b : boxes) {
+				if (b->box_type == B::box_type_meta)
+					return dynamic_cast<B*>(b);
+			}
 		}
 		return nullptr;
 	}
@@ -823,7 +831,7 @@ struct Workspace {
 	B *make_box(MenuType mtype = MenuDefault) {
 		static_assert(std::is_base_of_v<Box, B>);
 
-		B *box = first_box_of_type<B>();
+		B *box = first_box_of_type<B>(mtype);
 		if (box && !box->expungable) {
 			box->visible = true;
 			bring_to_front(box);

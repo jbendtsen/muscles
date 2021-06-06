@@ -20,6 +20,9 @@ void Main_Menu::update_ui(Camera& view) {
 	sources_dd.pos = { dd_x, y, 80, 25 };
 	dd_x += sources_dd.pos.w;
 
+	search_dd.pos = { dd_x, y, 72, 25 };
+	dd_x += search_dd.pos.w;
+
 	edit_dd.pos = { dd_x, y, 56, 25 };
 	dd_x += edit_dd.pos.w;
 
@@ -144,6 +147,17 @@ void sources_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	dd->parent->set_dropdown(nullptr);
 }
 
+void search_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto dd = dynamic_cast<Drop_Down*>(elem);
+	if (dd->sel < 0 || dd->sel > 1)
+		return;
+
+	Workspace *ws = dd->parent->parent;
+	ws->make_box<Search_Menu>(dd->sel == 0 ? MenuValue : MenuObject);
+
+	dd->parent->set_dropdown(nullptr);
+}
+
 void edit_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->sel < 0 || dd->sel > 2)
@@ -226,6 +240,18 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 		(char*)"Add Process"
 	};
 
+	search_dd.title = "Search";
+	search_dd.font = sources_dd.font;
+	search_dd.action = search_main_menu_handler;
+	search_dd.default_color = ws.colors.back;
+	search_dd.hl_color = ws.colors.hl;
+	search_dd.sel_color = ws.colors.active;
+	search_dd.width = 150;
+	search_dd.content = {
+		(char*)"For Single Value",
+		(char*)"For Object"
+	};
+
 	edit_dd.title = "Edit";
 	edit_dd.font = sources_dd.font;
 	edit_dd.action = edit_main_menu_handler;
@@ -248,8 +274,7 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 	view_dd.sel_color = ws.colors.active;
 	view_dd.width = 140;
 	view_dd.content = {
-		(char*)"<source>",
-		(char*)"Search"
+		(char*)"<source>"
 	};
 
 	sources_view.show_column_names = true;
@@ -289,6 +314,7 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 	button.update_size(scale);
 
 	ui.push_back(&sources_dd);
+	ui.push_back(&search_dd);
 	ui.push_back(&edit_dd);
 	ui.push_back(&view_dd);
 	ui.push_back(&sources_view);

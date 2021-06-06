@@ -14,13 +14,23 @@ void Source_Menu::update_ui(Camera& view) {
 	if (search.text_changed)
 		scroll.position = 0;
 
-	float x2 = box.w - scroll.padding;
-	float x1 = x2 - search.max_width;
-	if (x1 < scroll.padding) x1 = scroll.padding;
+	float search_x = border * 2;
+	float search_y = title.outer_box.y + title.outer_box.h;
 
-	search.pos.x = x1;
-	search.pos.y = title.outer_box.y + title.outer_box.h;
-	search.pos.w = x2 - x1;
+	if (up.visible) {
+		up.pos = {
+			border,
+			search_y,
+			up.width,
+			up.height
+		};
+
+		search_x += up.pos.x + up.pos.w;
+	}
+
+	search.pos.x = search_x;
+	search.pos.y = search_y;
+	search.pos.w = box.w - border * 2 - search_x;
 
 	float y = search.pos.y + search.pos.h + border;
 
@@ -56,15 +66,6 @@ void Source_Menu::update_ui(Camera& view) {
 	scroll.pos.h = menu.pos.h;
 
 	reposition_box_buttons(cross, maxm, box.w, cross_size);
-
-	if (up.visible) {
-		up.pos = {
-			menu.pos.x,
-			search.pos.y,
-			up.width,
-			up.height
-		};
-	}
 }
 
 static void process_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -374,6 +375,8 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 		initial_width = 400;
 		initial_height = 300;
 	}
+
+	active_edit = &search.editor;
 
 	expungable = true;
 }
