@@ -160,8 +160,6 @@ static void file_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = ws.make_box<Source_Menu>(MenuFile);
 	sm->open_file_handler = open_file_handler;
 	sm->caller = menu->parent;
-
-	menu->parent->set_dropdown(nullptr);
 }
 
 void show_cb_handler(UI_Element *elem, Camera& view, bool dbl_click) {

@@ -238,10 +238,10 @@ void Source_Menu::handle_zoom(Workspace& ws, float new_scale) {
 		sdl_destroy_texture(&folder_icon);
 
 		float h = up.active_theme.font->render.text_height();
-		up.icon = make_folder_icon(folder_dark, folder_light, h, h);
+		up.icon = make_folder_icon(ws.colors.folder_dark, ws.colors.folder_light, h, h);
 
 		h = menu.font->render.text_height();
-		folder_icon = make_folder_icon(folder_dark, folder_light, h, h);
+		folder_icon = make_folder_icon(ws.colors.folder_dark, ws.colors.folder_light, h, h);
 
 		int n_rows = menu.data->row_count();
 		auto& icons = (std::vector<Texture>&)menu.data->columns[0];
@@ -330,7 +330,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 		menu.data->init(col, nullptr, 2, 1);
 
 		float h = menu.font->render.text_height();
-		folder_icon = make_folder_icon(folder_dark, folder_light, h, h);
+		folder_icon = make_folder_icon(ws.colors.folder_dark, ws.colors.folder_light, h, h);
 
 		up.visible = true;
 		up.text = "Up";
@@ -341,7 +341,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 		Font *up_font = ws.make_font(up_font_size, ws.colors.text, scale);
 
 		h = up_font->render.text_height();
-		up.icon = make_folder_icon(folder_dark, folder_light, h, h);
+		up.icon = make_folder_icon(ws.colors.folder_dark, ws.colors.folder_light, h, h);
 
 		up.active_theme = {
 			ws.colors.light,

@@ -25,6 +25,8 @@ void load_config(Workspace& ws, std::string& path) {
 	colors.insert("caret").value             = 0xe5e5e5ff;
 	colors.insert("cb").value                = 0x8cb2e5ff;
 	colors.insert("sel").value               = 0x728099ff;
+	colors.insert("folder_dark").value       = 0xa5a326ff;
+	colors.insert("folder_light").value      = 0xe0d642ff;
 	colors.insert("process_back").value      = 0xccccccff;
 	colors.insert("process_outline").value   = 0x999999ff;
 	colors.insert("file_back").value         = 0xccccccff;
@@ -94,6 +96,8 @@ void load_config(Workspace& ws, std::string& path) {
 	set_color(ws.colors.caret, colors["caret"].value);
 	set_color(ws.colors.cb, colors["cb"].value);
 	set_color(ws.colors.sel, colors["sel"].value);
+	set_color(ws.colors.folder_dark, colors["folder_dark"].value);
+	set_color(ws.colors.folder_light, colors["folder_light"].value);
 	set_color(ws.colors.process_back, colors["process_back"].value);
 	set_color(ws.colors.process_outline, colors["process_outline"].value);
 	set_color(ws.colors.file_back, colors["file_back"].value);

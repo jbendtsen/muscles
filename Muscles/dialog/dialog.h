@@ -63,9 +63,6 @@ struct Source_Menu : Box {
 
 	Table table;
 
-	RGBA folder_dark = {0.65, 0.64, 0.15, 1.0};
-	RGBA folder_light = {0.88, 0.84, 0.26, 1.0};
-
 	Texture folder_icon = nullptr;
 	Map icon_map;
 };
@@ -218,6 +215,7 @@ struct Search_Menu : Box {
 	Search_Menu(Workspace& ws, MenuType mtype);
 
 	void update_ui(Camera& view) override;
+	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
 	void update_reveal_button(float scale);
@@ -239,7 +237,6 @@ struct Search_Menu : Box {
 	Drop_Down type_dd;
 
 	Label method_lbl;
-	Edit_Box method_edit;
 	Drop_Down method_dd;
 
 	Label value_lbl;
@@ -259,6 +256,8 @@ struct Search_Menu : Box {
 
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
+
+	Source *source = nullptr;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

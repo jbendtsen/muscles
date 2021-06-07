@@ -197,6 +197,7 @@ struct Button : UI_Element {
 	std::string text;
 
 	void update_size(float scale);
+	int get_icon_length(float scale);
 	
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -312,7 +313,9 @@ struct Drop_Down : UI_Element {
 	Drop_Down() : UI_Element(ElemDropDown) {}
 
 	bool dropped = false;
+	int hl = -1;
 	int sel = -1;
+	bool keep_selected = false;
 
 	float item_off_x = 0.8;
 	float title_pad_x = 0.05;
@@ -325,6 +328,7 @@ struct Drop_Down : UI_Element {
 
 	bool icon_right = true;
 	int icon_length = 0;
+	RGBA icon_color = {0};
 	Texture icon = nullptr;
 
 	const char *title = nullptr;
@@ -343,6 +347,7 @@ struct Drop_Down : UI_Element {
 	void draw_menu(Renderer renderer, Camera& view, float menu_x, float menu_y);
 	void cancel();
 
+	void default_action(Camera& view, bool dbl_click) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	bool highlight(Camera& view, Point& inside) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
@@ -639,6 +644,8 @@ struct Colors {
 	RGBA cb;
 	RGBA sel;
 
+	RGBA folder_dark;
+	RGBA folder_light;
 	RGBA process_back;
 	RGBA process_outline;
 	RGBA file_back;

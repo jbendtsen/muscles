@@ -2,6 +2,9 @@
 #include "../ui.h"
 #include "dialog.h"
 
+#define LABEL_HEIGHT_FACTOR 1.2f
+#define EDIT_HEIGHT_FACTOR  1.4f
+
 void Search_Menu::update_ui(Camera& view) {
 	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
@@ -13,11 +16,138 @@ void Search_Menu::update_ui(Camera& view) {
 		.h = title_h + 2*border
 	};
 
-	
+	float label_h = source_lbl.font->render.text_height() * LABEL_HEIGHT_FACTOR / view.scale;
+	float edit_h  = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
+
+	float start_x = 2*border;
+
+	source_lbl.pos = {
+		.x = start_x,
+		.y = title.outer_box.h,
+		.w = 80,
+		.h = label_h
+	};
+
+	float y = source_lbl.pos.y + source_lbl.pos.h + border;
+
+	source_edit.pos = {
+		.x = start_x,
+		.y = y,
+		.w = box.w - 2*start_x,
+		.h = edit_h
+	};
+	y += source_edit.pos.h + 2*border;
+
+	addr_lbl.pos = {
+		.x = start_x,
+		.y = y,
+		.w = 200,
+		.h = label_h
+	};
+	y += addr_lbl.pos.h + border;
+
+	float addr_w = (box.w - 4*start_x) / 2;
+
+	start_addr_edit.pos = {
+		.x = start_x,
+		.y = y,
+		.w = addr_w,
+		.h = edit_h
+	};
+
+	end_addr_edit.pos = {
+		.x = start_x + box.w / 2,
+		.y = y,
+		.w = addr_w,
+		.h = edit_h
+	};
+	y += end_addr_edit.pos.h + 2*border;
+
+	type_lbl.pos = {
+		.x = start_x,
+		.y = y,
+		.w = 140,
+		.h = label_h
+	};
+
+	method_lbl.pos = {
+		.x = 3*start_x + type_lbl.pos.w,
+		.y = y,
+		.w = 120,
+		.h = label_h
+	};
+	y += method_lbl.pos.h + border;
+
+	type_edit.pos = {
+		.x = start_x,
+		.y = y,
+		.w = type_lbl.pos.w,
+		.h = edit_h
+	};
+
+	method_dd.pos = {
+		.x = method_lbl.pos.x,
+		.y = y,
+		.w = method_lbl.pos.w,
+		.h = edit_h
+	};
+	y += method_dd.pos.h + 2*border;
+
+	value_lbl.pos = {
+		.x = start_x,
+		.y = y,
+		.w = 100,
+		.h = label_h
+	};
+	y += value_lbl.pos.h + border;
+
+	value1_edit.pos = {
+		.x = start_x,
+		.y = y,
+		.w = start_addr_edit.pos.w,
+		.h = edit_h,
+	};
+	value2_edit.pos = {
+		.x = end_addr_edit.pos.x,
+		.y = y,
+		.w = end_addr_edit.pos.w,
+		.h = edit_h
+	};
+	y += value2_edit.pos.h + 5*border;
+
+	float total_btn_w = search_btn.width + start_x + cancel_btn.width;
+
+	search_btn.pos = {
+		.x = (box.w - total_btn_w) / 2,
+		.y = y,
+		.w = search_btn.width,
+		.h = search_btn.height
+	};
+	cancel_btn.pos = {
+		.x = search_btn.pos.x + search_btn.pos.w + start_x,
+		.y = y,
+		.w = cancel_btn.width,
+		.h = cancel_btn.height
+	};
+	y += search_btn.pos.h + border;
 }
 
 void search_source_edit_handler(Edit_Box *edit, Input& input) {
-	
+	auto sm = dynamic_cast<Search_Menu*>(edit->parent);
+
+	Source *src = nullptr;
+
+	if (edit->editor.text.size() > 0) {
+		Workspace& ws = *edit->parent->parent;
+		for (auto& s : ws.sources) {
+			if (s->name == edit->editor.text) {
+				src = s;
+				break;
+			}
+		}
+	}
+
+	sm->source = src;
 }
 
 void search_address_edit_handler(Edit_Box *edit, Input& input) {
@@ -28,8 +158,10 @@ void search_type_edit_handler(Edit_Box *edit, Input& input) {
 	
 }
 
-void search_method_edit_handler(Edit_Box *edit, Input& input) {
-	
+void search_method_dd_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+	sm->value2_edit.visible = sm->method_dd.sel == 1;
+	sm->value2_edit.needs_redraw = true;
 }
 
 void search_value_edit_handler(Edit_Box *edit, Input& input) {
@@ -37,6 +169,10 @@ void search_value_edit_handler(Edit_Box *edit, Input& input) {
 }
 
 void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	
+}
+
+void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	
 }
 
@@ -54,12 +190,41 @@ void Search_Menu::update_reveal_button(float scale) {
 	reveal_btn.icon = make_triangle(reveal_btn.default_color, size, size, params_revealed);
 }
 
+void Search_Menu::refresh(Point *cursor) {
+	Workspace& ws = *parent;
+
+	int n_sources = ws.sources.size();
+	source_dd.content.resize(n_sources);
+	for (int i = 0; i < n_sources; i++)
+		source_dd.content[i] = (char*)ws.sources[i]->name.c_str();
+
+	type_dd.content.resize(0);
+	const u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+
+	for (int i = 0; i < ws.definitions.size(); i++) {
+		if ((ws.definitions.data[i].flags & flags) == flags) {
+			char *key = ws.definitions.key_from_index(i);
+			type_dd.content.push_back(key);
+		}
+	}
+}
+
 void Search_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	cross.img = ws.cross;
 	maxm.img = ws.maxm;
 
-	float search_h = search_btn.active_theme.font->render.text_height() * 1.4 / new_scale;
+	float edit_h = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / new_scale;
+	source_edit.update_icon(IconTriangle, edit_h, new_scale);
+	type_edit.update_icon(IconTriangle, edit_h, new_scale);
+
+	sdl_destroy_texture(&method_dd.icon);
+	method_dd.icon_length = method_dd.font->render.text_height() * EDIT_HEIGHT_FACTOR;
+	method_dd.icon = make_triangle(method_dd.icon_color, method_dd.icon_length, method_dd.icon_length);
+
+	sdl_destroy_texture(&search_btn.icon);
+	float search_h = search_btn.get_icon_length(new_scale);
 	search_btn.icon = make_glass_icon(search_btn.default_color, search_h);
+	search_btn.update_size(new_scale);
 
 	update_reveal_button(new_scale);
 }
@@ -107,12 +272,14 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	ui.push_back(&addr_lbl);
 
 	start_addr_edit.font = source_lbl.font;
+	start_addr_edit.editor.text = "0x" + std::string(16, '0');
 	start_addr_edit.caret = ws.colors.caret;
 	start_addr_edit.default_color = ws.colors.dark;
 	start_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&start_addr_edit);
 
 	end_addr_edit.font = source_lbl.font;
+	end_addr_edit.editor.text = "0x" + std::string(16, 'f');
 	end_addr_edit.caret = ws.colors.caret;
 	end_addr_edit.default_color = ws.colors.dark;
 	end_addr_edit.key_action = search_address_edit_handler;
@@ -142,20 +309,18 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	method_lbl.text = "Method";
 	ui.push_back(&method_lbl);
 
-	method_edit.font = source_lbl.font;
-	method_edit.caret = ws.colors.caret;
-	method_edit.default_color = ws.colors.dark;
-	method_edit.icon_color = icon_color;
-	method_edit.icon_right = true;
-	method_edit.dropdown = &method_dd;
-	method_edit.key_action = search_method_edit_handler;
-	ui.push_back(&method_edit);
-
-	method_dd.visible = false;
 	method_dd.font = source_lbl.font;
-	method_dd.default_color = ws.colors.back;
+	method_dd.action = search_method_dd_handler;
+	method_dd.default_color = ws.colors.dark;
 	method_dd.hl_color = ws.colors.hl;
 	method_dd.sel_color = ws.colors.active;
+	method_dd.icon_color = icon_color;
+	method_dd.content = {
+		(char*)"Equals",
+		(char*)"Range"
+	};
+	method_dd.keep_selected = true;
+	method_dd.sel = 0;
 	ui.push_back(&method_dd);
 
 	value_lbl.font = source_lbl.font;
@@ -181,25 +346,26 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	search_btn.default_color.a = 0.7;
 	search_btn.active_theme = {
 		ws.colors.light,
-		ws.colors.light,
-		ws.colors.light,
+		ws.colors.hl,
+		ws.colors.hl,
 		ws.default_font
 	};
-	search_btn.inactive_theme = search_btn.active_theme;
+	search_btn.inactive_theme = {
+		ws.colors.inactive,
+		ws.colors.inactive,
+		ws.colors.inactive,
+		ws.default_font
+	};
 	search_btn.update_size(scale);
 	ui.push_back(&search_btn);
 
 	cancel_btn.text = "Cancel";
-	cancel_btn.action = search_search_btn_handler;
+	cancel_btn.active = false;
+	cancel_btn.action = search_cancel_btn_handler;
 	cancel_btn.default_color = ws.colors.cancel;
 	cancel_btn.default_color.a = 0.7;
-	cancel_btn.active_theme = {
-		ws.colors.light,
-		ws.colors.light,
-		ws.colors.light,
-		ws.default_font
-	};
-	cancel_btn.inactive_theme = search_btn.active_theme;
+	cancel_btn.active_theme = search_btn.active_theme;
+	cancel_btn.inactive_theme = search_btn.inactive_theme;
 	cancel_btn.update_size(scale);
 	ui.push_back(&cancel_btn);
 
@@ -228,4 +394,9 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 
 	//Data_View results;
 	//Scroll vscroll;
+
+	initial_width = 400;
+	initial_height = 360;
+	min_width = 300;
+	min_height = 360;
 }

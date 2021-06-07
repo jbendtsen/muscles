@@ -100,9 +100,9 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 	}
 	else {
 		reify_timer++;
-		if (reify_timer < hw_draw_timeout)
+		if (reify_timer < hw_draw_timeout) {
 			renderer = hw;
-
+		}
 		else if (!tex_cache) {
 			renderer = sdl_acquire_sw_renderer(w, h);
 			soft_draw = renderer != nullptr;
@@ -158,6 +158,16 @@ void Button::update_size(float scale) {
 	height = 1.2f * font_unit;
 }
 
+int Button::get_icon_length(float scale) {
+	Theme *theme = active ? &active_theme : &inactive_theme;
+	if (theme->font)
+		return (int)theme->font->render.text_height();
+
+	int w = pos.w * scale + 0.5;
+	w -= 2 * padding * scale;
+	return w;
+}
+
 void Button::mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) {
 	bool was_held = held;
 	held = input.lmouse && pos.contains(cursor);
@@ -181,9 +191,14 @@ void Button::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 
 	sdl_draw_rect(back, *color, renderer);
 
+	int icon_length = get_icon_length(view.scale);
+
 	if (!theme->font) {
+		back.w = icon_length;
+		back.h = icon_length;
 		if (icon)
 			sdl_apply_texture(icon, back, nullptr, renderer);
+
 		return;
 	}
 
@@ -193,7 +208,7 @@ void Button::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 	float y = y_offset * font_height;
 
 	if (icon) {
-		Rect box = {(float)back.x, (float)back.y, font_height, font_height};
+		Rect box = {(float)back.x, (float)back.y, (float)icon_length, (float)icon_length};
 
 		if (icon_right)
 			box.x += (float)back.w - x - font_height;
@@ -876,13 +891,13 @@ void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool ho
 			else if (parent->current_dd)
 				parent->set_dropdown(this);
 		}
-		else if (sel >= 0)
+		else if (hl >= 0)
 			parent->set_dropdown(this);
 	}
 }
 
 bool Drop_Down::highlight(Camera& view, Point& inside) {
-	sel = -1;
+	hl = -1;
 	if (!dropped || inside.x < pos.x || inside.x >= pos.x + width)
 		return false;
 
@@ -893,7 +908,7 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	auto lines = get_content();
 	for (int i = 0; i < lines->size(); i++) {
 		if (inside.y >= y && inside.y < y + h) {
-			sel = i;
+			hl = i;
 			return true;
 		}
 		y += h;
@@ -904,7 +919,12 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 
 void Drop_Down::cancel() {
 	dropped = false;
-	sel = -1;
+	hl = -1;
+}
+
+void Drop_Down::default_action(Camera& view, bool dbl_click) {
+	if (keep_selected && hl >= 0)
+		sel = hl;
 }
 
 void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float menu_y) {
@@ -920,11 +940,11 @@ void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float m
 
 	sdl_draw_rect(box, hl_color, renderer);
 
-	if (sel >= 0) {
-		Rect hl = box;
-		hl.y += line_height * sel * font_height;
-		hl.h = (title_off_y + line_height) * font_height + 1;
-		sdl_draw_rect(hl, sel_color, renderer);
+	if (hl >= 0) {
+		Rect hl_rect = box;
+		hl_rect.y += line_height * hl * font_height;
+		hl_rect.h = (title_off_y + line_height) * font_height + 1;
+		sdl_draw_rect(hl_rect, sel_color, renderer);
 	}
 
 	float hack = 3;
@@ -948,7 +968,13 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	else
 		sdl_draw_rect(back, default_color, renderer);
 
-	float text_w = font->render.text_width(title);
+	auto lines = get_content();
+
+	const char *text = title;
+	if (!title && lines && (*lines)[sel])
+		text = (*lines)[sel];
+
+	float text_w = font->render.text_width(text);
 	float font_h = font->render.text_height();
 
 	float pad_x = title_pad_x * font_h;
@@ -971,15 +997,15 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 	float text_x = x + pad_x + leaning * (w - text_w - 2*pad_x);
 
-	font->render.draw_text_simple(renderer, title, back.x + text_x, back.y + gap_y);
+	font->render.draw_text_simple(renderer, text, back.x + text_x, back.y + gap_y);
 }
 
 bool Edit_Box::disengage(Input& input, bool try_select) {
 	float cancel_lclick = false;
 	if (dropdown) {
-		if (try_select && dropdown->sel >= 0) {
+		if (try_select && dropdown->hl >= 0) {
 			editor.set_cursor(editor.primary, 0);
-			editor.text = (*dropdown->get_content())[dropdown->sel];
+			editor.text = (*dropdown->get_content())[dropdown->hl];
 			//offset = 0;
 			cancel_lclick = true;
 

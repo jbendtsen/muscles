@@ -132,62 +132,54 @@ void open_view_source(Workspace& ws, int idx) {
 
 void sources_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
-	if (dd->sel < 0)
+	if (dd->hl < 0)
 		return;
 
-	if (dd->sel == 0 || dd->sel == 1) {
+	if (dd->hl == 0 || dd->hl == 1) {
 		Workspace *ws = dd->parent->parent;
-		MenuType type = dd->sel == 0 ? MenuFile : MenuProcess;
+		MenuType type = dd->hl == 0 ? MenuFile : MenuProcess;
 		auto sm = ws->make_box<Source_Menu>(type);
 		sm->caller = dd->parent;
 		sm->open_file_handler = open_file_handler;
 		sm->open_process_handler = open_process_handler;
 	}
-
-	dd->parent->set_dropdown(nullptr);
 }
 
 void search_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
-	if (dd->sel < 0 || dd->sel > 1)
+	if (dd->hl < 0 || dd->hl > 1)
 		return;
 
 	Workspace *ws = dd->parent->parent;
-	ws->make_box<Search_Menu>(dd->sel == 0 ? MenuValue : MenuObject);
-
-	dd->parent->set_dropdown(nullptr);
+	ws->make_box<Search_Menu>(dd->hl == 0 ? MenuValue : MenuObject);
 }
 
 void edit_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
-	if (dd->sel < 0 || dd->sel > 2)
+	if (dd->hl < 0 || dd->hl > 2)
 		return;
 
 	auto ui = (Main_Menu*)dd->parent;
 	Workspace *ws = dd->parent->parent;
 
-	if (dd->sel == 0)
+	if (dd->hl == 0)
 		ws->make_box<View_Object>();
-	else if (dd->sel == 1)
+	else if (dd->hl == 1)
 		ws->make_box<Edit_Structs>();
-	else if (dd->sel == 2)
+	else if (dd->hl == 2)
 		ws->make_box<View_Definitions>();
-
-	dd->parent->set_dropdown(nullptr);
 }
 
 void view_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
-	if (dd->sel < 0)
+	if (dd->hl < 0)
 		return;
 
 	auto ui = (Main_Menu*)dd->parent;
 	Workspace *ws = dd->parent->parent;
 
-	if (dd->sel == 0)
+	if (dd->hl == 0)
 		open_view_source(*ws, ui->sources_view.sel_row);
-
-	dd->parent->set_dropdown(nullptr);
 }
 
 void table_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {

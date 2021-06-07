@@ -1,6 +1,7 @@
 #!/bin/python
 
 import os
+import sys
 
 libs = ["SDL2", "freetype"]
 includes = ["/usr/include/SDL2", "/usr/include/freetype2", "./Muscles"]
@@ -36,4 +37,5 @@ for c in cpp_list:
 command += " -o muscles-linux"
 
 print(command)
-os.system(command)
+res = os.system(command)
+sys.exit(0 if res == 0 else 1)

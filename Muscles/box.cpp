@@ -156,6 +156,8 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 			current_dd->action(current_dd, view, input.double_click);
 			input.action = false;
 		}
+		if (current_dd->hl >= 0)
+			set_dropdown(nullptr);
 	}
 
 	for (auto& elem : ui) {

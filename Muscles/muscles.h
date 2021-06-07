@@ -541,6 +541,10 @@ struct Map {
 		return 1 << log2_slots;
 	}
 
+	char *key_from_index(int idx) {
+		return sv->at(data[idx].name_idx);
+	}
+
 	int get(const char *str, int len = 0);
 	Bucket& insert(const char *str, int len = 0);
 	void remove(const char *str, int len = 0);
