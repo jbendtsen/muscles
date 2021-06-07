@@ -462,3 +462,26 @@ void close_source(Source& source) {
 		source.handle = nullptr;
 	}
 }
+
+SOURCE_HANDLE get_readonly_file_handle(void *identifier) {
+	return open_file((LPCSTR)identifier);
+}
+
+SOURCE_HANDLE get_readonly_process_handle(int pid) {
+	return OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+}
+
+int read_page(SOURCE_HANDLE handle, u64 address, char *buf) {
+	SIZE_T retrieved = 0;
+	ReadProcessMemory(handle, (LPCVOID)address, (LPVOID)buf, PAGE_SIZE, &retrieved);
+	return (int)retrieved;
+}
+
+void wait_ms(int ms) {
+	Sleep(ms);
+}
+
+bool start_thread(void **thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*)) {
+	*thread_ptr = (HANDLE)CreateThread(nullptr, 0, func, data, 0, nullptr);
+	return *thread_ptr == nullptr;
+}

@@ -156,7 +156,7 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 }
 
 // TODO: Expand upon this function to allow for constant variable lookup
-Value64 evaluate_number(char *token, bool as_float = false) {
+Value64 evaluate_number(const char *token, bool as_float) {
 	Value64 value;
 	if (as_float)
 		value.d = atof(token);

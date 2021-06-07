@@ -7,7 +7,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define PAGE_SIZE 0x1000
 #define PROC_NAME_MAX 512
 
 const char *get_folder_separator() {
@@ -408,4 +407,31 @@ void close_source(Source& source) {
 		close(source.fd);
 		source.fd = 0;
 	}
+}
+
+// please don't pass in "stdout" lol
+SOURCE_HANDLE get_readonly_file_handle(void *identifier) {
+	int fd = open((char*)identifier, O_RDONLY);
+	return fd > 0 ? fd : 0;
+}
+
+SOURCE_HANDLE get_readonly_process_handle(int pid) {
+	char mem_path[32];
+	snprintf(mem_path, 32, "/proc/%d/mem", pid);
+	int fd = open(mem_path, O_RDONLY);
+	return fd > 0 ? fd : 0;
+}
+
+int read_page(SOURCE_HANDLE handle, u64 address, char *buf) {
+	lseek64(handle, address, SEEK_SET);
+	return read(handle, buf, PAGE_SIZE);
+}
+
+void wait_ms(int ms) {
+	usleep(ms * 1000);
+}
+
+bool start_thread(void **thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*)) {
+	int res = pthread_create((pthread_t*)thread_ptr, nullptr, function, data);
+	return res == 0;
 }

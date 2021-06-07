@@ -2,6 +2,8 @@
 #include "../ui.h"
 #include "dialog.h"
 
+#define MAX_RESULTS 10000
+
 #define LABEL_HEIGHT_FACTOR 1.2f
 #define EDIT_HEIGHT_FACTOR  1.4f
 
@@ -184,7 +186,7 @@ void search_source_edit_handler(Edit_Box *edit, Input& input) {
 		}
 	}
 
-	sm->source = src;
+	sm->search.source = src;
 }
 
 void search_address_edit_handler(Edit_Box *edit, Input& input) {
@@ -206,7 +208,37 @@ void search_value_edit_handler(Edit_Box *edit, Input& input) {
 }
 
 void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
-	
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+
+	if (sm->method_dd.sel < 0)
+		return;
+
+	std::string& type = sm->type_edit.editor.text;
+	if (type.size() == 0)
+		return;
+
+	Workspace& ws = *elem->parent->parent;
+	Bucket& buck = ws.definitions[type.c_str()];
+
+	const u32 min_flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
+	if ((buck.flags & min_flags) != min_flags)
+		return;
+
+	sm->cancel_btn.set_active(true);
+
+	sm->search.params = nullptr;
+	sm->search.single_value = {
+		.flags = buck.flags & FIELD_FLAGS,
+		.method = sm->method_dd.sel,
+		.offset = 0,
+		.size = (int)buck.value,
+		.value1 = evaluate_number(sm->value1_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i,
+		.value2 = evaluate_number(sm->value2_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i
+	};
+	sm->search.start_addr = evaluate_number(sm->start_addr_edit.editor.text.c_str()).i;
+	sm->search.end_addr = evaluate_number(sm->end_addr_edit.editor.text.c_str()).i;
+
+	sm->search.start();
 }
 
 void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -258,6 +290,24 @@ void Search_Menu::refresh(Point *cursor) {
 			char *key = ws.definitions.key_from_index(i);
 			type_dd.content.push_back(key);
 		}
+	}
+
+	results_count_lbl.text = std::to_string(search.results.size());
+
+	if (search.started && !search.running) {
+		search.started = false;
+		search.finalize();
+
+		cancel_btn.set_active(false);
+
+		int n_results = search.results.size();
+		if (n_results > MAX_RESULTS)
+			n_results = MAX_RESULTS;
+
+		table.resize(n_results);
+		memcpy(table.columns[0].data(), search.results.data(), n_results * sizeof(u64));
+
+		results.needs_redraw = true;
 	}
 }
 
@@ -467,4 +517,5 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	initial_height = 450;
 	min_width = 300;
 	min_height = 450;
+	refresh_every = 1;
 }

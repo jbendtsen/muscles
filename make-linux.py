@@ -3,7 +3,7 @@
 import os
 import sys
 
-libs = ["SDL2", "freetype"]
+libs = ["SDL2", "freetype", "pthread"]
 includes = ["/usr/include/SDL2", "/usr/include/freetype2", "./Muscles"]
 dirs = ["./Muscles", "./Muscles/dialog"]
 excludes = ["io-win32.cpp"]

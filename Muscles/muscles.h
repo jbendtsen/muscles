@@ -10,7 +10,16 @@
 #define MAX_CHAR '~'
 #define N_CHARS  (MAX_CHAR - MIN_CHAR + 1)
 
+#ifdef _WIN32
+	typedef DWORD THREAD_RETURN_TYPE;
+	typedef HANDLE SOURCE_HANDLE;
+#else
+	typedef void* THREAD_RETURN_TYPE;
+	typedef int SOURCE_HANDLE;
+#endif
+
 typedef unsigned char u8;
+typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 typedef signed long long s64;
@@ -664,6 +673,8 @@ struct Source {
 	void gather_data();
 };
 
+#define PAGE_SIZE 0x1000
+
 const char *get_folder_separator();
 const char *get_root_folder();
 const char *get_project_path();
@@ -684,6 +695,50 @@ void refresh_process_regions(Source& source);
 void refresh_process_spans(Source& source, std::vector<Span>& input);
 
 void close_source(Source& source);
+
+SOURCE_HANDLE get_readonly_file_handle(void *identifier);
+SOURCE_HANDLE get_readonly_process_handle(int pid);
+
+int read_page(SOURCE_HANDLE handle, u64 address, char *buf);
+
+void wait_ms(int ms);
+
+bool start_thread(void** thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*));
+
+#define METHOD_EQUALS 0
+#define METHOD_RANGE  1
+
+struct Search_Parameter {
+	u32 flags;
+	int method;
+	int offset;
+	int size;
+	u64 value1;
+	u64 value2;
+};
+
+struct Search {
+	Search_Parameter single_value = {0};
+	Search_Parameter *params = nullptr;
+	int n_params = 0;
+
+	Source *source = nullptr;
+	u64 start_addr = 0;
+	u64 end_addr = 0;
+
+	std::vector<u64> results;
+
+	void *thread = nullptr;
+	bool started = false;
+	bool running = false;
+
+	void start();
+	void finalize();
+
+private:
+	void perform_search();
+	void single_value_search(SOURCE_HANDLE handle);
+};
 
 #define FLAG_POINTER       0x0001
 #define FLAG_BITFIELD      0x0002
@@ -764,6 +819,7 @@ struct Struct {
 };
 
 void set_primitives(Map& definitions);
+Value64 evaluate_number(const char *token, bool as_float = false);
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);

@@ -258,7 +258,7 @@ struct Search_Menu : Box {
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
 
-	Source *source = nullptr;
+	Search search;
 
 	Table table;
 };
