@@ -243,13 +243,14 @@ struct Search_Menu : Box {
 	Edit_Box value1_edit;
 	Edit_Box value2_edit;
 
+	//Progress_Bar progress_bar;
+
 	Button search_btn;
 	Button cancel_btn;
 	Button reveal_btn;
 
-	//Progress_Bar progress_bar;
 	Label results_lbl;
-	Label result_count_lbl;
+	Label results_count_lbl;
 
 	Data_View results;
 	Scroll vscroll;
@@ -258,6 +259,8 @@ struct Search_Menu : Box {
 	bool params_revealed = true;
 
 	Source *source = nullptr;
+
+	Table table;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

@@ -20,100 +20,113 @@ void Search_Menu::update_ui(Camera& view) {
 	float edit_h  = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
 
 	float start_x = 2*border;
+	float y = title.outer_box.h;
 
-	source_lbl.pos = {
-		.x = start_x,
-		.y = title.outer_box.h,
-		.w = 80,
-		.h = label_h
+	reveal_btn.pos = {
+		.x = box.w - reveal_btn_length - start_x,
+		.y = y + 3*border,
+		.w = reveal_btn_length,
+		.h = reveal_btn_length
 	};
 
-	float y = source_lbl.pos.y + source_lbl.pos.h + border;
+	if (params_revealed) {
+		source_lbl.pos = {
+			.x = start_x,
+			.y = y,
+			.w = 80,
+			.h = label_h
+		};
+		y += source_lbl.pos.h + border;
 
-	source_edit.pos = {
-		.x = start_x,
-		.y = y,
-		.w = box.w - 2*start_x,
-		.h = edit_h
-	};
-	y += source_edit.pos.h + 2*border;
+		source_edit.pos = {
+			.x = start_x,
+			.y = y,
+			.w = reveal_btn.pos.x - 2*start_x,
+			.h = edit_h
+		};
+		y += source_edit.pos.h + 2*border;
 
-	addr_lbl.pos = {
-		.x = start_x,
-		.y = y,
-		.w = 200,
-		.h = label_h
-	};
-	y += addr_lbl.pos.h + border;
+		addr_lbl.pos = {
+			.x = start_x,
+			.y = y,
+			.w = 200,
+			.h = label_h
+		};
+		y += addr_lbl.pos.h + border;
 
-	float addr_w = (box.w - 4*start_x) / 2;
+		float addr_w = (box.w - 4*start_x) / 2;
 
-	start_addr_edit.pos = {
-		.x = start_x,
-		.y = y,
-		.w = addr_w,
-		.h = edit_h
-	};
+		start_addr_edit.pos = {
+			.x = start_x,
+			.y = y,
+			.w = addr_w,
+			.h = edit_h
+		};
 
-	end_addr_edit.pos = {
-		.x = start_x + box.w / 2,
-		.y = y,
-		.w = addr_w,
-		.h = edit_h
-	};
-	y += end_addr_edit.pos.h + 2*border;
+		end_addr_edit.pos = {
+			.x = start_x + box.w / 2,
+			.y = y,
+			.w = addr_w,
+			.h = edit_h
+		};
+		y += end_addr_edit.pos.h + 2*border;
 
-	type_lbl.pos = {
-		.x = start_x,
-		.y = y,
-		.w = 140,
-		.h = label_h
-	};
+		type_lbl.pos = {
+			.x = start_x,
+			.y = y,
+			.w = 140,
+			.h = label_h
+		};
 
-	method_lbl.pos = {
-		.x = 3*start_x + type_lbl.pos.w,
-		.y = y,
-		.w = 120,
-		.h = label_h
-	};
-	y += method_lbl.pos.h + border;
+		method_lbl.pos = {
+			.x = 3*start_x + type_lbl.pos.w,
+			.y = y,
+			.w = 120,
+			.h = label_h
+		};
+		y += method_lbl.pos.h + border;
 
-	type_edit.pos = {
-		.x = start_x,
-		.y = y,
-		.w = type_lbl.pos.w,
-		.h = edit_h
-	};
+		type_edit.pos = {
+			.x = start_x,
+			.y = y,
+			.w = type_lbl.pos.w,
+			.h = edit_h
+		};
 
-	method_dd.pos = {
-		.x = method_lbl.pos.x,
-		.y = y,
-		.w = method_lbl.pos.w,
-		.h = edit_h
-	};
-	y += method_dd.pos.h + 2*border;
+		method_dd.pos = {
+			.x = method_lbl.pos.x,
+			.y = y,
+			.w = method_lbl.pos.w,
+			.h = edit_h
+		};
+		y += method_dd.pos.h + 2*border;
 
-	value_lbl.pos = {
-		.x = start_x,
-		.y = y,
-		.w = 100,
-		.h = label_h
-	};
-	y += value_lbl.pos.h + border;
+		value_lbl.pos = {
+			.x = start_x,
+			.y = y,
+			.w = 100,
+			.h = label_h
+		};
+		y += value_lbl.pos.h + border;
 
-	value1_edit.pos = {
-		.x = start_x,
-		.y = y,
-		.w = start_addr_edit.pos.w,
-		.h = edit_h,
-	};
-	value2_edit.pos = {
-		.x = end_addr_edit.pos.x,
-		.y = y,
-		.w = end_addr_edit.pos.w,
-		.h = edit_h
-	};
-	y += value2_edit.pos.h + 5*border;
+		value1_edit.pos = {
+			.x = start_x,
+			.y = y,
+			.w = start_addr_edit.pos.w,
+			.h = edit_h,
+		};
+		value2_edit.pos = {
+			.x = end_addr_edit.pos.x,
+			.y = y,
+			.w = end_addr_edit.pos.w,
+			.h = edit_h
+		};
+		y += value2_edit.pos.h;
+	}
+
+	y += 5*border;
+
+	// progress_bar.pos = {...
 
 	float total_btn_w = search_btn.width + start_x + cancel_btn.width;
 
@@ -129,7 +142,31 @@ void Search_Menu::update_ui(Camera& view) {
 		.w = cancel_btn.width,
 		.h = cancel_btn.height
 	};
-	y += search_btn.pos.h + border;
+	y += search_btn.pos.h + 2*border;
+
+	float tall_label_h = results_lbl.font->render.text_height() * LABEL_HEIGHT_FACTOR / view.scale;
+	float rc_width = results_count_lbl.font->render.text_width(results_count_lbl.text.c_str()) * 1.1f / view.scale;
+
+	results_lbl.pos = {
+		.x = start_x,
+		.y = y,
+		.w = 150,
+		.h = tall_label_h
+	};
+	results_count_lbl.pos = {
+		.x = box.w - start_x - rc_width,
+		.y = y,
+		.w = rc_width,
+		.h = tall_label_h
+	};
+	y += tall_label_h + border;
+
+	results.pos = {
+		.x = start_x,
+		.y = y,
+		.w = box.w - 2*start_x,
+		.h = box.h - start_x - y
+	};
 }
 
 void search_source_edit_handler(Edit_Box *edit, Input& input) {
@@ -178,7 +215,22 @@ void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 
 void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+
 	sm->params_revealed = !sm->params_revealed;
+
+	sm->source_lbl.visible = sm->params_revealed;
+	sm->source_edit.visible = sm->params_revealed;
+	sm->addr_lbl.visible = sm->params_revealed;
+	sm->start_addr_edit.visible = sm->params_revealed;
+	sm->end_addr_edit.visible = sm->params_revealed;
+	sm->type_lbl.visible = sm->params_revealed;
+	sm->type_edit.visible = sm->params_revealed;
+	sm->method_lbl.visible = sm->params_revealed;
+	sm->method_dd.visible = sm->params_revealed;
+	sm->value_lbl.visible = sm->params_revealed;
+	sm->value1_edit.visible = sm->params_revealed;
+	sm->value2_edit.visible = sm->params_revealed;
+
 	sm->update_reveal_button(view.scale);
 }
 
@@ -290,6 +342,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	ui.push_back(&type_lbl);
 
 	type_edit.font = source_lbl.font;
+	type_edit.editor.text = "int32_t";
 	type_edit.caret = ws.colors.caret;
 	type_edit.default_color = ws.colors.dark;
 	type_edit.icon_color = icon_color;
@@ -340,6 +393,8 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	value2_edit.key_action = search_value_edit_handler;
 	ui.push_back(&value2_edit);
 
+	//Progress_Bar progress_bar;
+
 	search_btn.text = "Search";
 	search_btn.action = search_search_btn_handler;
 	search_btn.default_color = ws.colors.text;
@@ -382,21 +437,34 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	reveal_btn.default_color.a = 0.8;
 	ui.push_back(&reveal_btn);
 
-	//Progress_Bar progress_bar;
-
 	results_lbl.font = ws.default_font;
 	results_lbl.text = "Results";
 	ui.push_back(&results_lbl);
 
-	result_count_lbl.font = source_lbl.font;
-	result_count_lbl.text = "";
-	ui.push_back(&result_count_lbl);
+	results_count_lbl.font = results_lbl.font;
+	results_count_lbl.text = "";
+	ui.push_back(&results_count_lbl);
 
-	//Data_View results;
-	//Scroll vscroll;
+	Column cols[] = {
+		{ColumnHex, 0, 0.5, 0, 0, "Address"},
+		{ColumnString, 0, 0.5, 0, 0, "Value"},
+	};
+	table.init(cols, nullptr, 2, 0);
+
+	results.font = source_lbl.font;
+	results.data = &table;
+	results.default_color = ws.colors.dark;
+	results.hl_color = ws.colors.hl;
+	results.sel_color = ws.colors.hl;
+	results.font = ws.default_font;
+	results.vscroll = &vscroll;
+	ui.push_back(&results);
+
+	vscroll.content = &results;
+	ui.push_back(&vscroll);
 
 	initial_width = 400;
-	initial_height = 360;
+	initial_height = 450;
 	min_width = 300;
-	min_height = 360;
+	min_height = 450;
 }

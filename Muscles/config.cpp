@@ -34,18 +34,17 @@ void load_config(Workspace& ws, std::string& path) {
 	colors.insert("file_line").value         = 0x808080ff;
 	colors.insert("cancel").value            = 0xffffffff;
 
+	set_primitives(ws.definitions);
+
 	auto cfg_file = read_file(path);
 	if (cfg_file.second) {
-		Map defs;
-		set_primitives(defs);
-
 		String_Vector tokens;
 		tokenize(tokens, (const char*)cfg_file.second.get(), cfg_file.first);
 
 		std::vector<Struct*> structs;
 		char *tokens_alias = tokens.pool;
 		String_Vector name_vector;
-		parse_c_struct(structs, &tokens_alias, name_vector, defs);
+		parse_c_struct(structs, &tokens_alias, name_vector, ws.definitions);
 
 		for (auto& s : structs) {
 			if (s->name_idx < 0)
