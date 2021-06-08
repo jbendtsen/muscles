@@ -2,8 +2,6 @@
 #include "../ui.h"
 #include "dialog.h"
 
-#define MAX_RESULTS 10000
-
 #define LABEL_HEIGHT_FACTOR 1.2f
 #define EDIT_HEIGHT_FACTOR  1.4f
 
@@ -186,7 +184,7 @@ void search_source_edit_handler(Edit_Box *edit, Input& input) {
 		}
 	}
 
-	sm->search.source = src;
+	sm->source = src;
 }
 
 void search_address_edit_handler(Edit_Box *edit, Input& input) {
@@ -210,7 +208,7 @@ void search_value_edit_handler(Edit_Box *edit, Input& input) {
 void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
 
-	if (sm->method_dd.sel < 0)
+	if (!sm->source || sm->method_dd.sel < 0)
 		return;
 
 	std::string& type = sm->type_edit.editor.text;
@@ -235,10 +233,15 @@ void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 		.value1 = evaluate_number(sm->value1_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i,
 		.value2 = evaluate_number(sm->value2_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i
 	};
+
 	sm->search.start_addr = evaluate_number(sm->start_addr_edit.editor.text.c_str()).i;
 	sm->search.end_addr = evaluate_number(sm->end_addr_edit.editor.text.c_str()).i;
 
-	sm->search.start();
+	sm->search.source_type = sm->source->type;
+	sm->search.pid = sm->source->pid;
+	sm->search.identifier = sm->source->identifier;
+
+	start_search(sm->search, sm->source->regions);
 }
 
 void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -292,21 +295,19 @@ void Search_Menu::refresh(Point *cursor) {
 		}
 	}
 
-	results_count_lbl.text = std::to_string(search.results.size());
+	//results_count_lbl.text = std::to_string(search.results.size());
 
-	if (search.started && !search.running) {
-		search.started = false;
-		search.finalize();
-
+	if (check_search_finished()) {
 		cancel_btn.set_active(false);
 
-		int n_results = search.results.size();
-		if (n_results > MAX_RESULTS)
-			n_results = MAX_RESULTS;
+		get_search_results((std::vector<u64>&)table.columns[0]);
 
-		table.resize(n_results);
-		memcpy(table.columns[0].data(), search.results.data(), n_results * sizeof(u64));
+		int n_results = table.columns[0].size();
+		table.columns[1].resize(n_results, nullptr);
 
+		results_count_lbl.text = std::to_string(n_results);
+
+		results_count_lbl.needs_redraw = true;
 		results.needs_redraw = true;
 	}
 }
@@ -496,7 +497,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	ui.push_back(&results_count_lbl);
 
 	Column cols[] = {
-		{ColumnHex, 0, 0.5, 0, 0, "Address"},
+		{ColumnHex, 16, 0.5, 0, 0, "Address"},
 		{ColumnString, 0, 0.5, 0, 0, "Value"},
 	};
 	table.init(cols, nullptr, 2, 0);
@@ -504,10 +505,12 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	results.font = source_lbl.font;
 	results.data = &table;
 	results.default_color = ws.colors.dark;
+	results.back_color = ws.colors.dark;
 	results.hl_color = ws.colors.hl;
 	results.sel_color = ws.colors.hl;
 	results.font = ws.default_font;
 	results.vscroll = &vscroll;
+	results.show_column_names = true;
 	ui.push_back(&results);
 
 	vscroll.content = &results;

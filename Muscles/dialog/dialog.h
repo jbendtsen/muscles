@@ -258,9 +258,9 @@ struct Search_Menu : Box {
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
 
-	Search search;
-
 	Table table;
+	Search search;
+	Source *source = nullptr;
 };
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);

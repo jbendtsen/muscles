@@ -150,6 +150,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="box.cpp" />
+	<ClCompile Include="config.cpp" />
     <ClCompile Include="data.cpp" />
     <ClCompile Include="dialog\edit-structs.cpp" />
     <ClCompile Include="dialog\search-menu.cpp" />
@@ -167,6 +168,7 @@
     <ClCompile Include="io.cpp" />
     <ClCompile Include="sdl.cpp" />
     <ClCompile Include="muscles.cpp" />
+	<ClCompile Include="search.cpp" />
     <ClCompile Include="structs.cpp" />
     <ClCompile Include="ui.cpp" />
     <ClCompile Include="workspace.cpp" />

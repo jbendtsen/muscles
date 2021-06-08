@@ -11,8 +11,8 @@
 #define N_CHARS  (MAX_CHAR - MIN_CHAR + 1)
 
 #ifdef _WIN32
-	typedef DWORD THREAD_RETURN_TYPE;
-	typedef HANDLE SOURCE_HANDLE;
+	typedef unsigned long THREAD_RETURN_TYPE; // DWORD
+	typedef void* SOURCE_HANDLE; // HANDLE
 #else
 	typedef void* THREAD_RETURN_TYPE;
 	typedef int SOURCE_HANDLE;
@@ -699,11 +699,13 @@ void close_source(Source& source);
 SOURCE_HANDLE get_readonly_file_handle(void *identifier);
 SOURCE_HANDLE get_readonly_process_handle(int pid);
 
-int read_page(SOURCE_HANDLE handle, u64 address, char *buf);
+int read_page(SOURCE_HANDLE handle, SourceType type, u64 address, char *buf);
 
 void wait_ms(int ms);
 
 bool start_thread(void** thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*));
+
+#define MAX_SEARCH_RESULTS 10000
 
 #define METHOD_EQUALS 0
 #define METHOD_RANGE  1
@@ -722,23 +724,17 @@ struct Search {
 	Search_Parameter *params = nullptr;
 	int n_params = 0;
 
-	Source *source = nullptr;
 	u64 start_addr = 0;
 	u64 end_addr = 0;
 
-	std::vector<u64> results;
-
-	void *thread = nullptr;
-	bool started = false;
-	bool running = false;
-
-	void start();
-	void finalize();
-
-private:
-	void perform_search();
-	void single_value_search(SOURCE_HANDLE handle);
+	SourceType source_type = SourceNone;
+	int pid = 0;
+	void *identifier = nullptr;
 };
+
+void start_search(Search& s, std::vector<Region> const& regions);
+bool check_search_finished();
+void get_search_results(std::vector<u64>& results_vec);
 
 #define FLAG_POINTER       0x0001
 #define FLAG_BITFIELD      0x0002

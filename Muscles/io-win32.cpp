@@ -471,10 +471,23 @@ SOURCE_HANDLE get_readonly_process_handle(int pid) {
 	return OpenProcess(PROCESS_ALL_ACCESS, false, pid);
 }
 
-int read_page(SOURCE_HANDLE handle, u64 address, char *buf) {
-	SIZE_T retrieved = 0;
-	ReadProcessMemory(handle, (LPCVOID)address, (LPVOID)buf, PAGE_SIZE, &retrieved);
-	return (int)retrieved;
+int read_page(SOURCE_HANDLE handle, SourceType type, u64 address, char *buf) {
+	int retrieved = 0;
+	if (type == SourceFile) {
+		LARGE_INTEGER offset;
+		offset.QuadPart = (LONGLONG)address;
+		SetFilePointerEx(handle, offset, nullptr, FILE_BEGIN);
+
+		DWORD r = 0;
+		ReadFile(handle, buf, PAGE_SIZE, &r, nullptr);
+		retrieved = (int)r;
+	}
+	else if (type == SourceProcess) {
+		SIZE_T r = 0;
+		ReadProcessMemory(handle, (LPCVOID)address, (LPVOID)buf, PAGE_SIZE, &r);
+		retrieved = (int)r;
+	}
+	return retrieved;
 }
 
 void wait_ms(int ms) {
@@ -482,6 +495,6 @@ void wait_ms(int ms) {
 }
 
 bool start_thread(void **thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*)) {
-	*thread_ptr = (HANDLE)CreateThread(nullptr, 0, func, data, 0, nullptr);
+	*thread_ptr = (HANDLE)CreateThread(nullptr, 0, function, data, 0, nullptr);
 	return *thread_ptr == nullptr;
 }
