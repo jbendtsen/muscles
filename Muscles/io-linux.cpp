@@ -422,7 +422,7 @@ SOURCE_HANDLE get_readonly_process_handle(int pid) {
 	return fd > 0 ? fd : 0;
 }
 
-int read_page(SOURCE_HANDLE handle, u64 address, char *buf) {
+int read_page(SOURCE_HANDLE handle, SourceType type, u64 address, char *buf) {
 	lseek64(handle, address, SEEK_SET);
 	return read(handle, buf, PAGE_SIZE);
 }
