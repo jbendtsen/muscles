@@ -22,6 +22,8 @@ void set_primitives(Map& definitions) {
 	set(definitions.insert("uint32_t"), 0, 32);
 	set(definitions.insert("long"), FLAG_SIGNED, 32);
 	set(definitions.insert("long long"), FLAG_SIGNED, 64);
+	set(definitions.insert("int64_t"), FLAG_SIGNED, 64);
+	set(definitions.insert("uint64_t"), 0, 64);
 	set(definitions.insert("float"), FLAG_FLOAT, 32);
 	set(definitions.insert("double"), FLAG_FLOAT, 64);
 }
