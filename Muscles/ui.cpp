@@ -1167,14 +1167,17 @@ void Hex_View::set_region(u64 address, u64 size) {
 	offset = 0;
 	sel = -1;
 	alive = true;
+
+	if (scroll)
+		scroll->maximum = (double)size;
 }
 
-void Hex_View::set_offset(u64 offset) {
+void Hex_View::set_offset(u64 off) {
 	if (scroll)
-		scroll->position = (double)offset;
+		scroll->position = (double)off;
 
-	col_offset = offset % columns;
-	this->offset = offset - col_offset;
+	col_offset = off % columns;
+	offset = off - col_offset;
 }
 
 void Hex_View::update_view(float scale) {
@@ -1182,15 +1185,15 @@ void Hex_View::update_view(float scale) {
 	vis_rows = pos.h * scale / font_height;
 
 	if (scroll) {
-		offset = (int)scroll->position;
-		offset -= offset % columns;
-		offset += col_offset;
-
 		u64 size = region_size;
 		if (size % columns > 0)
 			size += columns - (size % columns);
 
 		scroll->set_maximum(size, vis_rows * columns);
+
+		offset = (int)scroll->position;
+		offset -= offset % columns;
+		offset += col_offset;
 	}
 
 	addr_digits = count_hex_digits(region_address + region_size - 1);

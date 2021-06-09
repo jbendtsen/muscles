@@ -121,15 +121,6 @@ static void open_file_handler(Box *box, std::string& path, File_Entry *file) {
 	ui->require_redraw();
 }
 
-void open_view_source(Workspace& ws, int idx) {
-	if (idx < 0)
-		return;
-
-	MenuType type = ws.sources[idx]->type == SourceFile ? MenuFile : MenuProcess;
-	auto vs = ws.make_box<View_Source>(type);
-	vs->open_source(ws.sources[idx]);
-}
-
 void sources_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto dd = dynamic_cast<Drop_Down*>(elem);
 	if (dd->hl < 0)
@@ -178,15 +169,22 @@ void view_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = (Main_Menu*)dd->parent;
 	Workspace *ws = dd->parent->parent;
 
-	if (dd->hl == 0)
-		open_view_source(*ws, ui->sources_view.sel_row);
+	if (dd->hl == 0) {
+		int idx = ui->sources_view.sel_row;
+		if (idx >= 0)
+			ws->view_source_at(ws->sources[idx]);
+	}
 }
 
 void table_main_menu_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto table = dynamic_cast<Data_View*>(elem);
 
-	if (dbl_click)
-		open_view_source(*elem->parent->parent, table->sel_row);
+	if (dbl_click) {
+		if (table->sel_row >= 0) {
+			Workspace *ws = elem->parent->parent;
+			ws->view_source_at(ws->sources[table->sel_row]);
+		}
+	}
 	else
 		table->sel_row = table->hl_row;
 }
@@ -287,7 +285,10 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 
 	button.action = [](UI_Element* elem, Camera&, bool dbl_click) {
 		Data_View *view = &dynamic_cast<Main_Menu*>(elem->parent)->sources_view;
-		open_view_source(*elem->parent->parent, view->sel_row);
+		if (view->sel_row >= 0) {
+			Workspace *ws = elem->parent->parent;
+			ws->view_source_at(ws->sources[view->sel_row]);
+		}
 	};
 	button.active_theme = {
 		ws.colors.light,

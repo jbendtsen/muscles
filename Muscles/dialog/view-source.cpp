@@ -248,6 +248,36 @@ void View_Source::refresh_region_list(Point *cursor) {
 	needs_region_update = false;
 }
 
+void View_Source::goto_address(u64 address) {
+	u64 base = 0;
+
+	if (menu_type == MenuProcess) {
+		refresh_region_list(nullptr);
+
+		int sel_row = -1;
+		for (auto& idx : region_list) {
+			auto& reg = hex.source->regions[idx];
+			if (address >= reg.base && address < reg.base + reg.size) {
+				sel_row = idx;
+				base = reg.base;
+				hex.set_region(reg.base, reg.size);
+				break;
+			}
+		}
+
+		if (sel_row > 0)
+			reg_table.data->clear_filter();
+
+		reg_table.sel_row = sel_row;
+		update_regions_table();
+
+		if (sel_row < 0)
+			return;
+	}
+
+	hex.set_offset(address - base);
+}
+
 void regions_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto ui = dynamic_cast<View_Source*>(elem->parent);
 	ui->reg_table.sel_row = ui->reg_table.hl_row;
@@ -260,32 +290,7 @@ void goto_handler(Edit_Box *edit, Input& input) {
 		return;
 
 	auto ui = dynamic_cast<View_Source*>(edit->parent);
-
-	u64 base = 0;
-	u64 address = strtoull(edit->editor.text.c_str(), nullptr, 16);
-
-	if (ui->menu_type == MenuProcess) {
-		int sel_row = -1;
-		for (auto& idx : ui->region_list) {
-			auto& reg = ui->hex.source->regions[idx];
-			if (address >= reg.base && address < reg.base + reg.size) {
-				sel_row = idx;
-				base = reg.base;
-				break;
-			}
-		}
-
-		if (sel_row > 0)
-			ui->reg_table.data->clear_filter();
-
-		ui->reg_table.sel_row = sel_row;
-		ui->update_regions_table();
-
-		if (sel_row < 0)
-			return;
-	}
-
-	ui->hex.set_offset(address - base);
+	ui->goto_address(strtoull(edit->editor.text.c_str(), nullptr, 16));
 	edit->editor.clear();
 }
 
@@ -307,6 +312,8 @@ void View_Source::open_source(Source *s) {
 	title.text = "View Source - ";
 	title.text += s->name;
 	hex.source = s;
+
+	refresh(nullptr);
 }
 
 void View_Source::refresh(Point *cursor) {
@@ -521,5 +528,5 @@ View_Source::View_Source(Workspace& ws, MenuType mtype) {
 	initial_height = 400;
 	min_width = 400;
 	min_height = 300;
-	expungable = true;
+	expungeable = true;
 }

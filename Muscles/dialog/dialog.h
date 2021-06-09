@@ -78,8 +78,11 @@ struct View_Source : Box {
 
 	void refresh_region_list(Point *cursor);
 	void update_regions_table();
+	void goto_address(u64 address);
 
 	void open_source(Source *s);
+
+	Source *get_source() const { return hex.source; }
 
 	Image cross;
 	Image maxm;

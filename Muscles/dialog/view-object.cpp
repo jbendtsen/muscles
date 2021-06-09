@@ -423,7 +423,7 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	initial_height = 450;
 	min_width = 300;
 	min_height = 200;
-	expungable = true;
+	expungeable = true;
 }
 
 void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {

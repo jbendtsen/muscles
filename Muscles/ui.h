@@ -702,7 +702,7 @@ struct Box {
 	BoxType box_type = BoxDefault;
 	enum MenuType menu_type = MenuDefault;
 
-	bool expungable = false; // the expungables
+	bool expungeable = false; // the expungeables
 	bool visible = false;
 	bool moving = false;
 	bool ui_held = false;
@@ -809,6 +809,8 @@ struct Workspace {
 
 	void refresh_sources();
 
+	void view_source_at(Source *source, u64 address = -1);
+
 	void adjust_scale(float old_scale, float new_scale);
 	void prepare_rclick_menu(Camera& view, Point& cursor);
 	void update(Camera& view, Input& input, Point& cursor);
@@ -840,7 +842,7 @@ struct Workspace {
 		static_assert(std::is_base_of_v<Box, B>);
 
 		B *box = first_box_of_type<B>(mtype);
-		if (box && !box->expungable) {
+		if (box && !box->expungeable) {
 			box->visible = true;
 			bring_to_front(box);
 		}

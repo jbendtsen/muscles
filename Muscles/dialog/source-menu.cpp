@@ -378,5 +378,5 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 
 	active_edit = &search.editor;
 
-	expungable = true;
+	expungeable = true;
 }

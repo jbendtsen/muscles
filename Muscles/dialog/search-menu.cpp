@@ -269,6 +269,18 @@ void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	sm->update_reveal_button(view.scale);
 }
 
+void search_results_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+
+	if (dbl_click) {
+		if (!sm->source || sm->results.sel_row < 0)
+			return;
+
+		u64 address = (u64)sm->table.columns[0][sm->results.sel_row];
+		sm->parent->view_source_at(sm->source, address);
+	}
+}
+
 void Search_Menu::update_reveal_button(float scale) {
 	int size = 0.5 + reveal_btn_length * scale;
 
@@ -504,6 +516,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 
 	results.font = source_lbl.font;
 	results.data = &table;
+	results.action = search_results_handler;
 	results.default_color = ws.colors.dark;
 	results.back_color = ws.colors.dark;
 	results.hl_color = ws.colors.hl;

@@ -81,7 +81,7 @@ void Workspace::delete_box(int idx) {
 	boxes[idx]->on_close();
 	boxes[idx]->visible = false;
 
-	if (!boxes[idx]->expungable)
+	if (!boxes[idx]->expungeable)
 		return;
 
 	if (boxes[idx] == selected)
@@ -175,6 +175,35 @@ void Workspace::refresh_sources() {
 		}
 		s->timer++;
 	}
+}
+
+void Workspace::view_source_at(Source *source, u64 address) {
+	if (!source)
+		return;
+
+	View_Source *vs = nullptr;
+	for (auto& box : boxes) {
+		if (box->box_type == View_Source::box_type_meta) {
+			auto cur = dynamic_cast<View_Source*>(box);
+			if (cur->get_source() == source) {
+				vs = cur;
+				break;
+			}
+		}
+	}
+
+	if (!vs) {
+		MenuType type = source->type == SourceFile ? MenuFile : MenuProcess;
+		vs = make_box<View_Source>(type);
+	}
+	else {
+		vs->visible = true;
+		bring_to_front(vs);
+	}
+
+	vs->open_source(source);
+	if (address != -1)
+		vs->goto_address(address);
 }
 
 void Workspace::prepare_rclick_menu(Camera& view, Point& cursor) {
