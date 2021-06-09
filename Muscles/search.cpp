@@ -2,15 +2,15 @@
 #include <cstdint>
 #include <algorithm>
 
-// TODO try this on the Windows backend: https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory
-// Linux (probably wisely) doesn't seem to allow mmap into /proc/<pid>/mem
-
 void *thread = nullptr;
 bool started = false;
 bool running = false;
 
 u64 *results = nullptr;
 int n_results = 0;
+
+u64 *prev_results = nullptr;
+int n_prev_results = 0;
 
 Search search;
 std::vector<std::pair<u64, u64>> ranges;
@@ -55,75 +55,118 @@ bool check_search_finished() {
 }
 
 void get_search_results(std::vector<u64>& results_vec) {
+	if (!results)
+		return;
+
 	results_vec.resize(n_results);
 	if (n_results)
 		memcpy(results_vec.data(), results, n_results * sizeof(u64));
+}
+
+void reset_search() {
+	n_results = 0;
 }
 
 template <int method, typename T>
 void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 	char *buf = new char[PAGE_SIZE]();
 
-	u64 start = search.start_addr;
-	int first_range = -1;
-	for (auto& r : ranges) {
-		first_range++;
-		if (start < r.first + r.second) {
-			if (start < r.first)
-				start = r.first;
-			break;
+	if (n_results == 0) {
+		u64 start = search.start_addr;
+		int first_range = -1;
+		for (auto& r : ranges) {
+			first_range++;
+			if (start < r.first + r.second) {
+				if (start < r.first)
+					start = r.first;
+				break;
+			}
 		}
-	}
 
-	u64 end = search.end_addr;
-	int last_range = -1;
-	for (auto& r : ranges) {
-		if (search.end_addr < r.first)
-			break;
+		u64 end = search.end_addr;
+		int last_range = -1;
+		for (auto& r : ranges) {
+			if (search.end_addr < r.first)
+				break;
 
-		end = r.first + r.second;
-		last_range++;
-	}
+			end = r.first + r.second;
+			last_range++;
+		}
 
-	/*
-	char msg[200];
-	snprintf(msg, 200, "start=%#llx, end=%#llx, first_range=%d, last_range=%d", start, end, first_range, last_range);
-	sdl_log_string(msg);
-	*/
+		/*
+		char msg[200];
+		snprintf(msg, 200, "start=%#llx, end=%#llx, first_range=%d, last_range=%d", start, end, first_range, last_range);
+		sdl_log_string(msg);
+		*/
 
-	u64 addr = start;
-	for (int i = first_range; i <= last_range; i++) {
-		u64 range_end = ranges[i].first + ranges[i].second;
+		u64 addr = start;
+		for (int i = first_range; i <= last_range; i++) {
+			u64 range_end = ranges[i].first + ranges[i].second;
 
-		for (; addr < range_end; addr += PAGE_SIZE) {
-			int retrieved = read_page(handle, search.source_type, addr, buf);
-			if (retrieved <= 0)
-				continue;
+			for (; addr < range_end; addr += PAGE_SIZE) {
+				int retrieved = read_page(handle, search.source_type, addr, buf);
+				if (retrieved <= 0)
+					continue;
 
-			for (int j = 0; j < PAGE_SIZE; j += sizeof(T)) {
-				T value = *(T*)(&buf[j]);
-				if constexpr (method == METHOD_EQUALS) {
-					if (value == v1) {
-						results[n_results++] = addr + (u64)j;
-						if (n_results >= MAX_SEARCH_RESULTS)
-							break;
+				for (int j = 0; j < PAGE_SIZE; j += sizeof(T)) {
+					T value = *(T*)(&buf[j]);
+					if constexpr (method == METHOD_EQUALS) {
+						if (value == v1) {
+							results[n_results++] = addr + (u64)j;
+							if (n_results >= MAX_SEARCH_RESULTS)
+								break;
+						}
+					}
+					else {
+						if (value >= v1 && value <= v2) {
+							results[n_results++] = addr + (u64)j;
+							if (n_results >= MAX_SEARCH_RESULTS)
+								break;
+						}
 					}
 				}
-				else {
-					if (value >= v1 && value <= v2) {
-						results[n_results++] = addr + (u64)j;
-						if (n_results >= MAX_SEARCH_RESULTS)
-							break;
-					}
-				}
+
+				if (n_results >= MAX_SEARCH_RESULTS)
+					break;
 			}
 
-			if (n_results >= MAX_SEARCH_RESULTS)
-				break;
+			if (i < last_range)
+				addr = ranges[i + 1].first;
 		}
+	}
+	else {
+		n_prev_results = n_results;
+		if (!prev_results)
+			prev_results = new u64[MAX_SEARCH_RESULTS];
 
-		if (i < last_range)
-			addr = ranges[i + 1].first;
+		memcpy(prev_results, results, n_prev_results * sizeof(u64));
+		n_results = 0;
+
+		u64 page = 0;
+		bool fail = false;
+
+		for (int i = 0; i < n_prev_results && n_results < MAX_SEARCH_RESULTS; i++) {
+			u64 addr = prev_results[i];
+			u64 p = addr & ~PAGE_SIZE;
+			int offset = (int)(addr & (u64)(PAGE_SIZE - 1));
+
+			if (i == 0 || p > page) {
+				page = p;
+				int retrieved = read_page(handle, search.source_type, page, buf);
+				fail = retrieved <= 0;
+			}
+			if (!fail) {
+				T value = *(T*)(&buf[offset]);
+				if constexpr (method == METHOD_EQUALS) {
+					if (value == v1)
+						results[n_results++] = addr;
+				}
+				else {
+					if (value >= v1 && value <= v2)
+						results[n_results++] = addr;
+				}
+			}
+		}
 	}
 
 	delete[] buf;
@@ -197,7 +240,6 @@ void perform_search() {
 	started = true;
 	running = true;
 
-	n_results = 0;
 	if (!results)
 		results = new u64[MAX_SEARCH_RESULTS];
 

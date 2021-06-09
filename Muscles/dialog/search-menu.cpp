@@ -128,7 +128,7 @@ void Search_Menu::update_ui(Camera& view) {
 
 	// progress_bar.pos = {...
 
-	float total_btn_w = search_btn.width + start_x + cancel_btn.width;
+	float total_btn_w = search_btn.width + start_x + cancel_btn.width + start_x + reset_btn.width;
 
 	search_btn.pos = {
 		.x = (box.w - total_btn_w) / 2,
@@ -141,6 +141,12 @@ void Search_Menu::update_ui(Camera& view) {
 		.y = y,
 		.w = cancel_btn.width,
 		.h = cancel_btn.height
+	};
+	reset_btn.pos = {
+		.x = cancel_btn.pos.x + cancel_btn.pos.w + start_x,
+		.y = y,
+		.w = reset_btn.width,
+		.h = reset_btn.height
 	};
 	y += search_btn.pos.h + 2*border;
 
@@ -246,6 +252,15 @@ void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 
 void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	
+}
+
+void search_reset_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+
+	reset_search();
+	sm->table.resize(0);
+	sm->results_count_lbl.text = "";
+	sm->require_redraw();
 }
 
 void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -486,6 +501,13 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	cancel_btn.inactive_theme = search_btn.inactive_theme;
 	cancel_btn.update_size(scale);
 	ui.push_back(&cancel_btn);
+
+	reset_btn.text = "Reset";
+	reset_btn.action = search_reset_btn_handler;
+	reset_btn.active_theme = search_btn.active_theme;
+	reset_btn.inactive_theme = search_btn.inactive_theme;
+	reset_btn.update_size(scale);
+	ui.push_back(&reset_btn);
 
 	reveal_btn.padding = 0;
 	reveal_btn.action = search_reveal_btn_handler;

@@ -735,6 +735,7 @@ struct Search {
 void start_search(Search& s, std::vector<Region> const& regions);
 bool check_search_finished();
 void get_search_results(std::vector<u64>& results_vec);
+void reset_search();
 
 #define FLAG_POINTER       0x0001
 #define FLAG_BITFIELD      0x0002

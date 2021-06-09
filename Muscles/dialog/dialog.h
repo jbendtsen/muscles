@@ -250,6 +250,7 @@ struct Search_Menu : Box {
 
 	Button search_btn;
 	Button cancel_btn;
+	Button reset_btn;
 	Button reveal_btn;
 
 	Label results_lbl;
