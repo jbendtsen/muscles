@@ -227,6 +227,10 @@ struct Search_Menu : Box {
 	Image maxm;
 	Label title;
 
+	Label struct_lbl;
+	Edit_Box struct_edit;
+	Drop_Down struct_dd;
+
 	Label source_lbl;
 	Edit_Box source_edit;
 	Drop_Down source_dd;
@@ -245,6 +249,13 @@ struct Search_Menu : Box {
 	Label value_lbl;
 	Edit_Box value1_edit;
 	Edit_Box value2_edit;
+
+	Label object_lbl;
+	Data_View object;
+
+	std::vector<Drop_Down> obj_method;
+	std::vector<Edit_Box> obj_value1;
+	std::vector<Edit_Box> obj_value2;
 
 	//Progress_Bar progress_bar;
 

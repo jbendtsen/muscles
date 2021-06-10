@@ -145,7 +145,7 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 		for (int i = 0; i < n_prev_results && n_results < MAX_SEARCH_RESULTS; i++) {
 			u64 addr = prev_results[i];
 			u64 p = addr & ~PAGE_SIZE;
-			int offset = (int)(addr & (u64)(PAGE_SIZE - 1));
+			int offset = (int)(addr - p);//(int)(addr & (u64)(PAGE_SIZE - 1));
 
 			if (i == 0 || p > page) {
 				page = p;
