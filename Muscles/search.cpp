@@ -114,20 +114,17 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 						if (value == v1) {
 							results[n_results++] = addr + (u64)j;
 							if (n_results >= MAX_SEARCH_RESULTS)
-								break;
+								goto done;
 						}
 					}
 					else {
 						if (value >= v1 && value <= v2) {
 							results[n_results++] = addr + (u64)j;
 							if (n_results >= MAX_SEARCH_RESULTS)
-								break;
+								goto done;
 						}
 					}
 				}
-
-				if (n_results >= MAX_SEARCH_RESULTS)
-					break;
 			}
 
 			if (i < last_range)
@@ -169,6 +166,7 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 		}
 	}
 
+done:
 	delete[] buf;
 }
 
