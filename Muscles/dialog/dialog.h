@@ -163,7 +163,7 @@ struct View_Object : Box {
 	Drop_Down source_dd;
 	Edit_Box addr_edit;
 	Button hide_meta;
-	Data_View view;
+	Data_View object;
 	Scroll hscroll;
 	Scroll vscroll;
 	Button all_btn;
@@ -252,10 +252,13 @@ struct Search_Menu : Box {
 
 	Label object_lbl;
 	Data_View object;
+	Scroll object_scroll;
+	Divider object_div;
 
-	std::vector<Drop_Down> obj_method;
-	std::vector<Edit_Box> obj_value1;
-	std::vector<Edit_Box> obj_value2;
+	Table object_table;
+	Drop_Down *obj_method_list = nullptr;
+	Edit_Box *obj_value_ab_list = nullptr;
+	int obj_list_len = 0;
 
 	//Progress_Bar progress_bar;
 
@@ -267,15 +270,64 @@ struct Search_Menu : Box {
 	Label results_lbl;
 	Label results_count_lbl;
 
+	Table results_table;
 	Data_View results;
-	Scroll vscroll;
+	Scroll results_scroll;
+
+	Font *label_font = nullptr;
+	Font *dd_font = nullptr;
 
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
 
-	Table table;
 	Search search;
 	Source *source = nullptr;
+	Struct *record = nullptr;
 };
 
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector);
+template<class UI>
+void populate_object_table(UI *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
+	ui->object.data->clear_data();
+	ui->object.data->arena->rewind();
+
+	ui->record = nullptr;
+
+	if (!ui->struct_edit.editor.text.size())
+		return;
+
+	const char *name_str = ui->struct_edit.editor.text.c_str();
+	Struct *record = nullptr;
+	for (auto& s : structs) {
+		if (!s)
+			continue;
+
+		char *name = name_vector.at(s->name_idx);
+		if (name && !strcmp(name, name_str)) {
+			record = s;
+			break;
+		}
+	}
+
+	if (!is_struct_usable(record))
+		return;
+
+	ui->record = record;
+	int n_rows = ui->record->fields.n_fields;
+	ui->object.data->resize(n_rows);
+
+	const bool is_search = std::is_same_v<UI, Search_Menu>;
+	const int field_column_idx = is_search ? 2 : 1;
+
+	for (int i = 0; i < n_rows; i++) {
+		SET_TABLE_CHECKBOX(ui->object.data, 0, i, false);
+
+		Field& f = ui->record->fields.data[i];
+		char *name = name_vector.at(f.field_name_idx);
+		ui->object.data->columns[field_column_idx][i] = name;
+
+		if constexpr (is_search)
+			ui->object.data->columns[1][i] = name_vector.at(f.type_name_idx);
+	}
+
+	ui->object.needs_redraw = true;
+}

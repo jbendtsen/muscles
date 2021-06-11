@@ -311,7 +311,7 @@ Texture make_process_icon(RGBA& back, RGBA& outline, int length) {
 	return sdl_create_texture(pixels.get(), length, length);
 }
 
-Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool vertical) {
+Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool up_down) {
 	RGBA shade = color;
 	auto pixels = std::make_unique<u32[]>(width * height);
 
@@ -325,7 +325,7 @@ Texture make_divider_icon(RGBA& color, int width, int height, double gap, double
 			double x = ((double)j + 0.5) / (double)width - 0.5;
 			double y = ((double)i + 0.5) / (double)height - 0.5;
 
-			if (vertical) {
+			if (up_down) {
 				auto temp = x;
 				x = y;
 				y = temp;

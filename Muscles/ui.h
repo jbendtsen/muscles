@@ -816,7 +816,6 @@ struct Workspace {
 	void update(Camera& view, Input& input, Point& cursor);
 
 	void update_structs(std::string& text);
-	int get_full_field_name(Field& field, String_Vector& out_vec);
 
 	template<typename B>
 	B *first_box_of_type(MenuType mtype = MenuDefault) {

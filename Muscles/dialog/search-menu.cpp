@@ -5,6 +5,9 @@
 #define LABEL_HEIGHT_FACTOR 1.2f
 #define EDIT_HEIGHT_FACTOR  1.4f
 
+#define MIN_OBJECT_VIEW_HEIGHT 100
+#define MAX_DIVIDER_GAP_BOTTOM 150
+
 void Search_Menu::update_ui(Camera& view) {
 	reposition_box_buttons(cross, maxm, box.w, cross_size);
 
@@ -16,7 +19,7 @@ void Search_Menu::update_ui(Camera& view) {
 		.h = title_h + 2*border
 	};
 
-	float label_h = source_lbl.font->render.text_height() * LABEL_HEIGHT_FACTOR / view.scale;
+	float label_h = label_font->render.text_height() * LABEL_HEIGHT_FACTOR / view.scale;
 	float edit_h  = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
 
 	float start_x = 2*border;
@@ -29,19 +32,44 @@ void Search_Menu::update_ui(Camera& view) {
 		.h = reveal_btn_length
 	};
 
+	const bool is_obj = menu_type == MenuObject;
+
 	if (params_revealed) {
+		float beneath_top_label = label_h + border;
+		float source_x = start_x;
+
+		if (is_obj) {
+			float struct_w = box.w / 3;
+
+			struct_lbl.pos = {
+				.x = start_x,
+				.y = y,
+				.w = struct_w,
+				.h = label_h
+			};
+
+			struct_edit.pos = {
+				.x = start_x,
+				.y = y + beneath_top_label,
+				.w = struct_w,
+				.h = edit_h
+			};
+
+			source_x += struct_w + start_x;
+		}
+
 		source_lbl.pos = {
-			.x = start_x,
+			.x = source_x,
 			.y = y,
 			.w = 80,
 			.h = label_h
 		};
-		y += source_lbl.pos.h + border;
+		y += beneath_top_label;
 
 		source_edit.pos = {
-			.x = start_x,
+			.x = source_x,
 			.y = y,
-			.w = reveal_btn.pos.x - 2*start_x,
+			.w = reveal_btn.pos.x - start_x - source_x,
 			.h = edit_h
 		};
 		y += source_edit.pos.h + 2*border;
@@ -71,57 +99,95 @@ void Search_Menu::update_ui(Camera& view) {
 		};
 		y += end_addr_edit.pos.h + 2*border;
 
-		type_lbl.pos = {
-			.x = start_x,
-			.y = y,
-			.w = 140,
-			.h = label_h
-		};
+		if (is_obj) {
+			object_lbl.pos = {
+				.x = start_x,
+				.y = y,
+				.w = 140,
+				.h = label_h
+			};
+			y += object_lbl.pos.h + border;
 
-		method_lbl.pos = {
-			.x = 3*start_x + type_lbl.pos.w,
-			.y = y,
-			.w = 120,
-			.h = label_h
-		};
-		y += method_lbl.pos.h + border;
+			const float table_div_gap = start_x;
 
-		type_edit.pos = {
-			.x = start_x,
-			.y = y,
-			.w = type_lbl.pos.w,
-			.h = edit_h
-		};
+			if (!object_div.minimum) {
+				object_div.minimum = y + MIN_OBJECT_VIEW_HEIGHT + table_div_gap;
+				object_div.position = object_div.minimum;
+			}
 
-		method_dd.pos = {
-			.x = method_lbl.pos.x,
-			.y = y,
-			.w = method_lbl.pos.w,
-			.h = edit_h
-		};
-		y += method_dd.pos.h + 2*border;
+			object_div.maximum = box.h - MAX_DIVIDER_GAP_BOTTOM;
+			if (object_div.maximum < object_div.minimum)
+				object_div.maximum = object_div.minimum;
 
-		value_lbl.pos = {
-			.x = start_x,
-			.y = y,
-			.w = 100,
-			.h = label_h
-		};
-		y += value_lbl.pos.h + border;
+			object.pos = {
+				.x = start_x,
+				.y = y,
+				.w = box.w - 2*start_x,
+				.h = object_div.position - table_div_gap - y
+			};
 
-		value1_edit.pos = {
-			.x = start_x,
-			.y = y,
-			.w = start_addr_edit.pos.w,
-			.h = edit_h,
-		};
-		value2_edit.pos = {
-			.x = end_addr_edit.pos.x,
-			.y = y,
-			.w = end_addr_edit.pos.w,
-			.h = edit_h
-		};
-		y += value2_edit.pos.h;
+			y = object_div.position;
+
+			object_div.pos = {
+				.x = start_x,
+				.y = object_div.position,
+				.w = box.w - 2*start_x,
+				.h = object_div.breadth
+			};
+		}
+		else {
+			type_lbl.pos = {
+				.x = start_x,
+				.y = y,
+				.w = 140,
+				.h = label_h
+			};
+
+			method_lbl.pos = {
+				.x = 3*start_x + type_lbl.pos.w,
+				.y = y,
+				.w = 120,
+				.h = label_h
+			};
+			y += method_lbl.pos.h + border;
+
+			type_edit.pos = {
+				.x = start_x,
+				.y = y,
+				.w = type_lbl.pos.w,
+				.h = edit_h
+			};
+
+			method_dd.pos = {
+				.x = method_lbl.pos.x,
+				.y = y,
+				.w = method_lbl.pos.w,
+				.h = edit_h
+			};
+			y += method_dd.pos.h + 2*border;
+
+			value_lbl.pos = {
+				.x = start_x,
+				.y = y,
+				.w = 100,
+				.h = label_h
+			};
+			y += value_lbl.pos.h + border;
+
+			value1_edit.pos = {
+				.x = start_x,
+				.y = y,
+				.w = start_addr_edit.pos.w,
+				.h = edit_h,
+			};
+			value2_edit.pos = {
+				.x = end_addr_edit.pos.x,
+				.y = y,
+				.w = end_addr_edit.pos.w,
+				.h = edit_h
+			};
+			y += value2_edit.pos.h;
+		}
 	}
 
 	y += 5*border;
@@ -175,6 +241,12 @@ void Search_Menu::update_ui(Camera& view) {
 	};
 }
 
+void search_struct_edit_handler(Edit_Box *edit, Input& input) {
+	auto sm = dynamic_cast<Search_Menu*>(edit->parent);
+	Workspace& ws = *edit->parent->parent;
+	populate_object_table<Search_Menu>(sm, ws.structs, ws.name_vector);
+}
+
 void search_source_edit_handler(Edit_Box *edit, Input& input) {
 	auto sm = dynamic_cast<Search_Menu*>(edit->parent);
 
@@ -208,6 +280,10 @@ void search_method_dd_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 }
 
 void search_value_edit_handler(Edit_Box *edit, Input& input) {
+	
+}
+
+void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	
 }
 
@@ -258,7 +334,7 @@ void search_reset_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
 
 	reset_search();
-	sm->table.resize(0);
+	sm->results_table.resize(0);
 	sm->results_count_lbl.text = "";
 	sm->require_redraw();
 }
@@ -291,7 +367,7 @@ void search_results_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 		if (!sm->source || sm->results.sel_row < 0)
 			return;
 
-		u64 address = (u64)sm->table.columns[0][sm->results.sel_row];
+		u64 address = (u64)sm->results_table.columns[0][sm->results.sel_row];
 		sm->parent->view_source_at(sm->source, address);
 	}
 }
@@ -306,6 +382,8 @@ void Search_Menu::update_reveal_button(float scale) {
 
 void Search_Menu::refresh(Point *cursor) {
 	Workspace& ws = *parent;
+
+	struct_dd.external = &ws.struct_names;
 
 	int n_sources = ws.sources.size();
 	source_dd.content.resize(n_sources);
@@ -327,10 +405,10 @@ void Search_Menu::refresh(Point *cursor) {
 	if (check_search_finished()) {
 		cancel_btn.set_active(false);
 
-		get_search_results((std::vector<u64>&)table.columns[0]);
+		get_search_results((std::vector<u64>&)results_table.columns[0]);
 
-		int n_results = table.columns[0].size();
-		table.columns[1].resize(n_results, nullptr);
+		int n_results = results_table.columns[0].size();
+		results_table.columns[1].resize(n_results, nullptr);
 
 		results_count_lbl.text = std::to_string(n_results);
 
@@ -345,10 +423,16 @@ void Search_Menu::handle_zoom(Workspace& ws, float new_scale) {
 
 	float edit_h = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / new_scale;
 	source_edit.update_icon(IconTriangle, edit_h, new_scale);
-	type_edit.update_icon(IconTriangle, edit_h, new_scale);
+
+	if (menu_type == MenuObject) {
+		struct_edit.update_icon(IconTriangle, edit_h, new_scale);
+		object_div.make_icon(new_scale);
+	}
+	else
+		type_edit.update_icon(IconTriangle, edit_h, new_scale);
 
 	sdl_destroy_texture(&method_dd.icon);
-	method_dd.icon_length = method_dd.font->render.text_height() * EDIT_HEIGHT_FACTOR;
+	method_dd.icon_length = dd_font->render.text_height() * EDIT_HEIGHT_FACTOR;
 	method_dd.icon = make_triangle(method_dd.icon_color, method_dd.icon_length, method_dd.icon_length);
 
 	sdl_destroy_texture(&search_btn.icon);
@@ -374,14 +458,40 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	title.text = mtype == MenuValue ? "Value Search" : "Object Search";
 	ui.push_back(&title);
 
-	source_lbl.font = ws.make_font(11, ws.colors.text, scale);
-	source_lbl.text = "Source";
-	ui.push_back(&source_lbl);
+	label_font = ws.make_font(11, ws.colors.text, scale);
+	dd_font = label_font;
 
 	RGBA icon_color = ws.colors.text;
 	icon_color.a = 0.7;
 
-	source_edit.font = source_lbl.font;
+	const bool is_obj = mtype == MenuObject;
+	if (is_obj) {
+		struct_lbl.font = label_font;
+		struct_lbl.text = "Struct";
+		ui.push_back(&struct_lbl);
+
+		struct_edit.font = label_font;
+		struct_edit.caret = ws.colors.caret;
+		struct_edit.default_color = ws.colors.dark;
+		struct_edit.icon_color = icon_color;
+		struct_edit.icon_right = true;
+		struct_edit.dropdown = &struct_dd;
+		struct_edit.key_action = search_struct_edit_handler;
+		ui.push_back(&struct_edit);
+
+		struct_dd.visible = false;
+		struct_dd.font = label_font;
+		struct_dd.default_color = ws.colors.back;
+		struct_dd.hl_color = ws.colors.hl;
+		struct_dd.sel_color = ws.colors.active;
+		ui.push_back(&struct_dd);
+	}
+
+	source_lbl.font = label_font;
+	source_lbl.text = "Source";
+	ui.push_back(&source_lbl);
+
+	source_edit.font = label_font;
 	source_edit.caret = ws.colors.caret;
 	source_edit.default_color = ws.colors.dark;
 	source_edit.icon_color = icon_color;
@@ -391,85 +501,125 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	ui.push_back(&source_edit);
 
 	source_dd.visible = false;
-	source_dd.font = source_lbl.font;
+	source_dd.font = dd_font;
 	source_dd.default_color = ws.colors.back;
 	source_dd.hl_color = ws.colors.hl;
 	source_dd.sel_color = ws.colors.active;
 	ui.push_back(&source_dd);
 
-	addr_lbl.font = source_lbl.font;
+	addr_lbl.font = label_font;
 	addr_lbl.text = "Address Space";
 	ui.push_back(&addr_lbl);
 
-	start_addr_edit.font = source_lbl.font;
+	start_addr_edit.font = label_font;
 	start_addr_edit.editor.text = "0x" + std::string(16, '0');
 	start_addr_edit.caret = ws.colors.caret;
 	start_addr_edit.default_color = ws.colors.dark;
 	start_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&start_addr_edit);
 
-	end_addr_edit.font = source_lbl.font;
+	end_addr_edit.font = label_font;
 	end_addr_edit.editor.text = "0x" + std::string(16, 'f');
 	end_addr_edit.caret = ws.colors.caret;
 	end_addr_edit.default_color = ws.colors.dark;
 	end_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&end_addr_edit);
 
-	type_lbl.font = source_lbl.font;
-	type_lbl.text = "Type";
-	ui.push_back(&type_lbl);
+	if (is_obj) {
+		object_lbl.font = label_font;
+		object_lbl.text = "Object";
+		ui.push_back(&object_lbl);
 
-	type_edit.font = source_lbl.font;
-	type_edit.editor.text = "int32_t";
-	type_edit.caret = ws.colors.caret;
-	type_edit.default_color = ws.colors.dark;
-	type_edit.icon_color = icon_color;
-	type_edit.icon_right = true;
-	type_edit.dropdown = &type_dd;
-	type_edit.key_action = search_type_edit_handler;
-	ui.push_back(&type_edit);
+		Column obj_cols[] = {
+			{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
+			{ColumnString,   0, 0.15, 0, 0, "Type"},
+			{ColumnString,   0, 0.25, 0, 0, "Field"},
+			{ColumnElement,  0, 0.15, 0, 0, "Method"},
+			{ColumnElement,  0, 0.20, 0, 0, "Value 1"},
+			{ColumnElement,  0, 0.20, 0, 0, "Value 2"}
+		};
+		object_table.init(obj_cols, nullptr, 6, 0);
 
-	type_dd.visible = false;
-	type_dd.font = source_lbl.font;
-	type_dd.default_color = ws.colors.back;
-	type_dd.hl_color = ws.colors.hl;
-	type_dd.sel_color = ws.colors.active;
-	ui.push_back(&type_dd);
+		object.font = label_font;
+		object.data = &object_table;
+		object.action = search_object_handler;
+		object.default_color = ws.colors.dark;
+		object.back_color = ws.colors.dark;
+		object.hl_color = ws.colors.hl;
+		object.sel_color = ws.colors.hl;
+		object.font = ws.default_font;
+		object.vscroll = &object_scroll;
+		//object.show_column_names = true;
+		ui.push_back(&object);
 
-	method_lbl.font = source_lbl.font;
-	method_lbl.text = "Method";
-	ui.push_back(&method_lbl);
+		object_scroll.content = &object;
+		ui.push_back(&object_scroll);
 
-	method_dd.font = source_lbl.font;
-	method_dd.action = search_method_dd_handler;
-	method_dd.default_color = ws.colors.dark;
-	method_dd.hl_color = ws.colors.hl;
-	method_dd.sel_color = ws.colors.active;
-	method_dd.icon_color = icon_color;
-	method_dd.content = {
-		(char*)"Equals",
-		(char*)"Range"
-	};
-	method_dd.keep_selected = true;
-	method_dd.sel = 0;
-	ui.push_back(&method_dd);
+		object_div.default_color = ws.colors.div;
+		object_div.breadth = 2;
+		object_div.moveable = true;
+		object_div.minimum = 0;
+		object_div.position = 0;
+		object_div.cursor_type = CursorResizeNorthSouth;
+		ui.push_back(&object_div);
+	}
+	else {
+		type_lbl.font = label_font;
+		type_lbl.text = "Type";
+		ui.push_back(&type_lbl);
 
-	value_lbl.font = source_lbl.font;
-	value_lbl.text = "Value";
-	ui.push_back(&value_lbl);
+		type_edit.font = label_font;
+		type_edit.editor.text = "int32_t";
+		type_edit.caret = ws.colors.caret;
+		type_edit.default_color = ws.colors.dark;
+		type_edit.icon_color = icon_color;
+		type_edit.icon_right = true;
+		type_edit.dropdown = &type_dd;
+		type_edit.key_action = search_type_edit_handler;
+		ui.push_back(&type_edit);
 
-	value1_edit.font = source_lbl.font;
-	value1_edit.caret = ws.colors.caret;
-	value1_edit.default_color = ws.colors.dark;
-	value1_edit.key_action = search_value_edit_handler;
-	ui.push_back(&value1_edit);
+		type_dd.visible = false;
+		type_dd.font = dd_font;
+		type_dd.default_color = ws.colors.back;
+		type_dd.hl_color = ws.colors.hl;
+		type_dd.sel_color = ws.colors.active;
+		ui.push_back(&type_dd);
 
-	value2_edit.visible = false;
-	value2_edit.font = source_lbl.font;
-	value2_edit.caret = ws.colors.caret;
-	value2_edit.default_color = ws.colors.dark;
-	value2_edit.key_action = search_value_edit_handler;
-	ui.push_back(&value2_edit);
+		method_lbl.font = label_font;
+		method_lbl.text = "Method";
+		ui.push_back(&method_lbl);
+
+		method_dd.font = dd_font;
+		method_dd.action = search_method_dd_handler;
+		method_dd.default_color = ws.colors.dark;
+		method_dd.hl_color = ws.colors.hl;
+		method_dd.sel_color = ws.colors.active;
+		method_dd.icon_color = icon_color;
+		method_dd.content = {
+			(char*)"Equals",
+			(char*)"Range"
+		};
+		method_dd.keep_selected = true;
+		method_dd.sel = 0;
+		ui.push_back(&method_dd);
+
+		value_lbl.font = label_font;
+		value_lbl.text = "Value";
+		ui.push_back(&value_lbl);
+
+		value1_edit.font = label_font;
+		value1_edit.caret = ws.colors.caret;
+		value1_edit.default_color = ws.colors.dark;
+		value1_edit.key_action = search_value_edit_handler;
+		ui.push_back(&value1_edit);
+
+		value2_edit.visible = false;
+		value2_edit.font = label_font;
+		value2_edit.caret = ws.colors.caret;
+		value2_edit.default_color = ws.colors.dark;
+		value2_edit.key_action = search_value_edit_handler;
+		ui.push_back(&value2_edit);
+	}
 
 	//Progress_Bar progress_bar;
 
@@ -534,22 +684,22 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		{ColumnHex, 16, 0.5, 0, 0, "Address"},
 		{ColumnString, 0, 0.5, 0, 0, "Value"},
 	};
-	table.init(cols, nullptr, 2, 0);
+	results_table.init(cols, nullptr, 2, 0);
 
-	results.font = source_lbl.font;
-	results.data = &table;
+	results.font = label_font;
+	results.data = &results_table;
 	results.action = search_results_handler;
 	results.default_color = ws.colors.dark;
 	results.back_color = ws.colors.dark;
 	results.hl_color = ws.colors.hl;
 	results.sel_color = ws.colors.hl;
 	results.font = ws.default_font;
-	results.vscroll = &vscroll;
+	results.vscroll = &results_scroll;
 	results.show_column_names = true;
 	ui.push_back(&results);
 
-	vscroll.content = &results;
-	ui.push_back(&vscroll);
+	results_scroll.content = &results;
+	ui.push_back(&results_scroll);
 
 	initial_width = 400;
 	initial_height = 450;

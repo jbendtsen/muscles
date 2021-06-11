@@ -180,7 +180,7 @@ Texture make_cross_icon(RGBA& color, int length, float inner, float outer);
 Texture make_folder_icon(RGBA& dark, RGBA& light, int w, int h);
 Texture make_file_icon(RGBA& back, RGBA& fold_color, RGBA& line_color, int w, int h);
 Texture make_process_icon(RGBA& back, RGBA& outline, int length);
-Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool vertical);
+Texture make_divider_icon(RGBA& color, int width, int height, double gap, double thicc, double sharpness, bool up_down);
 Texture make_goto_icon(RGBA& color, int length);
 Texture make_glass_icon(RGBA& color, int length);
 Texture make_plus_minus_icon(RGBA& color, int length, bool plus);
@@ -815,8 +815,11 @@ struct Struct {
 	Field_Vector fields;
 };
 
+bool is_struct_usable(Struct *s);
 void set_primitives(Map& definitions);
 Value64 evaluate_number(const char *token, bool as_float = false);
+int get_full_field_name(Field& field, String_Vector& name_vector, String_Vector& out_vec);
+
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);

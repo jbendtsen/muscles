@@ -107,7 +107,7 @@ void View_Object::update_ui(Camera& camera) {
 		scroll_w
 	};
 
-	view.pos = {
+	object.pos = {
 		label_x,
 		y,
 		view_w,
@@ -153,14 +153,14 @@ void View_Object::select_view_type(bool all) {
 	sel_btn.active_theme = *theme_sel;
 	sel_btn.inactive_theme = *theme_sel;
 
-	view.condition_col = all ? -1 : 0;
-	view.needs_redraw = true;
+	object.condition_col = all ? -1 : 0;
+	object.needs_redraw = true;
 }
 
 void struct_edit_handler(Edit_Box *edit, Input& input) {
 	auto ui = dynamic_cast<View_Object*>(edit->parent);
 	Workspace *ws = edit->parent->parent;
-	populate_object_table(ui, ws->structs, ws->name_vector);
+	populate_object_table<View_Object>(ui, ws->structs, ws->name_vector);
 }
 
 void source_edit_handler(Edit_Box *edit, Input& input) {
@@ -186,7 +186,7 @@ void source_edit_handler(Edit_Box *edit, Input& input) {
 		ui->span_idx = src ? src->request_span() : -1;
 	}
 
-	ui->view.needs_redraw = true;
+	ui->object.needs_redraw = true;
 }
 
 void view_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -214,13 +214,13 @@ void View_Object::refresh(Point *cursor) {
 	field_vec.clear();
 
 	int idx = -1;
-	for (auto& row : view.data->columns[1]) {
+	for (auto& row : object.data->columns[1]) {
 		idx++;
 		if (idx >= record->fields.n_fields)
 			break;
 
 		Field& field = record->fields.data[idx];
-		int name_idx = ws.get_full_field_name(field, field_vec);
+		int name_idx = get_full_field_name(field, ws.name_vector, field_vec);
 		char *name = &field_vec.pool[name_idx];
 
 		Bucket& buck = field_fmt.insert(name);
@@ -236,7 +236,7 @@ void View_Object::refresh(Point *cursor) {
 		else
 			fmt = format[buck.value];
 
-		format_field_value(field, fmt, span, (char*&)view.data->columns[2][idx], view.data->headers[2].count_per_cell);
+		format_field_value(field, fmt, span, (char*&)object.data->columns[2][idx], object.data->headers[2].count_per_cell);
 	}
 }
 
@@ -307,16 +307,16 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	vscroll.sel_color = ws.colors.scroll_sel;
 	ui.push_back(&vscroll);
 
-	view.font = ws.default_font;
-	view.default_color = ws.colors.dark;
-	view.hl_color = ws.colors.hl;
-	view.sel_color = ws.colors.light;
-	view.action = view_handler;
-	view.use_sf_cache = false;
-	view.hscroll = &hscroll;
-	view.hscroll->content = &view;
-	view.vscroll = &vscroll;
-	view.vscroll->content = &view;
+	object.font = ws.default_font;
+	object.default_color = ws.colors.dark;
+	object.hl_color = ws.colors.hl;
+	object.sel_color = ws.colors.light;
+	object.action = view_handler;
+	object.use_sf_cache = false;
+	object.hscroll = &hscroll;
+	object.hscroll->content = &object;
+	object.vscroll = &vscroll;
+	object.vscroll->content = &object;
 
 	Column cols[] = {
 		{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
@@ -327,9 +327,9 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	Arena *arena = &ws.object_arena;
 	arena->set_rewind_point();
 	table.init(cols, arena, 3, 0);
-	view.data = &table;
+	object.data = &table;
 
-	ui.push_back(&view);
+	ui.push_back(&object);
 
 	struct_label.font = ws.make_font(11, ws.colors.text, scale);
 	struct_label.text = "Struct:";
@@ -424,44 +424,4 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	min_width = 300;
 	min_height = 200;
 	expungeable = true;
-}
-
-void populate_object_table(View_Object *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
-	ui->view.data->clear_data();
-	ui->view.data->arena->rewind();
-
-	ui->record = nullptr;
-
-	if (!ui->struct_edit.editor.text.size())
-		return;
-
-	const char *name_str = ui->struct_edit.editor.text.c_str();
-	Struct *record = nullptr;
-	for (auto& s : structs) {
-		if (!s)
-			continue;
-
-		char *name = name_vector.at(s->name_idx);
-		if (name && !strcmp(name, name_str)) {
-			record = s;
-			break;
-		}
-	}
-
-	if (!record || (record->flags & (FLAG_UNUSABLE | FLAG_AVAILABLE)) != 0 || record->fields.n_fields <= 0)
-		return;
-
-	ui->record = record;
-	int n_rows = ui->record->fields.n_fields;
-	ui->view.data->resize(n_rows);
-
-	for (int i = 0; i < n_rows; i++) {
-		SET_TABLE_CHECKBOX(ui->view.data, 0, i, false);
-
-		Field& f = ui->record->fields.data[i];
-		char *name = name_vector.at(f.field_name_idx);
-		ui->view.data->columns[1][i] = name;
-	}
-
-	ui->view.needs_redraw = true;
 }

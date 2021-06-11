@@ -814,8 +814,8 @@ void Divider::make_icon(float scale) {
 	double thickness = 0.15;
 	double sharpness = 2.0;
 
-	icon_default = make_divider_icon(fade_color, icon_w, icon_h, gap, thickness, sharpness, false);
-	icon_hl = make_divider_icon(default_color, icon_w, icon_h, gap, thickness, sharpness, false);
+	icon_default = make_divider_icon(fade_color, icon_w, icon_h, gap, thickness, sharpness, !vertical);
+	icon_hl = make_divider_icon(default_color, icon_w, icon_h, gap, thickness, sharpness, !vertical);
 
 	icon = was_hl ? icon_hl : icon_default;
 }
@@ -1156,8 +1156,10 @@ void Edit_Box::post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool b
 		return;
 
 	dropdown->pos = pos;
-	if (dropdown->dropped)
+	if (dropdown->dropped) {
+		dropdown->width = pos.w;
 		dropdown->draw_menu(nullptr, view, screen.x, screen.y + pos.h * view.scale);
+	}
 }
 
 void Hex_View::set_region(u64 address, u64 size) {

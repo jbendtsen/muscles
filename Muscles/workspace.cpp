@@ -406,70 +406,8 @@ void Workspace::update_structs(std::string& text) {
 
 	for (auto& b : boxes) {
 		if (b->box_type == BoxViewObject)
-			populate_object_table((View_Object*)b, structs, name_vector);
+			populate_object_table<View_Object>((View_Object*)b, structs, name_vector);
+		else if (b->box_type == BoxSearch && b->menu_type == MenuObject)
+			populate_object_table<Search_Menu>((Search_Menu*)b, structs, name_vector);
 	}
-}
-
-/*
-   This method gets the full name of a field in a struct instance, eg. player.position.x.
-   It retrieves names starting with the target field and working back up the hierarchy (eg. x, position, player)
-   By reversing each field name, then reversing the result at the end, the string is arranged in the desired order.
-*/
-int Workspace::get_full_field_name(Field& field, String_Vector& out_vec) {
-	Field *f = &field;
-	int start = out_vec.head;
-	char *name = nullptr;
-	bool first = true;
-	bool last = false;
-
-	while (true) {
-		if (!first)
-			out_vec.pool[out_vec.head-1] = '.';
-
-		if (!name) {
-			name = name_vector.at(f->field_name_idx);
-			if (!name || *name == 0)
-				name = (char*)"???";
-		}
-		int len = strlen(name);
-
-		char *out = out_vec.allocate(len);
-		char *in = &name[len-1];
-		while (in >= name) {
-			*out++ = *in;
-			in--;
-		}
-
-		if (last || !f->paste_st)
-			break;
-
-		first = false;
-		last = f->paste_field < 0;
-		if (last) {
-			name = name_vector.at(f->paste_st->name_idx);
-			if (!name || *name == 0)
-				name = (char*)"???";
-		}
-		else {
-			name = nullptr;
-			f = &f->paste_st->fields.data[f->paste_field];
-		}
-	}
-
-	int len = out_vec.head - start - 1;
-	char *full_name = out_vec.allocate(len + 1);
-
-	{
-		char *begin = &out_vec.pool[start];
-		char *in = &begin[len-1];
-		char *out = full_name;
-
-		while (in >= begin) {
-			*out++ = *in;
-			in--;
-		}
-		*out++ = 0;
-	}
-
-	return full_name - out_vec.pool;
 }

@@ -4,6 +4,17 @@
 
 const int pointer_size = 64; // bits
 
+bool is_symbol(char c) {
+	return !(c >= '0' && c <= '9') &&
+		!(c >= 'A' && c <= 'Z') &&
+		!(c >= 'a' && c <= 'z') &&
+		c != '_';
+}
+
+bool is_struct_usable(Struct *s) {
+	return s && (s->flags & (FLAG_UNUSABLE | FLAG_AVAILABLE)) == 0 && s->fields.n_fields > 0;
+}
+
 void set_primitives(Map& definitions) {
 	u32 flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
 	auto set = [flags](Bucket& buck, u32 type, u64 value) {
@@ -28,11 +39,78 @@ void set_primitives(Map& definitions) {
 	set(definitions.insert("double"), FLAG_FLOAT, 64);
 }
 
-bool is_symbol(char c) {
-	return !(c >= '0' && c <= '9') &&
-		!(c >= 'A' && c <= 'Z') &&
-		!(c >= 'a' && c <= 'z') &&
-		c != '_';
+// TODO: Expand upon this function to allow for constant variable lookup
+Value64 evaluate_number(const char *token, bool as_float) {
+	Value64 value;
+	if (as_float)
+		value.d = atof(token);
+	else
+		value.i = strtoull(token, nullptr, 0);
+	return value;
+}
+
+/*
+   This method gets the full name of a field in a struct instance, eg. player.position.x.
+   It retrieves names starting with the target field and working back up the hierarchy (eg. x, position, player)
+   By reversing each field name, then reversing the result at the end, the string is arranged in the desired order.
+*/
+int get_full_field_name(Field& field, String_Vector& name_vector, String_Vector& out_vec) {
+	Field *f = &field;
+	int start = out_vec.head;
+	char *name = nullptr;
+	bool first = true;
+	bool last = false;
+
+	while (true) {
+		if (!first)
+			out_vec.pool[out_vec.head-1] = '.';
+
+		if (!name) {
+			name = name_vector.at(f->field_name_idx);
+			if (!name || *name == 0)
+				name = (char*)"???";
+		}
+		int len = strlen(name);
+
+		char *out = out_vec.allocate(len);
+		char *in = &name[len-1];
+		while (in >= name) {
+			*out++ = *in;
+			in--;
+		}
+
+		if (last || !f->paste_st)
+			break;
+
+		first = false;
+		last = f->paste_field < 0;
+		if (last) {
+			name = name_vector.at(f->paste_st->name_idx);
+			if (!name || *name == 0)
+				name = (char*)"???";
+		}
+		else {
+			name = nullptr;
+			f = &f->paste_st->fields.data[f->paste_field];
+		}
+	}
+
+	int len = out_vec.head - start - 1;
+	char *full_name = out_vec.allocate(len + 1);
+
+	{
+		char *begin = &out_vec.pool[start];
+		char *in = &begin[len-1];
+		char *out = full_name;
+
+		while (in >= begin) {
+			*out++ = *in;
+			in--;
+		}
+		*out++ = 0;
+	}
+
+	return full_name - out_vec.pool;
 }
 
 // TODO: don't split up floating point literals into separate tokens, eg. "3", ".", "141"
@@ -155,16 +233,6 @@ void tokenize(String_Vector& tokens, const char *text, int sz) {
 		tokens.add_buffer(word, word_len);
 
 	tokens.append_extra_zero();
-}
-
-// TODO: Expand upon this function to allow for constant variable lookup
-Value64 evaluate_number(const char *token, bool as_float) {
-	Value64 value;
-	if (as_float)
-		value.d = atof(token);
-	else
-		value.i = strtoull(token, nullptr, 0);
-	return value;
 }
 
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens) {
