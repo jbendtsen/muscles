@@ -276,6 +276,7 @@ struct Search_Menu : Box {
 
 	Font *label_font = nullptr;
 	Font *dd_font = nullptr;
+	Font *table_font = nullptr;
 
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
@@ -316,17 +317,16 @@ void populate_object_table(UI *ui, std::vector<Struct*>& structs, String_Vector&
 	ui->object.data->resize(n_rows);
 
 	const bool is_search = std::is_same_v<UI, Search_Menu>;
-	const int field_column_idx = is_search ? 2 : 1;
 
 	for (int i = 0; i < n_rows; i++) {
 		SET_TABLE_CHECKBOX(ui->object.data, 0, i, false);
 
 		Field& f = ui->record->fields.data[i];
 		char *name = name_vector.at(f.field_name_idx);
-		ui->object.data->columns[field_column_idx][i] = name;
+		ui->object.data->columns[1][i] = name;
 
 		if constexpr (is_search)
-			ui->object.data->columns[1][i] = name_vector.at(f.type_name_idx);
+			ui->object.data->columns[2][i] = name_vector.at(f.type_name_idx);
 	}
 
 	ui->object.needs_redraw = true;

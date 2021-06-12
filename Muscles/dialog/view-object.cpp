@@ -326,7 +326,7 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 
 	Arena *arena = &ws.object_arena;
 	arena->set_rewind_point();
-	table.init(cols, arena, 3, 0);
+	table.init(cols, arena, nullptr, nullptr, 3, 0);
 	object.data = &table;
 
 	ui.push_back(&object);

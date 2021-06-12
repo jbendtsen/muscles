@@ -1,20 +1,20 @@
 #pragma once
 
 enum Element_Type {
-	ElemNone = 0,
-	ElemImage,
-	ElemLabel,
-	ElemButton,
-	ElemDivider,
-	ElemDataView,
-	ElemScroll,
-	ElemEditBox,
-	ElemDropDown,
-	ElemCheckbox,
-	ElemHexView,
-	ElemTextEditor,
-	ElemTabs,
-	ElemNumEdit
+	Elem_None = 0,
+	Elem_Image,
+	Elem_Label,
+	Elem_Button,
+	Elem_Divider,
+	Elem_Data_View,
+	Elem_Scroll,
+	Elem_Edit_Box,
+	Elem_Drop_Down,
+	Elem_Checkbox,
+	Elem_Hex_View,
+	Elem_Text_Editor,
+	Elem_Tabs,
+	Elem_Number_Edit
 };
 
 struct UI_Element;
@@ -169,7 +169,7 @@ void (*get_maximize_box(void))(UI_Element*, Camera&, bool);
 struct Scroll;
 
 struct Button : UI_Element {
-	Button() : UI_Element(ElemButton) {}
+	Button() : UI_Element(Elem_Button) {}
 	~Button() {
 		sdl_destroy_texture(&icon);
 	}
@@ -204,7 +204,7 @@ struct Button : UI_Element {
 };
 
 struct Checkbox : UI_Element {
-	Checkbox() : UI_Element(ElemCheckbox) {}
+	Checkbox() : UI_Element(Elem_Checkbox) {}
 
 	bool checked = false;
 	std::string text;
@@ -221,7 +221,7 @@ struct Checkbox : UI_Element {
 };
 
 struct Data_View : UI_Element {
-	Data_View() : UI_Element(ElemDataView) {
+	Data_View() : UI_Element(Elem_Data_View) {
 		use_sf_cache = true;
 	}
 	~Data_View() {
@@ -279,7 +279,7 @@ struct Data_View : UI_Element {
 };
 
 struct Divider : UI_Element {
-	Divider() : UI_Element(ElemDivider) {}
+	Divider() : UI_Element(Elem_Divider) {}
 	~Divider() {
 		sdl_destroy_texture(&icon_default);
 		sdl_destroy_texture(&icon_hl);
@@ -310,7 +310,7 @@ struct Divider : UI_Element {
 };
 
 struct Drop_Down : UI_Element {
-	Drop_Down() : UI_Element(ElemDropDown) {}
+	Drop_Down() : UI_Element(Elem_Drop_Down) {}
 
 	bool dropped = false;
 	int hl = -1;
@@ -354,7 +354,7 @@ struct Drop_Down : UI_Element {
 };
 
 struct Edit_Box : UI_Element {
-	Edit_Box() : UI_Element(ElemEditBox, CursorEdit), editor(this) {
+	Edit_Box() : UI_Element(Elem_Edit_Box, CursorEdit), editor(this) {
 		editor.multiline = false;
 		use_post_draw = true;
 	}
@@ -407,7 +407,7 @@ struct Edit_Box : UI_Element {
 };
 
 struct Hex_View : UI_Element {
-	Hex_View() : UI_Element(ElemHexView) {}
+	Hex_View() : UI_Element(Elem_Hex_View) {}
 
 	bool alive = false;
 	int offset = 0;
@@ -456,7 +456,7 @@ struct Hex_View : UI_Element {
 };
 
 struct Image : UI_Element {
-	Image() : UI_Element(ElemImage) {}
+	Image() : UI_Element(Elem_Image) {}
 	~Image() {
 		//sdl_destroy_texture(&img);
 	}
@@ -466,7 +466,7 @@ struct Image : UI_Element {
 };
 
 struct Label : UI_Element {
-	Label() : UI_Element(ElemLabel) {}
+	Label() : UI_Element(Elem_Label) {}
 
 	std::string text;
 
@@ -484,7 +484,7 @@ struct Label : UI_Element {
 };
 
 struct Number_Edit : UI_Element {
-	Number_Edit() : UI_Element(ElemNumEdit), editor(this) {
+	Number_Edit() : UI_Element(Elem_Number_Edit), editor(this) {
 		editor.use_clipboard = false;
 		editor.numeric_only = true;
 	}
@@ -525,7 +525,7 @@ struct Number_Edit : UI_Element {
 };
 
 struct Scroll : UI_Element {
-	Scroll() : UI_Element(ElemScroll) {}
+	Scroll() : UI_Element(Elem_Scroll) {}
 
 	bool vertical = true;
 
@@ -560,7 +560,7 @@ struct Scroll : UI_Element {
 };
 
 struct Tabs : UI_Element {
-	Tabs() : UI_Element(ElemTabs) {}
+	Tabs() : UI_Element(Elem_Tabs) {}
 
 	void (*event)(Tabs *tabs) = nullptr;
 
@@ -583,7 +583,7 @@ struct Tabs : UI_Element {
 };
 
 struct Text_Editor : UI_Element {
-	Text_Editor() : UI_Element(ElemTextEditor, CursorEdit), editor(this) {
+	Text_Editor() : UI_Element(Elem_Text_Editor, CursorEdit), editor(this) {
 		editor.parent = this;
 		use_sf_cache = true;
 		use_post_draw = true;
@@ -643,6 +643,7 @@ struct Colors {
 	RGBA caret;
 	RGBA cb;
 	RGBA sel;
+	RGBA editor;
 
 	RGBA folder_dark;
 	RGBA folder_light;

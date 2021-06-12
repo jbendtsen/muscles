@@ -1,6 +1,33 @@
 #include "muscles.h"
 #include "ui.h"
 
+void *allocate_ui_element(Arena& arena, int i_type) {
+	auto type = static_cast<Element_Type>(i_type);
+
+	// if there's a better way to do this i'm all ears
+	#define TRY_UI_TYPE(type) \
+		case Elem_##type:\
+			return arena.allocate_object<type>();
+
+	switch (type) {
+		TRY_UI_TYPE(Image)
+		TRY_UI_TYPE(Label)
+		TRY_UI_TYPE(Button)
+		TRY_UI_TYPE(Divider)
+		TRY_UI_TYPE(Data_View)
+		TRY_UI_TYPE(Scroll)
+		TRY_UI_TYPE(Edit_Box)
+		TRY_UI_TYPE(Drop_Down)
+		TRY_UI_TYPE(Checkbox)
+		TRY_UI_TYPE(Hex_View)
+		TRY_UI_TYPE(Text_Editor)
+		TRY_UI_TYPE(Tabs)
+		TRY_UI_TYPE(Number_Edit)
+	}
+
+	return nullptr;
+}
+
 static inline float clamp_f(float f, float min, float max) {
 	if (f < min)
 		return min;
@@ -971,10 +998,10 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	auto lines = get_content();
 
 	const char *text = title;
-	if (!title && lines && (*lines)[sel])
+	if (!title && lines && lines->size() > 0 && sel >= 0 && (*lines)[sel])
 		text = (*lines)[sel];
 
-	float text_w = font->render.text_width(text);
+	float text_w = text ? font->render.text_width(text) : 0;
 	float font_h = font->render.text_height();
 
 	float pad_x = title_pad_x * font_h;
@@ -995,9 +1022,10 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 		sdl_apply_texture(icon, r, nullptr, renderer);
 	}
 
-	float text_x = x + pad_x + leaning * (w - text_w - 2*pad_x);
-
-	font->render.draw_text_simple(renderer, text, back.x + text_x, back.y + gap_y);
+	if (text) {
+		float text_x = x + pad_x + leaning * (w - text_w - 2*pad_x);
+		font->render.draw_text_simple(renderer, text, back.x + text_x, back.y + gap_y);
+	}
 }
 
 bool Edit_Box::disengage(Input& input, bool try_select) {

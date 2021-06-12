@@ -83,19 +83,20 @@ void Search_Menu::update_ui(Camera& view) {
 		y += addr_lbl.pos.h + border;
 
 		float addr_w = (box.w - 4*start_x) / 2;
+		float addr_edit_h = start_addr_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
 
 		start_addr_edit.pos = {
 			.x = start_x,
 			.y = y,
 			.w = addr_w,
-			.h = edit_h
+			.h = addr_edit_h
 		};
 
 		end_addr_edit.pos = {
 			.x = start_x + box.w / 2,
 			.y = y,
 			.w = addr_w,
-			.h = edit_h
+			.h = addr_edit_h
 		};
 		y += end_addr_edit.pos.h + 2*border;
 
@@ -287,6 +288,14 @@ void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	
 }
 
+void search_object_table_cell_init(Table *table, int col, int row) {
+	auto sm = dynamic_cast<Search_Menu*>((Box*)table->manager);
+	auto elem = (UI_Element*)table->columns[col][row];
+
+	elem->parent = sm;
+	elem->font = sm->table_font;
+}
+
 void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
 
@@ -460,6 +469,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 
 	label_font = ws.make_font(11, ws.colors.text, scale);
 	dd_font = label_font;
+	table_font = ws.make_font(10, ws.colors.text, scale);
 
 	RGBA icon_color = ws.colors.text;
 	icon_color.a = 0.7;
@@ -511,14 +521,14 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	addr_lbl.text = "Address Space";
 	ui.push_back(&addr_lbl);
 
-	start_addr_edit.font = label_font;
+	start_addr_edit.font = table_font;
 	start_addr_edit.editor.text = "0x" + std::string(16, '0');
 	start_addr_edit.caret = ws.colors.caret;
 	start_addr_edit.default_color = ws.colors.dark;
 	start_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&start_addr_edit);
 
-	end_addr_edit.font = label_font;
+	end_addr_edit.font = table_font;
 	end_addr_edit.editor.text = "0x" + std::string(16, 'f');
 	end_addr_edit.caret = ws.colors.caret;
 	end_addr_edit.default_color = ws.colors.dark;
@@ -532,24 +542,23 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 
 		Column obj_cols[] = {
 			{ColumnCheckbox, 0, 0.05, 1.0, 1.0, ""},
-			{ColumnString,   0, 0.15, 0, 0, "Type"},
 			{ColumnString,   0, 0.25, 0, 0, "Field"},
-			{ColumnElement,  0, 0.15, 0, 0, "Method"},
-			{ColumnElement,  0, 0.20, 0, 0, "Value 1"},
-			{ColumnElement,  0, 0.20, 0, 0, "Value 2"}
+			{ColumnString,   0, 0.15, 0, 0, "Type"},
+			{ColumnElement,  static_cast<int>(Elem_Drop_Down), 0.15, 0, 0, "Method"},
+			{ColumnElement,  static_cast<int>(Elem_Edit_Box), 0.20, 0, 0, "Value"},
+			{ColumnElement,  static_cast<int>(Elem_Edit_Box), 0.20, 0, 0, ""}
 		};
-		object_table.init(obj_cols, nullptr, 6, 0);
+		object_table.init(obj_cols, nullptr, this, search_object_table_cell_init, 6, 0);
 
-		object.font = label_font;
+		object.font = table_font;
 		object.data = &object_table;
 		object.action = search_object_handler;
 		object.default_color = ws.colors.dark;
 		object.back_color = ws.colors.dark;
 		object.hl_color = ws.colors.hl;
 		object.sel_color = ws.colors.hl;
-		object.font = ws.default_font;
 		object.vscroll = &object_scroll;
-		//object.show_column_names = true;
+		object.show_column_names = true;
 		ui.push_back(&object);
 
 		object_scroll.content = &object;
@@ -684,16 +693,15 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		{ColumnHex, 16, 0.5, 0, 0, "Address"},
 		{ColumnString, 0, 0.5, 0, 0, "Value"},
 	};
-	results_table.init(cols, nullptr, 2, 0);
+	results_table.init(cols, nullptr, nullptr, nullptr, 2, 0);
 
-	results.font = label_font;
+	results.font = table_font;
 	results.data = &results_table;
 	results.action = search_results_handler;
 	results.default_color = ws.colors.dark;
 	results.back_color = ws.colors.dark;
 	results.hl_color = ws.colors.hl;
 	results.sel_color = ws.colors.hl;
-	results.font = ws.default_font;
 	results.vscroll = &results_scroll;
 	results.show_column_names = true;
 	ui.push_back(&results);

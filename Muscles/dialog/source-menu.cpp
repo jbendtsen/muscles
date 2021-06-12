@@ -314,7 +314,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 			{ColumnDec, 0, 0.2, 0, 3, ""},
 			{ColumnString, 64, 0.7, 0, 0, ""}
 		};
-		menu.data->init(col, nullptr, 3, 0);
+		menu.data->init(col, nullptr, nullptr, nullptr, 3, 0);
 
 		initial_width = 300;
 		initial_height = 200;
@@ -327,7 +327,7 @@ Source_Menu::Source_Menu(Workspace& ws, MenuType mtype) {
 			{ColumnImage, 0, 0.1, 0, 1.5, ""},
 			{ColumnFile, 0, 0.9, 0, 0, ""}
 		};
-		menu.data->init(col, nullptr, 2, 1);
+		menu.data->init(col, nullptr, nullptr, nullptr, 2, 1);
 
 		float h = menu.font->render.text_height();
 		folder_icon = make_folder_icon(ws.colors.folder_dark, ws.colors.folder_light, h, h);

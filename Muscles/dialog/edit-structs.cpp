@@ -231,7 +231,7 @@ Edit_Structs::Edit_Structs(Workspace& ws, MenuType mtype) {
 	};
 	ui.push_back(&file_menu);
 
-	edit.default_color = ws.colors.scroll_back;
+	edit.default_color = ws.colors.editor;
 	edit.sel_color = ws.colors.inactive_outline;
 	edit.caret_color = ws.colors.caret;
 	edit.font = ws.make_font(10, ws.colors.text, scale);
@@ -309,7 +309,7 @@ Edit_Structs::Edit_Structs(Workspace& ws, MenuType mtype) {
 	};
 
 	arena.set_rewind_point();
-	table.init(cols, &arena, 2, 0);
+	table.init(cols, &arena, nullptr, nullptr, 2, 0);
 	output.data = &table;
 	ui.push_back(&output);
 

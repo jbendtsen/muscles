@@ -141,12 +141,15 @@ void String_Vector::clear() {
 	head = 0;
 }
 
-void *Arena::allocate(int size) {
+void *Arena::allocate(int size, int align) {
 	if (size <= 0)
 		return nullptr;
 
 	if (size > pool_size)
 		return add_big_pool(size);
+
+	if (align > 1)
+		idx += (align - (idx % align)) % align;
 
 	if (idx + size > pool_size || pools.size() == 0)
 		add_pool();
@@ -255,19 +258,33 @@ void Table::resize(int n_rows) {
 	for (int i = 0; i < n_cols; i++) {
 		columns[i].resize(n_rows, nullptr);
 
-		if (headers[i].type == ColumnString && headers[i].count_per_cell > 0) {
-			for (int j = 0; j < n_rows; j++) {
-				if (columns[i][j])
-					continue;
+		if (headers[i].count_per_cell > 0) {
+			if (headers[i].type == ColumnString) {
+				for (int j = 0; j < n_rows; j++) {
+					if (columns[i][j])
+						continue;
 
-				columns[i][j] = arena->allocate(headers[i].count_per_cell);
-				((char*)(columns[i][j]))[0] = 0;
+					columns[i][j] = arena->allocate(headers[i].count_per_cell);
+					((char*)(columns[i][j]))[0] = 0;
+				}
+			}
+			else if (headers[i].type == ColumnElement) {
+				for (int j = 0; j < n_rows; j++) {
+					if (columns[i][j])
+						continue;
+
+					columns[i][j] = allocate_ui_element(*arena, headers[i].count_per_cell);
+					if (element_init_func)
+						element_init_func(this, i, j);
+				}
 			}
 		}
 	}
 }
 
-void Table::init(Column *headers, Arena *a, int n_cols, int n_rows) {
+void Table::init(Column *headers, Arena *a, void *m, void (*elem_init)(Table*, int, int), int n_cols, int n_rows) {
+	manager = m;
+	element_init_func = elem_init;
 	if (a)
 		arena = a;
 

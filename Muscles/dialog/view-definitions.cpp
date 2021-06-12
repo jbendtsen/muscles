@@ -176,13 +176,13 @@ View_Definitions::View_Definitions(Workspace& ws, MenuType mtype) {
 		{ColumnCheckbox, 0, 0.1, 1.5, 1.5, "FP"},
 		{ColumnCheckbox, 0, 0.1, 1.5, 1.5, "S"}
 	};
-	types.init(type_cols, nullptr, 5, 0);
+	types.init(type_cols, nullptr, nullptr, nullptr, 5, 0);
 
 	Column enum_cols[] = {
 		{ColumnString, 0, 0.7, 0, 0, "Name"},
 		{ColumnDec, 0, 0.3, 0, 0, "Value"}
 	};
-	enums.init(enum_cols, nullptr, 2, 0);
+	enums.init(enum_cols, nullptr, nullptr, nullptr, 2, 0);
 
 	tables.push_back(&types);
 	tables.push_back(&enums);
@@ -233,7 +233,7 @@ View_Definitions::View_Definitions(Workspace& ws, MenuType mtype) {
 		{ColumnString, 0, 0.5, 0, 0, "Value"}
 	};
 
-	constants.init(cols, &arena, 0, 2);
+	constants.init(cols, &arena, nullptr, nullptr, 0, 2);
 	view.data = &constants;
 	tabs.sel = 2;
 

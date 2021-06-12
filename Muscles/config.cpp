@@ -25,6 +25,7 @@ void load_config(Workspace& ws, std::string& path) {
 	colors.insert("caret").value             = 0xe5e5e5ff;
 	colors.insert("cb").value                = 0x8cb2e5ff;
 	colors.insert("sel").value               = 0x728099ff;
+	colors.insert("editor").value            = 0x122060ff;
 	colors.insert("folder_dark").value       = 0xa5a326ff;
 	colors.insert("folder_light").value      = 0xe0d642ff;
 	colors.insert("process_back").value      = 0xccccccff;
@@ -73,34 +74,37 @@ void load_config(Workspace& ws, std::string& path) {
 		color.a = (float)(value & 0xff) / 255.0f;
 	};
 
-	set_color(ws.colors.background, colors["background"].value);
-	set_color(ws.colors.text, colors["text"].value);
-	set_color(ws.colors.ph_text, colors["ph_text"].value);
-	set_color(ws.colors.outline, colors["outline"].value);
-	set_color(ws.colors.back, colors["back"].value);
-	set_color(ws.colors.dark, colors["dark"].value);
-	set_color(ws.colors.light, colors["light"].value);
-	set_color(ws.colors.light_hl, colors["light_hl"].value);
-	set_color(ws.colors.table_cb_back, colors["table_cb_back"].value);
-	set_color(ws.colors.hl, colors["hl"].value);
-	set_color(ws.colors.active, colors["active"].value);
-	set_color(ws.colors.inactive, colors["inactive"].value);
-	set_color(ws.colors.inactive_text, colors["inactive_text"].value);
-	set_color(ws.colors.inactive_outline, colors["inactive_outline"].value);
-	set_color(ws.colors.scroll_back, colors["scroll_back"].value);
-	set_color(ws.colors.scroll, colors["scroll"].value);
-	set_color(ws.colors.scroll_hl, colors["scroll_hl"].value);
-	set_color(ws.colors.scroll_sel, colors["scroll_sel"].value);
-	set_color(ws.colors.div, colors["div"].value);
-	set_color(ws.colors.caret, colors["caret"].value);
-	set_color(ws.colors.cb, colors["cb"].value);
-	set_color(ws.colors.sel, colors["sel"].value);
-	set_color(ws.colors.folder_dark, colors["folder_dark"].value);
-	set_color(ws.colors.folder_light, colors["folder_light"].value);
-	set_color(ws.colors.process_back, colors["process_back"].value);
-	set_color(ws.colors.process_outline, colors["process_outline"].value);
-	set_color(ws.colors.file_back, colors["file_back"].value);
-	set_color(ws.colors.file_fold, colors["file_fold"].value);
-	set_color(ws.colors.file_line, colors["file_line"].value);
-	set_color(ws.colors.cancel, colors["cancel"].value);
+	#define SET_COLOR(attr) set_color(ws.colors.attr, colors[#attr].value);
+
+	SET_COLOR(background)
+	SET_COLOR(text)
+	SET_COLOR(ph_text)
+	SET_COLOR(outline)
+	SET_COLOR(back)
+	SET_COLOR(dark)
+	SET_COLOR(light)
+	SET_COLOR(light_hl)
+	SET_COLOR(table_cb_back)
+	SET_COLOR(hl)
+	SET_COLOR(active)
+	SET_COLOR(inactive)
+	SET_COLOR(inactive_text)
+	SET_COLOR(inactive_outline)
+	SET_COLOR(scroll_back)
+	SET_COLOR(scroll)
+	SET_COLOR(scroll_hl)
+	SET_COLOR(scroll_sel)
+	SET_COLOR(div)
+	SET_COLOR(caret)
+	SET_COLOR(cb)
+	SET_COLOR(sel)
+	SET_COLOR(editor)
+	SET_COLOR(folder_dark)
+	SET_COLOR(folder_light)
+	SET_COLOR(process_back)
+	SET_COLOR(process_outline)
+	SET_COLOR(file_back)
+	SET_COLOR(file_fold)
+	SET_COLOR(file_line)
+	SET_COLOR(cancel)
 }

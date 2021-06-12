@@ -424,7 +424,7 @@ View_Source::View_Source(Workspace& ws, MenuType mtype) {
 			{ColumnHex, 8, 0.1, size_w, size_w, "Size"}
 		};
 
-		table.init(cols, nullptr, 3, 0);
+		table.init(cols, nullptr, nullptr, nullptr, 3, 0);
 		reg_table.data = &table;
 		ui.push_back(&reg_table);
 

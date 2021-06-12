@@ -188,6 +188,11 @@ Texture make_plus_minus_icon(RGBA& color, int length, bool plus);
 void clear_word(char* word);
 char *advance_word(char *p);
 
+struct Doer {
+	void *data;
+	void (*func)(void *data);
+};
+
 struct Arena {
 	std::vector<char*> pools;
 	std::vector<char*> big_pools;
@@ -225,15 +230,25 @@ struct Arena {
 		}
 	}
 
-	void *allocate(int size);
+	void *allocate(int size, int align = 0);
 	char *alloc_string(char *str);
 
 	void *store_buffer(void *buf, int size, u64 align = 4);
 
 	void rewind();
+
+	template<class T>
+	T *allocate_object() {
+		T *t = (T*)allocate(sizeof(T), sizeof(void*));
+		new(t) T();
+		
+		return t;
+	}
 };
 
 Arena& get_default_arena();
+
+void *allocate_ui_element(Arena& arena, int i_type);
 
 struct String_Vector {
 	char *pool = nullptr;
@@ -312,6 +327,9 @@ struct Table {
 	int filtered = -1;
 	bool has_ui_elements = false;
 
+	void *manager = nullptr;
+	void (*element_init_func)(Table*, int, int) = nullptr;
+
 	String_Vector branch_name_vector;
 	std::vector<Branch> branches;
 	std::vector<int> tree;
@@ -336,7 +354,7 @@ struct Table {
 		return it == list.end() ? -1 : std::distance(list.begin(), it);
 	}
 
-	void init(Column *headers, Arena *a, int n_cols, int n_rows);
+	void init(Column *headers, Arena *a, void *m, void (*elem_init)(Table*, int, int), int n_cols, int n_rows);
 	void resize(int n_rows);
 	void clear_filter();
 	void clear_data();

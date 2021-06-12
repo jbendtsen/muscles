@@ -280,7 +280,7 @@ Main_Menu::Main_Menu(Workspace& ws, MenuType mtype) {
 		{ColumnString, 16, 0.2, 0, 3, "PID"},
 		{ColumnStdString, 0, 0.7, 0, 0, "Name"},
 	};
-	table.init(sources_cols, nullptr, 3, 0);
+	table.init(sources_cols, nullptr, nullptr, nullptr, 3, 0);
 	sources_view.data = &table;
 
 	button.action = [](UI_Element* elem, Camera&, bool dbl_click) {
@@ -359,7 +359,7 @@ Opening_Menu::Opening_Menu(Workspace& ws, MenuType mtype) {
 	menu.default_color = ws.colors.back;
 
 	Column menu_column = { ColumnString, 0, 1, 0, 0, "" };
-	table.init(&menu_column, nullptr, 1, 2);
+	table.init(&menu_column, nullptr, nullptr, nullptr, 1, 2);
 	table.columns[0][0] = (void*)"New";
 	table.columns[0][1] = (void*)"Open Workspace";
 
