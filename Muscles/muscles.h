@@ -33,6 +33,7 @@ struct SDL;
 
 Font_Face load_font_face(const char *path);
 void destroy_font_face(Font_Face face);
+void ft_quit();
 
 int run();
 
@@ -188,11 +189,6 @@ Texture make_plus_minus_icon(RGBA& color, int length, bool plus);
 void clear_word(char* word);
 char *advance_word(char *p);
 
-struct Doer {
-	void *data;
-	void (*func)(void *data);
-};
-
 struct Arena {
 	std::vector<char*> pools;
 	std::vector<char*> big_pools;
@@ -241,7 +237,6 @@ struct Arena {
 	T *allocate_object() {
 		T *t = (T*)allocate(sizeof(T), sizeof(void*));
 		new(t) T();
-		
 		return t;
 	}
 };

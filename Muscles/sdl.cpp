@@ -506,14 +506,16 @@ void sdl_render() {
 }
 
 void sdl_close() {
-	if (renderer) {
-		SDL_DestroyRenderer(renderer);
-		renderer = nullptr;
-	}
-	if (window) {
-		SDL_DestroyWindow(window);
-		window = nullptr;
-	}
+	#define DESTROY(obj, destroy_func) \
+		if (obj) { \
+			destroy_func(obj); \
+			obj = nullptr; \
+		}
+
+	DESTROY(renderer, SDL_DestroyRenderer)
+	DESTROY(window, SDL_DestroyWindow)
+	DESTROY(sf_cache, SDL_FreeSurface)
+	DESTROY(soft_renderer, SDL_DestroyRenderer)
 
 	for (auto& c : cursors) {
 		SDL_FreeCursor(c);

@@ -795,10 +795,8 @@ struct Workspace {
 	std::vector<char*> struct_names;
 	bool first_struct_run = true;
 
-	Workspace() = default;
-	~Workspace();
-
 	void init(Font_Face face);
+	void close();
 
 	Box *box_under_cursor(Camera& view, Point& cur, Point& inside);
 	void add_box(Box *b);

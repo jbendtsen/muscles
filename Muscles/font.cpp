@@ -43,8 +43,8 @@ void make_font_render(FT_Face face, float size, RGBA& color, int dpi_w, int dpi_
 	render.pts = pts;
 	FT_Set_Char_Size(face, 0, render.pts, dpi_w, dpi_h);
 
-	float pt_w = (render.pts * dpi_w) / (72.0 * 64.0);
-	float pt_h = (render.pts * dpi_h) / (72.0 * 64.0);
+	float pt_w = (float)(render.pts * dpi_w) / (72.0 * 64.0);
+	float pt_h = (float)(render.pts * dpi_h) / (72.0 * 64.0);
 
 	float em_units = (float)face->units_per_EM;
 	int max_w = (int)(1.5 + pt_w * (float)face->max_advance_width / em_units);

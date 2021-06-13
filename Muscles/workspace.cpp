@@ -32,7 +32,7 @@ void Workspace::init(Font_Face face) {
 	make_box<Opening_Menu>();
 }
 
-Workspace::~Workspace() {
+void Workspace::close() {
 	sdl_destroy_texture(&cross);
 
 	for (auto& b : boxes) {

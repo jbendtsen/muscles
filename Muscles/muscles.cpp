@@ -163,7 +163,10 @@ int run() {
 		ctx.update(camera, input, cursor);
 	}
 
+	ctx.close();
+
 	destroy_font_face(face);
+	ft_quit();
 
 	sdl_close();
 
