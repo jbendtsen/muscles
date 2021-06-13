@@ -256,9 +256,6 @@ struct Search_Menu : Box {
 	Divider object_div;
 
 	Table object_table;
-	Drop_Down *obj_method_list = nullptr;
-	Edit_Box *obj_value_ab_list = nullptr;
-	int obj_list_len = 0;
 
 	//Progress_Bar progress_bar;
 
@@ -280,6 +277,14 @@ struct Search_Menu : Box {
 
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
+
+	std::vector<char*> method_options = {
+		(char*)"Equals",
+		(char*)"Range",
+		(char*)"1",
+		(char*)"2",
+		(char*)"3"
+	};
 
 	Search search;
 	Source *source = nullptr;

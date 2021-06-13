@@ -296,10 +296,10 @@ void Checkbox::default_action(Camera& view, bool dbl_click) {
 	checked = !checked;
 }
 
-bool Data_View::highlight(Camera& view, Point& inside) {
+void Data_View::highlight(Camera& view, Point& inside) {
 	if (!font || !data) {
 		hl_row = hl_col = -1;
-		return false;
+		return;
 	}
 
 	int top = vscroll ? vscroll->position : 0;
@@ -339,6 +339,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 				if (inside.x >= x && inside.x < x + w) {
 					hl_col = j;
 
+					/*
 					if (data->headers[j].type == ColumnElement) {
 						int row = data->get_table_index(hl_row);
 						UI_Element *elem = row >= 0 ? (UI_Element*)data->columns[j][row] : nullptr;
@@ -347,6 +348,7 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 							elem->highlight(view, yes); // just hope that elem isn't another Data_View lol
 						}
 					}
+					*/
 
 					break;
 				}
@@ -361,7 +363,6 @@ bool Data_View::highlight(Camera& view, Point& inside) {
 	}
 
 	needs_redraw = needs_redraw || hl_row != old_hl_row || hl_col != old_hl_col;
-	return hl;
 }
 
 float Data_View::column_width(float total_width, float min_width, float font_height, float scale, int idx) {
@@ -474,17 +475,19 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 		auto elem = (UI_Element*)cell;
 		elem->font = font;
 		elem->parent = parent;
-		elem->visible = true;
+		elem->table_vis = true;
 
-		Rect_Int back = r.to_rect_int();
-		back.y += info.elem_pad;
-		back.h -= 2 * info.elem_pad;
+		if (elem->visible) {
+			Rect_Int back = r.to_rect_int();
+			back.y += info.elem_pad;
+			back.h -= 2 * info.elem_pad;
 
-		float scale = info.camera->scale;
-		elem->pos = {0, 0, back.w / scale, back.h / scale};
-		elem->screen = back;
+			float scale = info.camera->scale;
+			elem->pos = {0, 0, back.w / scale, back.h / scale};
+			elem->screen = back;
 
-		elem->draw_element(info.renderer, *info.camera, back, false, false, false);
+			elem->draw_element(info.renderer, *info.camera, back, false, false, false);
+		}
 	}
 }
 
@@ -614,7 +617,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 			for (auto& cell : data->columns[i]) {
 				auto elem = (UI_Element*)cell;
 				if (elem)
-					elem->visible = false;
+					elem->table_vis = false;
 			}
 		}
 
@@ -688,7 +691,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 		if (data->headers[i].type == ColumnElement) {
 			for (auto& cell : data->columns[i]) {
 				auto elem = (UI_Element*)cell;
-				if (elem && elem->visible && elem->use_post_draw) {
+				if (elem && elem->table_vis && elem->visible && elem->use_post_draw) {
 					Rect_Int r = view.to_screen_rect(parent->box);
 					Rect_Int b = make_int_ui_box(r, elem->pos, view.scale);
 					elem->post_draw(view, b, false, false, false);
@@ -754,6 +757,8 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 		int row = data->get_table_index(hl_row);
 		if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
 			TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+			if (checkbox_toggle_handler)
+				checkbox_toggle_handler(this, hl_col, row);
 		}
 		else if (hl_row >= 0 && row < 0 && data->tree.size() > 0) {
 			int b = -row - 1;
@@ -907,6 +912,9 @@ void Divider::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool
 }
 
 void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
+	if (managed)
+		return;
+
 	if (hovered) {
 		if (pos.contains(inside)) {
 			if (input.lclick) {
@@ -923,10 +931,10 @@ void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool ho
 	}
 }
 
-bool Drop_Down::highlight(Camera& view, Point& inside) {
+void Drop_Down::highlight(Camera& view, Point& inside) {
 	hl = -1;
 	if (!dropped || inside.x < pos.x || inside.x >= pos.x + width)
-		return false;
+		return;
 
 	float font_unit = font->render.text_height() / view.scale;
 	float y = pos.y + pos.h + title_off_y * font_unit;
@@ -936,12 +944,10 @@ bool Drop_Down::highlight(Camera& view, Point& inside) {
 	for (int i = 0; i < lines->size(); i++) {
 		if (inside.y >= y && inside.y < y + h) {
 			hl = i;
-			return true;
+			break;
 		}
 		y += h;
 	}
-
-	return false;
 }
 
 void Drop_Down::cancel() {
@@ -990,6 +996,9 @@ void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float m
 }
 
 void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (managed)
+		return;
+
 	if (elem_hovered || dropped)
 		sdl_draw_rect(back, hl_color, renderer);
 	else
@@ -1040,7 +1049,8 @@ bool Edit_Box::disengage(Input& input, bool try_select) {
 			if (key_action)
 				key_action(this, input);
 		}
-		dropdown->dropped = false;
+		if (parent->current_dd == dropdown)
+			parent->set_dropdown(nullptr);
 	}
 	return cancel_lclick;
 }
@@ -1086,11 +1096,8 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 		editor.update_cursor(x, y, font, view.scale, ticks, input.lclick);
 	}
 
-	if (dropdown) {
-		dropdown->highlight(view, cursor);
-		if (input.lclick && on_icon)
-			dropdown->dropped = !dropdown->dropped;
-	}
+	if (dropdown && input.lclick && on_icon)
+		parent->set_dropdown(dropdown);
 }
 
 void Edit_Box::default_action(Camera& view, bool dbl_click) {
@@ -1117,6 +1124,16 @@ void Edit_Box::update_icon(IconType type, float height, float scale) {
 }
 
 void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
+	if (dropdown) {
+		dropdown->pos = pos;
+		dropdown->screen = screen;
+		dropdown->width = pos.w;
+		/*
+		if (dropdown->dropped)
+			dropdown->draw_menu(nullptr, view, screen.x, screen.y + pos.h * view.scale);
+		*/
+	}
+
 	sdl_draw_rect(back, default_color, renderer);
 
 	const char *str = nullptr;
@@ -1176,17 +1193,6 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 		};
 
 		sdl_draw_rect(r, caret, renderer);
-	}
-}
-
-void Edit_Box::post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
-	if (!dropdown)
-		return;
-
-	dropdown->pos = pos;
-	if (dropdown->dropped) {
-		dropdown->width = pos.w;
-		dropdown->draw_menu(nullptr, view, screen.x, screen.y + pos.h * view.scale);
 	}
 }
 
@@ -1714,9 +1720,8 @@ void Scroll::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 	sdl_draw_rect(scroll_rect, *color, renderer);
 }
 
-bool Scroll::highlight(Camera& view, Point& inside) {
+void Scroll::highlight(Camera& view, Point& inside) {
 	hl = pos.contains(inside);
-	return hl;
 }
 
 void Scroll::deselect() {

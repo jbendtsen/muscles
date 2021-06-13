@@ -89,6 +89,7 @@ struct Editor {
 
 struct UI_Element {
 	bool visible = true;
+	bool table_vis = true;
 	bool active = true;
 	bool use_sf_cache = false;
 	bool use_default_cursor = false;
@@ -135,7 +136,7 @@ struct UI_Element {
 
 	// 'inside' is relative to the upper-left corner of this element
 	virtual bool scroll_handler(Camera& view, Input& input, Point& inside) { return false; }
-	virtual bool highlight(Camera& view, Point& inside) { return false; }
+	virtual void highlight(Camera& view, Point& inside) {}
 	virtual void deselect() {}
 	virtual bool disengage(Input& input, bool try_select) { return false; }
 	virtual void release() {}
@@ -258,6 +259,8 @@ struct Data_View : UI_Element {
 
 	bool show_column_names = false;
 
+	void (*checkbox_toggle_handler)(Data_View*, int, int) = nullptr;
+
 	Render_Clip clip = {
 		CLIP_LEFT | CLIP_RIGHT | CLIP_BOTTOM,
 		0, 0, 0, 0
@@ -273,7 +276,7 @@ struct Data_View : UI_Element {
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 
 	bool scroll_handler(Camera& view, Input& input, Point& inside) override;
-	bool highlight(Camera& view, Point& inside) override;
+	void highlight(Camera& view, Point& inside) override;
 	void deselect() override;
 	void release() override;
 };
@@ -312,6 +315,7 @@ struct Divider : UI_Element {
 struct Drop_Down : UI_Element {
 	Drop_Down() : UI_Element(Elem_Drop_Down) {}
 
+	bool managed = false;
 	bool dropped = false;
 	int hl = -1;
 	int sel = -1;
@@ -349,14 +353,13 @@ struct Drop_Down : UI_Element {
 
 	void default_action(Camera& view, bool dbl_click) override;
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
-	bool highlight(Camera& view, Point& inside) override;
+	void highlight(Camera& view, Point& inside) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Edit_Box : UI_Element {
 	Edit_Box() : UI_Element(Elem_Edit_Box, CursorEdit), editor(this) {
 		editor.multiline = false;
-		use_post_draw = true;
 	}
 	~Edit_Box() {
 		if (manage_icon)
@@ -403,7 +406,6 @@ struct Edit_Box : UI_Element {
 	void default_action(Camera& view, bool dbl_click) override;
 	//void update(Rect_Int& rect) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
-	void post_draw(Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 };
 
 struct Hex_View : UI_Element {
@@ -555,7 +557,7 @@ struct Scroll : UI_Element {
 	void mouse_handler(Camera& view, Input& input, Point& cursor, bool hovered) override;
 	void draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) override;
 
-	bool highlight(Camera& view, Point& inside) override;
+	void highlight(Camera& view, Point& inside) override;
 	void deselect() override;
 };
 
@@ -719,6 +721,8 @@ struct Box {
 
 	int edge = 0;
 
+	int dd_hl_count = 0;
+
 	Rect box = {};
 	RGBA back_color = {};
 	RGBA edge_color = {};
@@ -751,7 +755,8 @@ struct Box {
 
 	void set_dropdown(Drop_Down *dd);
 	void update_hovered(Camera& view, Input& input, Point& inside);
-	void update_focussed(Camera& view, Input& input, Point& inside, Box *hover);
+	void update_active_elements(Camera& view, Input& input, Point& inside, Box *hover);
+	void update_element_actions(Camera& view, Input& input, Point& inside, Box *hover);
 	void update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed);
 };
 

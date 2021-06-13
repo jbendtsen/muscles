@@ -288,12 +288,54 @@ void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	
 }
 
+void search_object_table_checkbox_handler(Data_View *object, int col, int row) {
+	bool enabled = TABLE_CHECKBOX_CHECKED(object->data, col, row);
+
+	auto method_dd = dynamic_cast<Drop_Down*>((UI_Element*)object->data->columns[3][row]);
+	auto value1_edit = dynamic_cast<Edit_Box*>((UI_Element*)object->data->columns[4][row]);
+	auto value2_edit = dynamic_cast<Edit_Box*>((UI_Element*)object->data->columns[5][row]);
+
+	if (!enabled) {
+		method_dd->visible = false;
+		value1_edit->visible = false;
+		value2_edit->visible = false;
+		return;
+	}
+
+	method_dd->visible = true;
+
+	if (method_dd->sel == 0) { // Equals
+		value1_edit->visible = true;
+	}
+	else if (method_dd->sel == 1) { // Range
+		value1_edit->visible = true;
+		value2_edit->visible = true;
+	}
+}
+
 void search_object_table_cell_init(Table *table, int col, int row) {
 	auto sm = dynamic_cast<Search_Menu*>((Box*)table->manager);
+	Workspace *ws = sm->parent;
 	auto elem = (UI_Element*)table->columns[col][row];
 
 	elem->parent = sm;
 	elem->font = sm->table_font;
+	elem->default_color = ws->colors.back;
+	elem->hl_color = ws->colors.light;
+	elem->sel_color = ws->colors.active;
+	elem->visible = false;
+
+	if (col == 3) {
+		auto dd = dynamic_cast<Drop_Down*>(elem);
+		dd->external = &sm->method_options;
+		dd->sel = 0;
+		dd->title_off_y = -0.05;
+		dd->leaning = 0.0;
+	}
+	else {
+		auto edit = dynamic_cast<Edit_Box*>(elem);
+		edit->text_off_y = -0.05;
+	}
 }
 
 void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -489,7 +531,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		struct_edit.key_action = search_struct_edit_handler;
 		ui.push_back(&struct_edit);
 
-		struct_dd.visible = false;
+		struct_dd.managed = true;
 		struct_dd.font = label_font;
 		struct_dd.default_color = ws.colors.back;
 		struct_dd.hl_color = ws.colors.hl;
@@ -510,7 +552,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	source_edit.key_action = search_source_edit_handler;
 	ui.push_back(&source_edit);
 
-	source_dd.visible = false;
+	source_dd.managed = true;
 	source_dd.font = dd_font;
 	source_dd.default_color = ws.colors.back;
 	source_dd.hl_color = ws.colors.hl;
@@ -553,6 +595,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		object.font = table_font;
 		object.data = &object_table;
 		object.action = search_object_handler;
+		object.checkbox_toggle_handler = search_object_table_checkbox_handler;
 		object.default_color = ws.colors.dark;
 		object.back_color = ws.colors.dark;
 		object.hl_color = ws.colors.hl;
@@ -587,7 +630,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		type_edit.key_action = search_type_edit_handler;
 		ui.push_back(&type_edit);
 
-		type_dd.visible = false;
+		type_dd.managed = true;
 		type_dd.font = dd_font;
 		type_dd.default_color = ws.colors.back;
 		type_dd.hl_color = ws.colors.hl;
@@ -604,10 +647,8 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		method_dd.hl_color = ws.colors.hl;
 		method_dd.sel_color = ws.colors.active;
 		method_dd.icon_color = icon_color;
-		method_dd.content = {
-			(char*)"Equals",
-			(char*)"Range"
-		};
+		method_dd.external = &method_options;
+		method_dd.leaning = 0.0;
 		method_dd.keep_selected = true;
 		method_dd.sel = 0;
 		ui.push_back(&method_dd);

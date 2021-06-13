@@ -140,7 +140,7 @@ void Box::update_hovered(Camera& view, Input& input, Point& inside) {
 	}
 }
 
-void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover) {
+void Box::update_active_elements(Camera& view, Input& input, Point& inside, Box *hover) {
 	if (input.lclick) {
 		if (active_edit) {
 			if (active_edit->parent->disengage(input, true))
@@ -149,17 +149,19 @@ void Box::update_focussed(Camera& view, Input& input, Point& inside, Box *hover)
 		active_edit = nullptr;
 	}
 
-	bool hovered = this == hover;
-	if (hovered && input.action && current_dd) {
+	if (current_dd && input.action && (!hover || hover == this)) {
 		current_dd->default_action(view, input.double_click);
-		if (current_dd->action) {
+		if (current_dd->action)
 			current_dd->action(current_dd, view, input.double_click);
+
+		if (current_dd->hl >= 0) {
+			set_dropdown(nullptr);
 			input.action = false;
 		}
-		if (current_dd->hl >= 0)
-			set_dropdown(nullptr);
 	}
+}
 
+void Box::update_element_actions(Camera& view, Input& input, Point& inside, Box *hover) {
 	for (auto& elem : ui) {
 		if (!elem->visible)
 			continue;
@@ -200,48 +202,56 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	Point cursor = view.to_world(input.mouse_x, input.mouse_y);
 	Point inside = {cursor.x - box.x, cursor.y - box.y};
 
-	if (current_dd)
-		current_dd->highlight(view, inside);
-
 	if (ticks % refresh_every == 0)
 		refresh(&inside);
 	ticks++;
 
 	dropdown_set = false;
 
-	if (!parent->box_moving && (!hover || this == hover))
+	bool dd_menu_hovered = false;
+	if (current_dd) {
+		current_dd->highlight(view, inside);
+		dd_menu_hovered = current_dd->hl >= 0;
+	}
+
+	if (!parent->box_moving && !dd_menu_hovered && (!hover || this == hover))
 		update_hovered(view, input, inside);
 
-	if (focussed)
-		update_focussed(view, input, inside, hover);
+	if (focussed) {
+		update_active_elements(view, input, inside, hover);
+		if (!dd_menu_hovered)
+			update_element_actions(view, input, inside, hover);
+	}
 
 	if (ws.box_expunged) {
 		ws.box_expunged = false;
 		return;
 	}
 
-	bool hl = false;
-	for (auto& elem : ui) {
-		elem->parent = this;
-		if (!elem->visible)
-			continue;
+	if (!dd_menu_hovered) {
+		for (auto& elem : ui) {
+			elem->parent = this;
+			if (!elem->visible)
+				continue;
 
-		if (!hl && this == hover && !moving) {
-			if (elem->pos.contains(inside)) {
-				Point p = {inside.x - elem->pos.x, inside.y - elem->pos.y};
-				elem->scroll_handler(view, input, p);
+			if ((!hover || this == hover) && !moving) {
+				if (elem->pos.contains(inside)) {
+					Point p = {inside.x - elem->pos.x, inside.y - elem->pos.y};
+					elem->scroll_handler(view, input, p);
 
-				if (!elem->use_default_cursor && !parent->cursor_set) {
-					sdl_set_cursor(elem->cursor_type);
-					parent->cursor_set = true;
+					if (!elem->use_default_cursor && !parent->cursor_set) {
+						sdl_set_cursor(elem->cursor_type);
+						parent->cursor_set = true;
+					}
 				}
+
+				if (elem != current_dd)
+					elem->highlight(view, inside);
 			}
 
-			hl = elem->highlight(view, inside);
+			if (this != hover)
+				elem->deselect();
 		}
-
-		if (this != hover)
-			elem->deselect();
 	}
 
 	if (input.lclick && !dropdown_set) {
