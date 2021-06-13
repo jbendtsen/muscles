@@ -292,7 +292,7 @@ void Checkbox::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 	}
 }
 
-void Checkbox::default_action(Camera& view, bool dbl_click) {
+void Checkbox::base_action(Camera& view, Point& cursor, Input& input) {
 	checked = !checked;
 }
 
@@ -704,14 +704,14 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	}
 }
 
-void Data_View::default_action(Camera& view, bool dbl_click) {
+void Data_View::base_action(Camera& view, Point& cursor, Input& input) {
 	if (hl_row >= 0)
 		sel_row = hl_row;
 
 	if (active_elem) {
-		active_elem->default_action(view, dbl_click);
+		active_elem->base_action(view, cursor, input);
 		if (active_elem->action)
-			active_elem->action(active_elem, view, dbl_click);
+			active_elem->action(active_elem, view, input.double_click);
 
 		active_elem = nullptr;
 	}
@@ -912,7 +912,7 @@ void Divider::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool
 }
 
 void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
-	if (managed)
+	if (edit_elem)
 		return;
 
 	if (hovered) {
@@ -955,9 +955,16 @@ void Drop_Down::cancel() {
 	hl = -1;
 }
 
-void Drop_Down::default_action(Camera& view, bool dbl_click) {
-	if (keep_selected && hl >= 0)
-		sel = hl;
+void Drop_Down::base_action(Camera& view, Point& cursor, Input& input) {
+	if (hl >= 0) {
+		if (keep_selected)
+			sel = hl;
+		if (edit_elem) {
+			auto edit = dynamic_cast<Edit_Box*>(edit_elem);
+			if (edit)
+				edit->dropdown_item_selected(input);
+		}
+	}
 }
 
 void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float menu_y) {
@@ -996,7 +1003,7 @@ void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float m
 }
 
 void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
-	if (managed)
+	if (edit_elem)
 		return;
 
 	if (elem_hovered || dropped)
@@ -1010,14 +1017,8 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	if (!title && lines && lines->size() > 0 && sel >= 0 && (*lines)[sel])
 		text = (*lines)[sel];
 
-	float text_w = text ? font->render.text_width(text) : 0;
-	float font_h = font->render.text_height();
-
-	float pad_x = title_pad_x * font_h;
-	float gap_y = title_off_y * font_h;
-
-	float w = pos.w * view.scale;
 	float x = 0;
+	float w = pos.w * view.scale;
 
 	if (icon) {
 		Rect_Int r = { back.x, back.y, icon_length, icon_length };
@@ -1032,27 +1033,29 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 	}
 
 	if (text) {
+		float text_w = font->render.text_width(text);
+		float font_h = font->render.text_height();
+
+		float pad_x = title_pad_x * font_h;
+		float gap_y = title_off_y * font_h;
+
 		float text_x = x + pad_x + leaning * (w - text_w - 2*pad_x);
 		font->render.draw_text_simple(renderer, text, back.x + text_x, back.y + gap_y);
 	}
 }
 
-bool Edit_Box::disengage(Input& input, bool try_select) {
-	float cancel_lclick = false;
-	if (dropdown) {
-		if (try_select && dropdown->hl >= 0) {
-			editor.set_cursor(editor.primary, 0);
-			editor.text = (*dropdown->get_content())[dropdown->hl];
-			//offset = 0;
-			cancel_lclick = true;
+bool Edit_Box::is_above_icon(Point& p) {
+	const float w = pos.h;
+	float icon_x = icon_right ? pos.x + pos.w - w : pos.x;
+	return icon && p.y >= pos.y && p.y < pos.y + pos.h && p.x >= icon_x && p.x - icon_x < w;
+}
 
-			if (key_action)
-				key_action(this, input);
-		}
-		if (parent->current_dd == dropdown)
-			parent->set_dropdown(nullptr);
-	}
-	return cancel_lclick;
+void Edit_Box::dropdown_item_selected(Input& input) {
+	editor.set_cursor(editor.primary, 0);
+	editor.set_cursor(editor.secondary, 0);
+	editor.text = (*dropdown->get_content())[dropdown->hl];
+	if (key_action)
+		key_action(this, input);
 }
 
 void Edit_Box::key_handler(Camera& view, Input& input) {
@@ -1074,7 +1077,7 @@ void Edit_Box::key_handler(Camera& view, Input& input) {
 
 	if (res & 8) {
 		editor.clear();
-		disengage(input, false);
+		//disengage(input, false);
 		parent->active_edit = nullptr;
 	}
 }
@@ -1083,10 +1086,10 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 	if (!hovered)
 		return;
 
-	float w = pos.h;
-	float icon_x = icon_right ? pos.x + pos.w - w : pos.x;
+	const float w = pos.h;
 	float text_x = icon_right ? pos.x : pos.x + w;
-	bool on_icon = icon && cursor.y >= pos.y && cursor.y < pos.y + pos.h && cursor.x >= icon_x && cursor.x - icon_x < w;
+
+	bool on_icon = is_above_icon(cursor);
 	use_default_cursor = on_icon;
 
 	if (hovered && input.lclick && pos.contains(cursor)) {
@@ -1095,13 +1098,13 @@ void Edit_Box::mouse_handler(Camera& view, Input& input, Point& cursor, bool hov
 
 		editor.update_cursor(x, y, font, view.scale, ticks, input.lclick);
 	}
-
-	if (dropdown && input.lclick && on_icon)
-		parent->set_dropdown(dropdown);
 }
 
-void Edit_Box::default_action(Camera& view, bool dbl_click) {
-	parent->active_edit = &editor;
+void Edit_Box::base_action(Camera& view, Point& cursor, Input& input) {
+	if (dropdown && is_above_icon(cursor))
+		parent->set_dropdown(dropdown);
+	else
+		parent->active_edit = &editor;
 }
 
 void Edit_Box::update_icon(IconType type, float height, float scale) {
@@ -1530,7 +1533,7 @@ void Number_Edit::key_handler(Camera& view, Input& input) {
 	}
 }
 
-void Number_Edit::default_action(Camera& view, bool dbl_click) {
+void Number_Edit::base_action(Camera& view, Point& cursor, Input& input) {
 	parent->active_edit = &editor;
 }
 
@@ -1835,7 +1838,7 @@ void Text_Editor::mouse_handler(Camera& view, Input& input, Point& cursor, bool 
 	needs_redraw = needs_redraw || mouse_held;
 }
 
-void Text_Editor::default_action(Camera& view, bool dbl_click) {
+void Text_Editor::base_action(Camera& view, Point& cursor, Input& input) {
 	parent->active_edit = &editor;
 }
 

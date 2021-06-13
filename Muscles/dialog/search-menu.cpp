@@ -329,12 +329,12 @@ void search_object_table_cell_init(Table *table, int col, int row) {
 		auto dd = dynamic_cast<Drop_Down*>(elem);
 		dd->external = &sm->method_options;
 		dd->sel = 0;
-		dd->title_off_y = -0.05;
+		dd->title_off_y = -0.2;
 		dd->leaning = 0.0;
 	}
 	else {
 		auto edit = dynamic_cast<Edit_Box*>(elem);
-		edit->text_off_y = -0.05;
+		edit->text_off_y = -0.2;
 	}
 }
 
@@ -395,11 +395,16 @@ void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 
 	sm->params_revealed = !sm->params_revealed;
 
+	sm->struct_lbl.visible = sm->params_revealed;
+	sm->struct_edit.visible = sm->params_revealed;
 	sm->source_lbl.visible = sm->params_revealed;
 	sm->source_edit.visible = sm->params_revealed;
 	sm->addr_lbl.visible = sm->params_revealed;
 	sm->start_addr_edit.visible = sm->params_revealed;
 	sm->end_addr_edit.visible = sm->params_revealed;
+	sm->object_lbl.visible = sm->params_revealed;
+	sm->object.visible = sm->params_revealed;
+	sm->object_div.visible = sm->params_revealed;
 	sm->type_lbl.visible = sm->params_revealed;
 	sm->type_edit.visible = sm->params_revealed;
 	sm->method_lbl.visible = sm->params_revealed;
@@ -531,7 +536,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		struct_edit.key_action = search_struct_edit_handler;
 		ui.push_back(&struct_edit);
 
-		struct_dd.managed = true;
+		struct_dd.edit_elem = &struct_edit;
 		struct_dd.font = label_font;
 		struct_dd.default_color = ws.colors.back;
 		struct_dd.hl_color = ws.colors.hl;
@@ -552,7 +557,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	source_edit.key_action = search_source_edit_handler;
 	ui.push_back(&source_edit);
 
-	source_dd.managed = true;
+	source_dd.edit_elem = &source_edit;
 	source_dd.font = dd_font;
 	source_dd.default_color = ws.colors.back;
 	source_dd.hl_color = ws.colors.hl;
@@ -630,7 +635,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		type_edit.key_action = search_type_edit_handler;
 		ui.push_back(&type_edit);
 
-		type_dd.managed = true;
+		type_dd.edit_elem = &type_edit;
 		type_dd.font = dd_font;
 		type_dd.default_color = ws.colors.back;
 		type_dd.hl_color = ws.colors.hl;

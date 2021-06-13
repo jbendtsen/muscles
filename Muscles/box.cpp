@@ -16,14 +16,17 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 	sdl_draw_rect(r, back_color, nullptr);
 
 	for (auto& e : ui) {
-		if (e->visible)
-			e->draw(view, r, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+		if (e->visible) {
+			bool elem_hovered = !dd_menu_hovered && inside && e->pos.contains(*inside);
+			e->draw(view, r, elem_hovered, hovered, focussed);
+		}
 	}
 
 	for (auto& e : ui) {
 		if (e->visible && e->use_post_draw) {
 			Rect_Int back = make_int_ui_box(r, e->pos, view.scale);
-			e->post_draw(view, back, inside ? e->pos.contains(*inside) : false, hovered, focussed);
+			bool elem_hovered = !dd_menu_hovered && inside && e->pos.contains(*inside);
+			e->post_draw(view, back, elem_hovered, hovered, focussed);
 		}
 	}
 
@@ -142,15 +145,11 @@ void Box::update_hovered(Camera& view, Input& input, Point& inside) {
 
 void Box::update_active_elements(Camera& view, Input& input, Point& inside, Box *hover) {
 	if (input.lclick) {
-		if (active_edit) {
-			if (active_edit->parent->disengage(input, true))
-				input.lclick = false;
-		}
 		active_edit = nullptr;
 	}
 
 	if (current_dd && input.action && (!hover || hover == this)) {
-		current_dd->default_action(view, input.double_click);
+		current_dd->base_action(view, inside, input);
 		if (current_dd->action)
 			current_dd->action(current_dd, view, input.double_click);
 
@@ -173,7 +172,7 @@ void Box::update_element_actions(Camera& view, Input& input, Point& inside, Box 
 			Workspace *ws = parent;
 			ws->box_expunged = false;
 
-			elem->default_action(view, input.double_click);
+			elem->base_action(view, inside, input);
 			if (elem->action) {
 				elem->action(elem, view, input.double_click);
 				input.action = false;
@@ -208,11 +207,13 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 	dropdown_set = false;
 
-	bool dd_menu_hovered = false;
+	dd_menu_hovered = false;
 	if (current_dd) {
 		current_dd->highlight(view, inside);
 		dd_menu_hovered = current_dd->hl >= 0;
 	}
+
+	bool was_dd = current_dd != nullptr;
 
 	if (!parent->box_moving && !dd_menu_hovered && (!hover || this == hover))
 		update_hovered(view, input, inside);
@@ -245,19 +246,17 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 					}
 				}
 
-				if (elem != current_dd)
-					elem->highlight(view, inside);
+				elem->highlight(view, inside);
 			}
 
 			if (this != hover)
 				elem->deselect();
 		}
-	}
 
-	if (input.lclick && !dropdown_set) {
-		if (current_dd)
+		if (input.lclick && was_dd && current_dd) {
 			current_dd->dropped = false;
-		current_dd = nullptr;
+			current_dd = nullptr;
+		}
 	}
 
 	update_ui(view);

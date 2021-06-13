@@ -280,10 +280,7 @@ struct Search_Menu : Box {
 
 	std::vector<char*> method_options = {
 		(char*)"Equals",
-		(char*)"Range",
-		(char*)"1",
-		(char*)"2",
-		(char*)"3"
+		(char*)"Range"
 	};
 
 	Search search;

@@ -355,7 +355,7 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	addr_edit.default_color = ws.colors.dark;
 	ui.push_back(&addr_edit);
 
-	source_dd.managed = true;
+	source_dd.edit_elem = &source_edit;
 	source_dd.font = source_label.font;
 	source_dd.default_color = ws.colors.back;
 	source_dd.hl_color = ws.colors.hl;
@@ -372,7 +372,7 @@ View_Object::View_Object(Workspace& ws, MenuType mtype) {
 	source_edit.key_action = source_edit_handler;
 	ui.push_back(&source_edit);
 
-	struct_dd.managed = true;
+	struct_dd.edit_elem = &struct_edit;
 	struct_dd.font = struct_label.font;
 	struct_dd.default_color = ws.colors.back;
 	struct_dd.hl_color = ws.colors.hl;
