@@ -112,8 +112,6 @@ void Box::set_dropdown(Drop_Down *dd) {
 	current_dd = dd;
 	if (current_dd)
 		current_dd->dropped = true;
-
-	dropdown_set = true;
 }
 
 void Box::update_hovered(Camera& view, Input& input, Point& inside) {
@@ -204,8 +202,6 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 	if (ticks % refresh_every == 0)
 		refresh(&inside);
 	ticks++;
-
-	dropdown_set = false;
 
 	dd_menu_hovered = false;
 	if (current_dd) {

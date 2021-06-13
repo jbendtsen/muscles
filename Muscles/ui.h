@@ -710,7 +710,6 @@ struct Box {
 	bool visible = false;
 	bool moving = false;
 	bool ui_held = false;
-	bool dropdown_set = false;
 	bool dd_menu_hovered = false;
 
 	int ticks = 0;
