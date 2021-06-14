@@ -36,7 +36,7 @@ static inline float clamp_f(float f, float min, float max) {
 	return f;
 }
 
-Rect_Int make_int_ui_box(Rect_Int& box, Rect& elem, float scale) {
+Rect_Int make_int_ui_box(Rect_Int const& box, Rect const& elem, float scale) {
 	return {
 		.x = (int)(0.5 + (float)box.x + elem.x * scale),
 		.y = (int)(0.5 + (float)box.y + elem.y * scale),
@@ -45,7 +45,7 @@ Rect_Int make_int_ui_box(Rect_Int& box, Rect& elem, float scale) {
 	};
 }
 
-Rect make_ui_box(Rect_Int& box, Rect& elem, float scale) {
+Rect make_ui_box(Rect_Int const& box, Rect const& elem, float scale) {
 	return {
 		.x = (float)box.x + elem.x * scale,
 		.y = (float)box.y + elem.y * scale,
@@ -94,13 +94,14 @@ void maximize_box(UI_Element *elem, Camera& view, bool dbl_click) {
 }
 void (*get_maximize_box(void))(UI_Element*, Camera&, bool) { return maximize_box; }
 
-void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_hovered, bool focussed) {
+void UI_Element::draw(Camera& view, Rect_Int const& rect, bool elem_hovered, bool box_hovered, bool focussed) {
 	ticks++;
+	screen = make_int_ui_box(rect, pos, view.scale);
+
 	update(view, rect);
 
 	if (!use_sf_cache) {
-		Rect_Int back = make_int_ui_box(rect, pos, view.scale);
-		screen = back;
+		Rect_Int back = screen;
 		draw_element(nullptr, view, back, elem_hovered, box_hovered, focussed);
 		return;
 	}
@@ -142,8 +143,7 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 
 	if (!draw_existing) {
 		if (!soft_draw) {
-			back = make_int_ui_box(rect, pos, view.scale);
-			screen = back;
+			back = screen;
 		}
 
 		draw_element(renderer, view, back, elem_hovered, box_hovered, focussed);
@@ -160,10 +160,8 @@ void UI_Element::draw(Camera& view, Rect_Int& rect, bool elem_hovered, bool box_
 			needs_redraw = false;
 	}
 
-	Rect_Int r = make_int_ui_box(rect, pos, view.scale);
-
 	if (draw_existing)
-		sdl_apply_texture(tex_cache, r, nullptr, nullptr);
+		sdl_apply_texture(tex_cache, screen, nullptr, nullptr);
 }
 
 void UI_Element::set_active(bool state) {
@@ -296,7 +294,7 @@ void Checkbox::base_action(Camera& view, Point& cursor, Input& input) {
 	checked = !checked;
 }
 
-void Data_View::highlight(Camera& view, Point& inside) {
+void Data_View::highlight(Camera& view, Point& inside, Input& input) {
 	if (!font || !data) {
 		hl_row = hl_col = -1;
 		return;
@@ -484,14 +482,23 @@ void Data_View::draw_cell(Draw_Cell_Info& info, void *cell, Column& header, Rect
 
 			float scale = info.camera->scale;
 			elem->pos = {0, 0, back.w / scale, back.h / scale};
-			elem->screen = back;
+			elem->screen = {
+				.x = screen.x + back.x - x_origin,
+				.y = screen.y + back.y - y_origin,
+				.w = back.w,
+				.h = back.h
+			};
 
+			elem->update(*info.camera, back);
 			elem->draw_element(info.renderer, *info.camera, back, false, false, false);
 		}
 	}
 }
 
 void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool elem_hovered, bool box_hovered, bool focussed) {
+	x_origin = back.x;
+	y_origin = back.y;
+
 	if (!data) {
 		sdl_draw_rect(back, default_color, renderer);
 		return;
@@ -911,6 +918,21 @@ void Divider::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool
 	}
 }
 
+void Drop_Down::update(Camera& view, Rect_Int const& rect) {
+	auto lines = get_content();
+	float font_h = font->render.text_height();
+	float menu_h = (title_off_y + line_height * lines->size()) * font_h;
+	if (menu_h < 4)
+		menu_h = 0;
+
+	menu_rect = {
+		.x = (float)screen.x,
+		.y = (float)(screen.y + screen.h),
+		.w = width * view.scale,
+		.h = menu_h
+	};
+}
+
 void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool hovered) {
 	if (edit_elem)
 		return;
@@ -931,18 +953,18 @@ void Drop_Down::mouse_handler(Camera& view, Input& input, Point& inside, bool ho
 	}
 }
 
-void Drop_Down::highlight(Camera& view, Point& inside) {
+void Drop_Down::highlight(Camera& view, Point& inside, Input& input) {
 	hl = -1;
-	if (!dropped || inside.x < pos.x || inside.x >= pos.x + width)
+	if (!dropped || input.mouse_x < menu_rect.x || input.mouse_x >= menu_rect.x + menu_rect.w)
 		return;
 
-	float font_unit = font->render.text_height() / view.scale;
-	float y = pos.y + pos.h + title_off_y * font_unit;
-	float h = line_height * font_unit;
+	float font_h = font->render.text_height();
+	float y = menu_rect.y;
+	float h = line_height * font_h;
 
 	auto lines = get_content();
 	for (int i = 0; i < lines->size(); i++) {
-		if (inside.y >= y && inside.y < y + h) {
+		if (input.mouse_y >= y && input.mouse_y < y + h) {
 			hl = i;
 			break;
 		}
@@ -967,21 +989,14 @@ void Drop_Down::base_action(Camera& view, Point& cursor, Input& input) {
 	}
 }
 
-void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float menu_y) {
+void Drop_Down::draw_menu(Renderer renderer, Camera& view) {
 	float font_height = font->render.text_height();
 	auto lines = get_content();
 
-	Rect box = {
-		menu_x,
-		menu_y,
-		width * view.scale,
-		(title_off_y + line_height * lines->size()) * font_height
-	};
-
-	sdl_draw_rect(box, hl_color, renderer);
+	sdl_draw_rect(menu_rect, hl_color, renderer);
 
 	if (hl >= 0) {
-		Rect hl_rect = box;
+		Rect hl_rect = menu_rect;
 		hl_rect.y += line_height * hl * font_height;
 		hl_rect.h = (title_off_y + line_height) * font_height + 1;
 		sdl_draw_rect(hl_rect, sel_color, renderer);
@@ -990,13 +1005,13 @@ void Drop_Down::draw_menu(Renderer renderer, Camera& view, float menu_x, float m
 	float hack = 3;
 	float item_x = item_off_x * font_height;
 	float item_w = (width - hack) * view.scale - item_x;
-	item_clip.x_upper = box.x + item_x + item_w;
+	item_clip.x_upper = menu_rect.x + item_x + item_w;
 
 	float y = font_height * ((line_height - 1) / 2 - font->line_offset);
 
 	for (auto& l : *lines) {
 		if (l)
-			font->render.draw_text(renderer, l, box.x + item_x, box.y + y, item_clip);
+			font->render.draw_text(renderer, l, menu_rect.x + item_x, menu_rect.y + y, item_clip);
 
 		y += font_height * line_height;
 	}
@@ -1012,6 +1027,7 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 		sdl_draw_rect(back, default_color, renderer);
 
 	auto lines = get_content();
+	float font_h = font->render.text_height();
 
 	const char *text = title;
 	if (!title && lines && lines->size() > 0 && sel >= 0 && (*lines)[sel])
@@ -1034,7 +1050,6 @@ void Drop_Down::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 	if (text) {
 		float text_w = font->render.text_width(text);
-		float font_h = font->render.text_height();
 
 		float pad_x = title_pad_x * font_h;
 		float gap_y = title_off_y * font_h;
@@ -1131,10 +1146,6 @@ void Edit_Box::draw_element(Renderer renderer, Camera& view, Rect_Int& back, boo
 		dropdown->pos = pos;
 		dropdown->screen = screen;
 		dropdown->width = pos.w;
-		/*
-		if (dropdown->dropped)
-			dropdown->draw_menu(nullptr, view, screen.x, screen.y + pos.h * view.scale);
-		*/
 	}
 
 	sdl_draw_rect(back, default_color, renderer);
@@ -1486,7 +1497,7 @@ void Image::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool e
 	sdl_apply_texture(img, back, nullptr, renderer);
 }
 
-void Label::update(Camera& view, Rect_Int& rect) {
+void Label::update(Camera& view, Rect_Int const& rect) {
 	if (outer_box.w <= 0)
 		return;
 
@@ -1723,7 +1734,7 @@ void Scroll::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bool 
 	sdl_draw_rect(scroll_rect, *color, renderer);
 }
 
-void Scroll::highlight(Camera& view, Point& inside) {
+void Scroll::highlight(Camera& view, Point& inside, Input& input) {
 	hl = pos.contains(inside);
 }
 
@@ -1861,7 +1872,7 @@ bool Text_Editor::scroll_handler(Camera& view, Input& input, Point& inside) {
 	return scrolled;
 }
 
-void Text_Editor::update(Camera& view, Rect_Int& rect) {
+void Text_Editor::update(Camera& view, Rect_Int const& rect) {
 	show_caret = ticks % (caret_on_time + caret_off_time) < caret_on_time;
 }
 

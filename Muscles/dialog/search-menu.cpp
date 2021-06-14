@@ -21,8 +21,11 @@ void Search_Menu::update_ui(Camera& view) {
 
 	float label_h = label_font->render.text_height() * LABEL_HEIGHT_FACTOR / view.scale;
 	float edit_h  = source_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
+	const float scroll_w = 14;
 
 	float start_x = 2*border;
+	float total_w = box.w - 2*start_x;
+
 	float y = title.outer_box.h;
 
 	reveal_btn.pos = {
@@ -123,8 +126,15 @@ void Search_Menu::update_ui(Camera& view) {
 			object.pos = {
 				.x = start_x,
 				.y = y,
-				.w = box.w - 2*start_x,
+				.w = total_w - scroll_w - border,
 				.h = object_div.position - table_div_gap - y
+			};
+
+			object_scroll.pos = {
+				.x = start_x + total_w - scroll_w,
+				.y = y,
+				.w = scroll_w,
+				.h = object.pos.h
 			};
 
 			y = object_div.position;
@@ -237,8 +247,15 @@ void Search_Menu::update_ui(Camera& view) {
 	results.pos = {
 		.x = start_x,
 		.y = y,
-		.w = box.w - 2*start_x,
+		.w = total_w - scroll_w - border,
 		.h = box.h - start_x - y
+	};
+
+	results_scroll.pos = {
+		.x = start_x + total_w - scroll_w,
+		.y = y,
+		.w = scroll_w,
+		.h = results.pos.h
 	};
 }
 
@@ -328,6 +345,7 @@ void search_object_table_cell_init(Table *table, int col, int row) {
 	if (col == 3) {
 		auto dd = dynamic_cast<Drop_Down*>(elem);
 		dd->external = &sm->method_options;
+		dd->keep_selected = true;
 		dd->sel = 0;
 		dd->title_off_y = -0.2;
 		dd->leaning = 0.0;
@@ -404,6 +422,7 @@ void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	sm->end_addr_edit.visible = sm->params_revealed;
 	sm->object_lbl.visible = sm->params_revealed;
 	sm->object.visible = sm->params_revealed;
+	sm->object_scroll.visible = sm->params_revealed;
 	sm->object_div.visible = sm->params_revealed;
 	sm->type_lbl.visible = sm->params_revealed;
 	sm->type_edit.visible = sm->params_revealed;
@@ -414,6 +433,10 @@ void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	sm->value2_edit.visible = sm->params_revealed;
 
 	sm->update_reveal_button(view.scale);
+
+	sm->min_height = sm->params_revealed ? sm->min_revealed_height : sm->min_hidden_height;
+	if (sm->box.h < sm->min_height)
+		sm->box.h = sm->min_height;
 }
 
 void search_results_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -609,6 +632,10 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		object.show_column_names = true;
 		ui.push_back(&object);
 
+		object_scroll.back_color = ws.colors.scroll_back;
+		object_scroll.default_color = ws.colors.scroll;
+		object_scroll.hl_color = ws.colors.scroll_hl;
+		object_scroll.sel_color = ws.colors.scroll_sel;
 		object_scroll.content = &object;
 		ui.push_back(&object_scroll);
 
@@ -752,12 +779,16 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	results.show_column_names = true;
 	ui.push_back(&results);
 
+	results_scroll.back_color = ws.colors.scroll_back;
+	results_scroll.default_color = ws.colors.scroll;
+	results_scroll.hl_color = ws.colors.scroll_hl;
+	results_scroll.sel_color = ws.colors.scroll_sel;
 	results_scroll.content = &results;
 	ui.push_back(&results_scroll);
 
 	initial_width = 400;
 	initial_height = 450;
 	min_width = 300;
-	min_height = 450;
+	min_height = min_revealed_height;
 	refresh_every = 1;
 }

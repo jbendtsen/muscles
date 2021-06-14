@@ -275,6 +275,9 @@ struct Search_Menu : Box {
 	Font *dd_font = nullptr;
 	Font *table_font = nullptr;
 
+	const float min_revealed_height = 450;
+	const float min_hidden_height = 250;
+
 	float reveal_btn_length = 20;
 	bool params_revealed = true;
 

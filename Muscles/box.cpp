@@ -30,10 +30,8 @@ void Box::draw(Workspace& ws, Camera& view, bool held, Point *inside, bool hover
 		}
 	}
 
-	if (current_dd) {
-		Rect_Int& dd = current_dd->screen;
-		current_dd->draw_menu(nullptr, view, dd.x, dd.y + dd.h);
-	}
+	if (current_dd)
+		current_dd->draw_menu(nullptr, view);
 }
 
 void Box::require_redraw() {
@@ -205,7 +203,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 
 	dd_menu_hovered = false;
 	if (current_dd) {
-		current_dd->highlight(view, inside);
+		current_dd->highlight(view, inside, input);
 		dd_menu_hovered = current_dd->hl >= 0;
 	}
 
@@ -242,7 +240,7 @@ void Box::update(Workspace& ws, Camera& view, Input& input, Box *hover, bool foc
 					}
 				}
 
-				elem->highlight(view, inside);
+				elem->highlight(view, inside, input);
 			}
 
 			if (this != hover)
