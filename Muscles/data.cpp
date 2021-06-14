@@ -282,8 +282,8 @@ void Table::resize(int n_rows) {
 	}
 }
 
-void Table::init(Column *headers, Arena *a, void *m, void (*elem_init)(Table*, int, int), int n_cols, int n_rows) {
-	manager = m;
+void Table::init(Column *headers, Arena *a, void *tag, void (*elem_init)(Table*, int, int), int n_cols, int n_rows) {
+	element_tag = tag;
 	element_init_func = elem_init;
 	if (a)
 		arena = a;

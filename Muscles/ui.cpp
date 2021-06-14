@@ -736,7 +736,8 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 			if (data->headers[i].type != ColumnElement)
 				continue;
 
-			for (auto& cell : data->columns[i]) {
+			for (int j = 0; j < data->columns[i].size(); j++) {
+				auto& cell = data->columns[i][j];
 				if (!cell)
 					continue;
 
@@ -749,8 +750,11 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 				elem->mouse_handler(view, input, inside, hovered);
 				elem->key_handler(view, input);
 
-				if (input.lclick && elem->pos.contains(inside))
+				if (input.lclick && elem->pos.contains(inside)) {
 					active_elem = elem;
+					active_col = i;
+					active_row = j;
+				}
 			}
 
 			needs_redraw = true;

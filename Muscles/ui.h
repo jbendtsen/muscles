@@ -241,6 +241,8 @@ struct Data_View : UI_Element {
 	Scroll *vscroll = nullptr;
 
 	UI_Element *active_elem = nullptr;
+	int active_row = -1;
+	int active_col = -1;
 
 	int hl_row = -1;
 	int hl_col = -1;

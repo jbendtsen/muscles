@@ -221,6 +221,7 @@ struct Search_Menu : Box {
 	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
 
+	void set_object_row_visibility(int col, int row);
 	void update_reveal_button(float scale);
 
 	Image cross;

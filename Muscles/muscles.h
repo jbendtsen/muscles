@@ -322,7 +322,7 @@ struct Table {
 	int filtered = -1;
 	bool has_ui_elements = false;
 
-	void *manager = nullptr;
+	void *element_tag = nullptr;
 	void (*element_init_func)(Table*, int, int) = nullptr;
 
 	String_Vector branch_name_vector;

@@ -259,6 +259,23 @@ void Search_Menu::update_ui(Camera& view) {
 	};
 }
 
+void Search_Menu::set_object_row_visibility(int col, int row) {
+	auto method_dd = dynamic_cast<Drop_Down*>((UI_Element*)object.data->columns[3][row]);
+	auto value1_edit = dynamic_cast<Edit_Box*>((UI_Element*)object.data->columns[4][row]);
+	auto value2_edit = dynamic_cast<Edit_Box*>((UI_Element*)object.data->columns[5][row]);
+
+	method_dd->visible = true;
+
+	if (method_dd->sel == 0) { // Equals
+		value1_edit->visible = true;
+		value2_edit->visible = false;
+	}
+	else if (method_dd->sel == 1) { // Range
+		value1_edit->visible = true;
+		value2_edit->visible = true;
+	}
+}
+
 void search_struct_edit_handler(Edit_Box *edit, Input& input) {
 	auto sm = dynamic_cast<Search_Menu*>(edit->parent);
 	Workspace& ws = *edit->parent->parent;
@@ -308,30 +325,24 @@ void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 void search_object_table_checkbox_handler(Data_View *object, int col, int row) {
 	bool enabled = TABLE_CHECKBOX_CHECKED(object->data, col, row);
 
-	auto method_dd = dynamic_cast<Drop_Down*>((UI_Element*)object->data->columns[3][row]);
-	auto value1_edit = dynamic_cast<Edit_Box*>((UI_Element*)object->data->columns[4][row]);
-	auto value2_edit = dynamic_cast<Edit_Box*>((UI_Element*)object->data->columns[5][row]);
-
 	if (!enabled) {
-		method_dd->visible = false;
-		value1_edit->visible = false;
-		value2_edit->visible = false;
-		return;
+		((UI_Element*)object->data->columns[3][row])->visible = false;
+		((UI_Element*)object->data->columns[4][row])->visible = false;
+		((UI_Element*)object->data->columns[5][row])->visible = false;
 	}
-
-	method_dd->visible = true;
-
-	if (method_dd->sel == 0) { // Equals
-		value1_edit->visible = true;
-	}
-	else if (method_dd->sel == 1) { // Range
-		value1_edit->visible = true;
-		value2_edit->visible = true;
+	else {
+		auto sm = dynamic_cast<Search_Menu*>(object->parent);
+		sm->set_object_row_visibility(col, row);
 	}
 }
 
+void search_object_table_method_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+	sm->set_object_row_visibility(sm->object.active_col, sm->object.active_row);
+}
+
 void search_object_table_cell_init(Table *table, int col, int row) {
-	auto sm = dynamic_cast<Search_Menu*>((Box*)table->manager);
+	auto sm = dynamic_cast<Search_Menu*>((Box*)table->element_tag);
 	Workspace *ws = sm->parent;
 	auto elem = (UI_Element*)table->columns[col][row];
 
@@ -344,6 +355,7 @@ void search_object_table_cell_init(Table *table, int col, int row) {
 
 	if (col == 3) {
 		auto dd = dynamic_cast<Drop_Down*>(elem);
+		dd->action = search_object_table_method_handler;
 		dd->external = &sm->method_options;
 		dd->keep_selected = true;
 		dd->sel = 0;
