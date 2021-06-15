@@ -275,15 +275,6 @@ struct File_Entry {
 	char name[MAX_FNAME];
 };
 
-#define SET_TABLE_CHECKBOX(table, col, row, state) \
-	*(u8*)&table->columns[col][row] = state ? 2 : 1
-
-#define TOGGLE_TABLE_CHECKBOX(table, col, row) \
-	*(u8*)&table->columns[col][row] = *(u8*)&table->columns[col][row] == 2 ? 1 : 2
-
-#define TABLE_CHECKBOX_CHECKED(table, col, row) \
-	(*(u8*)&table->columns[col][row] == 2)
-
 enum ColumnType {
 	ColumnNone = 0,
 	ColumnString,
@@ -347,6 +338,16 @@ struct Table {
 	int filtered_from_index(int idx) {
 		auto it = list.find(idx);
 		return it == list.end() ? -1 : std::distance(list.begin(), it);
+	}
+
+	void set_checkbox(int col, int row, bool state) {
+		*(u8*)&columns[col][row] = state ? 2 : 1;
+	}
+	void toggle_checkbox(int col, int row) {
+		*(u8*)&columns[col][row] = *(u8*)&columns[col][row] == 2 ? 1 : 2;
+	}
+	bool checkbox_checked(int col, int row) const {
+		return *(u8*)&columns[col][row] == 2;
 	}
 
 	void init(Column *headers, Arena *a, void *m, void (*elem_init)(Table*, int, int), int n_cols, int n_rows);
@@ -719,6 +720,7 @@ void wait_ms(int ms);
 bool start_thread(void** thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*));
 
 #define MAX_SEARCH_RESULTS 10000
+#define MAX_SEARCH_PARAMS 100
 
 #define METHOD_EQUALS 0
 #define METHOD_RANGE  1
@@ -746,9 +748,11 @@ struct Search {
 };
 
 void start_search(Search& s, std::vector<Region> const& regions);
+bool check_search_running();
 bool check_search_finished();
 void get_search_results(std::vector<u64>& results_vec);
 void reset_search();
+void exit_search();
 
 #define FLAG_POINTER       0x0001
 #define FLAG_BITFIELD      0x0002
@@ -763,7 +767,9 @@ void reset_search();
 #define FLAG_ENUM_ELEMENT  0x0400
 #define FLAG_TYPEDEF       0x0800
 #define FLAG_VALUE_INITED  0x1000
+
 #define FIELD_FLAGS        0x1fff
+#define PRIMITIVE_FLAGS    0x00ff
 
 #define FLAG_UNUSABLE      0x4000
 #define FLAG_UNRECOGNISED  0x8000

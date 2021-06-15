@@ -323,7 +323,7 @@ void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 }
 
 void search_object_table_checkbox_handler(Data_View *object, int col, int row) {
-	bool enabled = TABLE_CHECKBOX_CHECKED(object->data, col, row);
+	bool enabled = object->data->checkbox_checked(col, row);
 
 	if (!enabled) {
 		((UI_Element*)object->data->columns[3][row])->visible = false;
@@ -368,43 +368,110 @@ void search_object_table_cell_init(Table *table, int col, int row) {
 	}
 }
 
-void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
-	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+bool Search_Menu::prepare_object_params() {
+	if (!is_struct_usable(record))
+		return false;
 
-	if (!sm->source || sm->method_dd.sel < 0)
-		return;
+	if (!params_pool)
+		params_pool = new Search_Parameter[MAX_SEARCH_PARAMS];
 
-	std::string& type = sm->type_edit.editor.text;
+	int n_params = 0;
+
+	for (int i = 0; i < record->fields.n_fields && n_params < MAX_SEARCH_PARAMS; i++) {
+		if (!object_table.checkbox_checked(0, i))
+			continue;
+
+		Field *f = &record->fields.data[i];
+
+		int method = dynamic_cast<Drop_Down*>((UI_Element*)object_table.columns[3][i])->sel;
+
+		params_pool[n_params] = {
+			.flags = f->flags & FIELD_FLAGS,
+			.method = method,
+			.offset = f->bit_offset,
+			.size = f->bit_size,
+			.value1 = 0,
+			.value2 = 0
+		};
+
+		if (method == METHOD_EQUALS || method == METHOD_RANGE) {
+			const char *value_str = dynamic_cast<Edit_Box*>((UI_Element*)object_table.columns[4][i])->editor.text.c_str();
+			params_pool[n_params].value1 = evaluate_number(value_str, f->flags & FLAG_FLOAT).i;
+		}
+		if (method == METHOD_RANGE) {
+			const char *value_str = dynamic_cast<Edit_Box*>((UI_Element*)object_table.columns[5][i])->editor.text.c_str();
+			params_pool[n_params].value2 = evaluate_number(value_str, f->flags & FLAG_FLOAT).i;
+		}
+
+		n_params++;
+	}
+
+	if (!n_params)
+		return false;
+
+	search.params = params_pool;
+	search.n_params = n_params;
+
+	search.start_addr = evaluate_number(start_addr_edit.editor.text.c_str()).i;
+	search.end_addr = evaluate_number(end_addr_edit.editor.text.c_str()).i;
+
+	search.source_type = source->type;
+	search.pid = source->pid;
+	search.identifier = source->identifier;
+
+	return true;
+}
+
+bool Search_Menu::prepare_value_param() {
+	if (method_dd.sel < 0)
+		return false;
+
+	std::string& type = type_edit.editor.text;
 	if (type.size() == 0)
-		return;
+		return false;
 
-	Workspace& ws = *elem->parent->parent;
-	Bucket& buck = ws.definitions[type.c_str()];
+	Bucket& buck = parent->definitions[type.c_str()];
 
 	const u32 min_flags = FLAG_OCCUPIED | FLAG_PRIMITIVE;
 	if ((buck.flags & min_flags) != min_flags)
-		return;
+		return false;
 
-	sm->cancel_btn.set_active(true);
-
-	sm->search.params = nullptr;
-	sm->search.single_value = {
+	search.params = nullptr;
+	search.single_value = {
 		.flags = buck.flags & FIELD_FLAGS,
-		.method = sm->method_dd.sel,
+		.method = method_dd.sel,
 		.offset = 0,
 		.size = (int)buck.value,
-		.value1 = evaluate_number(sm->value1_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i,
-		.value2 = evaluate_number(sm->value2_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i
+		.value1 = evaluate_number(value1_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i,
+		.value2 = evaluate_number(value2_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i
 	};
 
-	sm->search.start_addr = evaluate_number(sm->start_addr_edit.editor.text.c_str()).i;
-	sm->search.end_addr = evaluate_number(sm->end_addr_edit.editor.text.c_str()).i;
+	search.start_addr = evaluate_number(start_addr_edit.editor.text.c_str()).i;
+	search.end_addr = evaluate_number(end_addr_edit.editor.text.c_str()).i;
 
-	sm->search.source_type = sm->source->type;
-	sm->search.pid = sm->source->pid;
-	sm->search.identifier = sm->source->identifier;
+	search.source_type = source->type;
+	search.pid = source->pid;
+	search.identifier = source->identifier;
 
-	start_search(sm->search, sm->source->regions);
+	return true;
+}
+
+void search_search_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
+	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
+
+	if (!sm->source || check_search_running())
+		return;
+
+	bool ok = false;
+	if (sm->menu_type == MenuObject)
+		ok = sm->prepare_object_params();
+	else
+		ok = sm->prepare_value_param();
+
+	if (ok) {
+		sm->cancel_btn.set_active(true);
+		start_search(sm->search, sm->source->regions);
+	}
 }
 
 void search_cancel_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -532,6 +599,11 @@ void Search_Menu::handle_zoom(Workspace& ws, float new_scale) {
 	search_btn.update_size(new_scale);
 
 	update_reveal_button(new_scale);
+}
+
+void Search_Menu::on_close() {
+	if (params_pool)
+		delete[] params_pool;
 }
 
 Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {

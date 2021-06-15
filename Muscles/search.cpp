@@ -2,18 +2,18 @@
 #include <cstdint>
 #include <algorithm>
 
-void *thread = nullptr;
-bool started = false;
-bool running = false;
+static void *thread = nullptr;
+static bool started = false;
+static bool running = false;
 
-u64 *results = nullptr;
-int n_results = 0;
+static u64 *results = nullptr;
+static int n_results = 0;
 
-u64 *prev_results = nullptr;
-int n_prev_results = 0;
+static u64 *prev_results = nullptr;
+static int n_prev_results = 0;
 
-Search search;
-std::vector<std::pair<u64, u64>> ranges;
+static Search search;
+static std::vector<std::pair<u64, u64>> ranges;
 
 void perform_search();
 
@@ -29,8 +29,11 @@ void start_search(Search& s, std::vector<Region> const& regions) {
 		return a.first < b.first;
 	});
 
-	search.params = nullptr;
-	search.single_value = s.single_value;
+	search.params = s.params;
+	if (search.params)
+		search.n_params = s.n_params;
+	else
+		search.single_value = s.single_value;
 
 	search.start_addr = s.start_addr & ~PAGE_SIZE;
 	search.end_addr = s.end_addr;
@@ -44,6 +47,10 @@ void start_search(Search& s, std::vector<Region> const& regions) {
 		return (THREAD_RETURN_TYPE)0;
 	};
 	start_thread(&thread, nullptr, func);
+}
+
+bool check_search_running() {
+	return running;
 }
 
 bool check_search_finished() {
@@ -65,6 +72,17 @@ void get_search_results(std::vector<u64>& results_vec) {
 
 void reset_search() {
 	n_results = 0;
+}
+
+void exit_search() {
+	if (results) {
+		delete[] results;
+		results = nullptr;
+	}
+	if (prev_results) {
+		delete[] prev_results;
+		prev_results = nullptr;
+	}
 }
 
 template <int method, typename T>
@@ -233,6 +251,10 @@ void do_single_value_search(SOURCE_HANDLE handle) {
 	}
 }
 
+void do_object_search(SOURCE_HANDLE handle) {
+	wait_ms(1000);
+}
+
 // We know the thread has ended if started == true and running == false
 void perform_search() {
 	started = true;
@@ -255,7 +277,7 @@ void perform_search() {
 	if (!search.params)
 		do_single_value_search(handle);
 	else
-		wait_ms(1000);
+		do_object_search(handle);
 
 	running = false;
 }

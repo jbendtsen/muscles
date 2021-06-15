@@ -89,9 +89,9 @@ void View_Definitions::update_tables(Workspace *ws) {
 		// Size
 		types.columns[1][i] = (void*)buck.value;
 		// Big Endian, Float, Signed
-		SET_TABLE_CHECKBOX((&types), 2, i, buck.flags & FLAG_BIG_ENDIAN);
-		SET_TABLE_CHECKBOX((&types), 3, i, buck.flags & FLAG_FLOAT);
-		SET_TABLE_CHECKBOX((&types), 4, i, buck.flags & FLAG_SIGNED);
+		types.set_checkbox(2, i, buck.flags & FLAG_BIG_ENDIAN);
+		types.set_checkbox(3, i, buck.flags & FLAG_FLOAT);
+		types.set_checkbox(4, i, buck.flags & FLAG_SIGNED);
 	}
 
 	enums.branches.clear();

@@ -220,9 +220,13 @@ struct Search_Menu : Box {
 	void update_ui(Camera& view) override;
 	void refresh(Point *cursor) override;
 	void handle_zoom(Workspace& ws, float new_scale) override;
+	void on_close() override;
 
 	void set_object_row_visibility(int col, int row);
 	void update_reveal_button(float scale);
+
+	bool prepare_object_params();
+	bool prepare_value_param();
 
 	Image cross;
 	Image maxm;
@@ -287,6 +291,8 @@ struct Search_Menu : Box {
 		(char*)"Range"
 	};
 
+	Search_Parameter *params_pool = nullptr;
+
 	Search search;
 	Source *source = nullptr;
 	Struct *record = nullptr;
@@ -325,7 +331,7 @@ void populate_object_table(UI *ui, std::vector<Struct*>& structs, String_Vector&
 	const bool is_search = std::is_same_v<UI, Search_Menu>;
 
 	for (int i = 0; i < n_rows; i++) {
-		SET_TABLE_CHECKBOX(ui->object.data, 0, i, false);
+		ui->object.data->set_checkbox(0, i, false);
 
 		Field& f = ui->record->fields.data[i];
 		char *name = name_vector.at(f.field_name_idx);

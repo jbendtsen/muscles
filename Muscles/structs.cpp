@@ -773,7 +773,7 @@ void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector&
 				}
 
 				if ((p.flags & prim_mask) == prim_mask) {
-					f->flags |= p.flags & 0xff; // 0xff captures the relevant flags for a primitive
+					f->flags |= p.flags & PRIMITIVE_FLAGS;
 					f->default_bit_size = p.value;
 					if ((f->flags & FLAG_BITFIELD) == 0 || f->bit_size > f->default_bit_size)
 						f->bit_size = f->default_bit_size;

@@ -639,7 +639,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 
 				bool skip_draw = false;
 				if (condition_col >= 0) {
-					if (!TABLE_CHECKBOX_CHECKED(data, condition_col, idx))
+					if (!data->checkbox_checked(condition_col, idx))
 						continue;
 
 					skip_draw = condition_col == i;
@@ -679,7 +679,7 @@ void Data_View::draw_element(Renderer renderer, Camera& view, Rect_Int& back, bo
 				else if (idx >= 0) {
 					bool skip_draw = false;
 					if (condition_col >= 0) {
-						if (!TABLE_CHECKBOX_CHECKED(data, condition_col, idx))
+						if (!data->checkbox_checked(condition_col, idx))
 							continue;
 
 						skip_draw = condition_col == i;
@@ -767,7 +767,7 @@ void Data_View::mouse_handler(Camera& view, Input& input, Point& cursor, bool ho
 	if (input.lclick) {
 		int row = data->get_table_index(hl_row);
 		if (hl_col >= 0 && row >= 0 && data->headers[hl_col].type == ColumnCheckbox) {
-			TOGGLE_TABLE_CHECKBOX(data, hl_col, row);
+			data->toggle_checkbox(hl_col, row);
 			if (checkbox_toggle_handler)
 				checkbox_toggle_handler(this, hl_col, row);
 		}

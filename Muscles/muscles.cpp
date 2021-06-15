@@ -163,6 +163,8 @@ int run() {
 		ctx.update(camera, input, cursor);
 	}
 
+	exit_search();
+
 	ctx.close();
 
 	destroy_font_face(face);
