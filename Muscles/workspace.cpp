@@ -132,7 +132,7 @@ void Workspace::bring_to_front(Box *b) {
 	}
 }
 
-Font *Workspace::make_font(float size, RGBA& color, float scale) {
+Font *Workspace::make_font(float size, RGBA color, float scale) {
 	auto to_points = [](float f) -> int { return f * 100.0; };
 
 	int s = to_points(size);

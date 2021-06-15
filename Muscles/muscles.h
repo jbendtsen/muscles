@@ -739,6 +739,7 @@ struct Search {
 	Search_Parameter *params = nullptr;
 	int n_params = 0;
 
+	int byte_align = 0;
 	u64 start_addr = 0;
 	u64 end_addr = 0;
 

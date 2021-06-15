@@ -77,16 +77,28 @@ void Search_Menu::update_ui(Camera& view) {
 		};
 		y += source_edit.pos.h + 2*border;
 
+		float addr_and_align_w = box.w - 4*start_x;
+		float addr_w  = 0.6 * addr_and_align_w;
+		float align_w = 0.4 * addr_and_align_w;
+
 		addr_lbl.pos = {
 			.x = start_x,
 			.y = y,
-			.w = 200,
+			.w = addr_w,
 			.h = label_h
 		};
+
+		align_lbl.pos = {
+			.x = start_x + addr_w + 2*start_x,
+			.y = 0,
+			.w = align_w,
+			.h = label_h
+		};
+
 		y += addr_lbl.pos.h + border;
 
-		float addr_w = (box.w - 4*start_x) / 2;
 		float addr_edit_h = start_addr_edit.font->render.text_height() * EDIT_HEIGHT_FACTOR / view.scale;
+		float total_addr_edit_h = 2*addr_edit_h + border;
 
 		start_addr_edit.pos = {
 			.x = start_x,
@@ -96,12 +108,22 @@ void Search_Menu::update_ui(Camera& view) {
 		};
 
 		end_addr_edit.pos = {
-			.x = start_x + box.w / 2,
-			.y = y,
+			.x = start_x,
+			.y = y + border + addr_edit_h,
 			.w = addr_w,
 			.h = addr_edit_h
 		};
-		y += end_addr_edit.pos.h + 2*border;
+
+		align_edit.pos = {
+			.x = align_lbl.pos.x,
+			.y = y + (total_addr_edit_h - edit_h) / 2,
+			.w = align_w,
+			.h = edit_h
+		};
+
+		align_lbl.pos.y = align_edit.pos.y - border - edit_h;
+
+		y += total_addr_edit_h + 2*border;
 
 		if (is_obj) {
 			object_lbl.pos = {
@@ -185,16 +207,18 @@ void Search_Menu::update_ui(Camera& view) {
 			};
 			y += value_lbl.pos.h + border;
 
+			float value_w = (box.w - 3*start_x) / 2;
+
 			value1_edit.pos = {
 				.x = start_x,
 				.y = y,
-				.w = start_addr_edit.pos.w,
+				.w = value_w,
 				.h = edit_h,
 			};
 			value2_edit.pos = {
-				.x = end_addr_edit.pos.x,
+				.x = 2*start_x + value_w,
 				.y = y,
-				.w = end_addr_edit.pos.w,
+				.w = value_w,
 				.h = edit_h
 			};
 			y += value2_edit.pos.h;
@@ -300,22 +324,10 @@ void search_source_edit_handler(Edit_Box *edit, Input& input) {
 	sm->source = src;
 }
 
-void search_address_edit_handler(Edit_Box *edit, Input& input) {
-	
-}
-
-void search_type_edit_handler(Edit_Box *edit, Input& input) {
-	
-}
-
 void search_method_dd_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	auto sm = dynamic_cast<Search_Menu*>(elem->parent);
 	sm->value2_edit.visible = sm->method_dd.sel == 1;
 	sm->value2_edit.needs_redraw = true;
-}
-
-void search_value_edit_handler(Edit_Box *edit, Input& input) {
-	
 }
 
 void search_object_handler(UI_Element *elem, Camera& view, bool dbl_click) {
@@ -412,6 +424,8 @@ bool Search_Menu::prepare_object_params() {
 	search.params = params_pool;
 	search.n_params = n_params;
 
+	search.byte_align = (int)evaluate_number(align_edit.editor.text.c_str()).i;
+
 	search.start_addr = evaluate_number(start_addr_edit.editor.text.c_str()).i;
 	search.end_addr = evaluate_number(end_addr_edit.editor.text.c_str()).i;
 
@@ -445,6 +459,8 @@ bool Search_Menu::prepare_value_param() {
 		.value1 = evaluate_number(value1_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i,
 		.value2 = evaluate_number(value2_edit.editor.text.c_str(), buck.flags & FLAG_FLOAT).i
 	};
+
+	search.byte_align = (int)evaluate_number(align_edit.editor.text.c_str()).i;
 
 	search.start_addr = evaluate_number(start_addr_edit.editor.text.c_str()).i;
 	search.end_addr = evaluate_number(end_addr_edit.editor.text.c_str()).i;
@@ -499,6 +515,8 @@ void search_reveal_btn_handler(UI_Element *elem, Camera& view, bool dbl_click) {
 	sm->addr_lbl.visible = sm->params_revealed;
 	sm->start_addr_edit.visible = sm->params_revealed;
 	sm->end_addr_edit.visible = sm->params_revealed;
+	sm->align_lbl.visible = sm->params_revealed;
+	sm->align_edit.visible = sm->params_revealed;
 	sm->object_lbl.visible = sm->params_revealed;
 	sm->object.visible = sm->params_revealed;
 	sm->object_scroll.visible = sm->params_revealed;
@@ -679,15 +697,24 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	start_addr_edit.editor.text = "0x" + std::string(16, '0');
 	start_addr_edit.caret = ws.colors.caret;
 	start_addr_edit.default_color = ws.colors.dark;
-	start_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&start_addr_edit);
 
 	end_addr_edit.font = table_font;
 	end_addr_edit.editor.text = "0x" + std::string(16, 'f');
 	end_addr_edit.caret = ws.colors.caret;
 	end_addr_edit.default_color = ws.colors.dark;
-	end_addr_edit.key_action = search_address_edit_handler;
 	ui.push_back(&end_addr_edit);
+
+	align_lbl.font = label_font;
+	align_lbl.text = "Byte Alignment";
+	ui.push_back(&align_lbl);
+
+	align_edit.font = label_font;
+	align_edit.ph_font = ws.make_font(label_font->size, icon_color, scale);
+	align_edit.placeholder = "default";
+	align_edit.caret = ws.colors.caret;
+	align_edit.default_color = ws.colors.dark;
+	ui.push_back(&align_edit);
 
 	if (is_obj) {
 		object_lbl.font = label_font;
@@ -743,7 +770,6 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		type_edit.icon_color = icon_color;
 		type_edit.icon_right = true;
 		type_edit.dropdown = &type_dd;
-		type_edit.key_action = search_type_edit_handler;
 		ui.push_back(&type_edit);
 
 		type_dd.edit_elem = &type_edit;
@@ -776,14 +802,12 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 		value1_edit.font = label_font;
 		value1_edit.caret = ws.colors.caret;
 		value1_edit.default_color = ws.colors.dark;
-		value1_edit.key_action = search_value_edit_handler;
 		ui.push_back(&value1_edit);
 
 		value2_edit.visible = false;
 		value2_edit.font = label_font;
 		value2_edit.caret = ws.colors.caret;
 		value2_edit.default_color = ws.colors.dark;
-		value2_edit.key_action = search_value_edit_handler;
 		ui.push_back(&value2_edit);
 	}
 
@@ -871,7 +895,7 @@ Search_Menu::Search_Menu(Workspace& ws, MenuType mtype) {
 	ui.push_back(&results_scroll);
 
 	initial_width = 400;
-	initial_height = 450;
+	initial_height = min_revealed_height;
 	min_width = 300;
 	min_height = min_revealed_height;
 	refresh_every = 1;

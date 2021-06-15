@@ -1,5 +1,53 @@
 #pragma once
 
+struct Search_Menu;
+
+template<class UI>
+void populate_object_table(UI *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
+	ui->object.data->clear_data();
+	ui->object.data->arena->rewind();
+
+	ui->record = nullptr;
+
+	if (!ui->struct_edit.editor.text.size())
+		return;
+
+	const char *name_str = ui->struct_edit.editor.text.c_str();
+	Struct *record = nullptr;
+	for (auto& s : structs) {
+		if (!s)
+			continue;
+
+		char *name = name_vector.at(s->name_idx);
+		if (name && !strcmp(name, name_str)) {
+			record = s;
+			break;
+		}
+	}
+
+	if (!is_struct_usable(record))
+		return;
+
+	ui->record = record;
+	int n_rows = ui->record->fields.n_fields;
+	ui->object.data->resize(n_rows);
+
+	const bool is_search = std::is_same_v<UI, Search_Menu>;
+
+	for (int i = 0; i < n_rows; i++) {
+		ui->object.data->set_checkbox(0, i, false);
+
+		Field& f = ui->record->fields.data[i];
+		char *name = name_vector.at(f.field_name_idx);
+		ui->object.data->columns[1][i] = name;
+
+		if constexpr (is_search)
+			ui->object.data->columns[2][i] = name_vector.at(f.type_name_idx);
+	}
+
+	ui->object.needs_redraw = true;
+}
+
 struct Opening_Menu : Box {
 	static const BoxType box_type_meta = BoxOpening;
 	Opening_Menu(Workspace& ws, MenuType mtype);
@@ -244,6 +292,9 @@ struct Search_Menu : Box {
 	Edit_Box start_addr_edit;
 	Edit_Box end_addr_edit;
 
+	Label align_lbl;
+	Edit_Box align_edit;
+
 	Label type_lbl;
 	Edit_Box type_edit;
 	Drop_Down type_dd;
@@ -280,7 +331,7 @@ struct Search_Menu : Box {
 	Font *dd_font = nullptr;
 	Font *table_font = nullptr;
 
-	const float min_revealed_height = 450;
+	const float min_revealed_height = 500;
 	const float min_hidden_height = 250;
 
 	float reveal_btn_length = 20;
@@ -297,49 +348,3 @@ struct Search_Menu : Box {
 	Source *source = nullptr;
 	Struct *record = nullptr;
 };
-
-template<class UI>
-void populate_object_table(UI *ui, std::vector<Struct*>& structs, String_Vector& name_vector) {
-	ui->object.data->clear_data();
-	ui->object.data->arena->rewind();
-
-	ui->record = nullptr;
-
-	if (!ui->struct_edit.editor.text.size())
-		return;
-
-	const char *name_str = ui->struct_edit.editor.text.c_str();
-	Struct *record = nullptr;
-	for (auto& s : structs) {
-		if (!s)
-			continue;
-
-		char *name = name_vector.at(s->name_idx);
-		if (name && !strcmp(name, name_str)) {
-			record = s;
-			break;
-		}
-	}
-
-	if (!is_struct_usable(record))
-		return;
-
-	ui->record = record;
-	int n_rows = ui->record->fields.n_fields;
-	ui->object.data->resize(n_rows);
-
-	const bool is_search = std::is_same_v<UI, Search_Menu>;
-
-	for (int i = 0; i < n_rows; i++) {
-		ui->object.data->set_checkbox(0, i, false);
-
-		Field& f = ui->record->fields.data[i];
-		char *name = name_vector.at(f.field_name_idx);
-		ui->object.data->columns[1][i] = name;
-
-		if constexpr (is_search)
-			ui->object.data->columns[2][i] = name_vector.at(f.type_name_idx);
-	}
-
-	ui->object.needs_redraw = true;
-}

@@ -35,6 +35,8 @@ void start_search(Search& s, std::vector<Region> const& regions) {
 	else
 		search.single_value = s.single_value;
 
+	search.byte_align = s.byte_align;
+
 	search.start_addr = s.start_addr & ~PAGE_SIZE;
 	search.end_addr = s.end_addr;
 
@@ -87,6 +89,10 @@ void exit_search() {
 
 template <int method, typename T>
 void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
+	int byte_align = search.byte_align;
+	if (byte_align <= 0)
+		byte_align = sizeof(T);
+
 	char *buf = new char[PAGE_SIZE]();
 
 	if (n_results == 0) {
@@ -111,12 +117,6 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 			last_range++;
 		}
 
-		/*
-		char msg[200];
-		snprintf(msg, 200, "start=%#llx, end=%#llx, first_range=%d, last_range=%d", start, end, first_range, last_range);
-		sdl_log_string(msg);
-		*/
-
 		u64 addr = start;
 		for (int i = first_range; i <= last_range; i++) {
 			u64 range_end = ranges[i].first + ranges[i].second;
@@ -126,7 +126,7 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 				if (retrieved <= 0)
 					continue;
 
-				for (int j = 0; j < PAGE_SIZE; j += sizeof(T)) {
+				for (int j = 0; j <= PAGE_SIZE - sizeof(T); j += byte_align) {
 					T value = *(T*)(&buf[j]);
 					if constexpr (method == METHOD_EQUALS) {
 						if (value == v1) {

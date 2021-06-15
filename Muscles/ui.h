@@ -818,7 +818,7 @@ struct Workspace {
 	void delete_box(Box *b);
 	void bring_to_front(Box *b);
 
-	Font *make_font(float size, RGBA& color, float scale);
+	Font *make_font(float size, RGBA color, float scale);
 
 	void refresh_sources();
 
