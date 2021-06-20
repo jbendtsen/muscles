@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <numeric>
+
 #include "muscles.h"
+#include "structs.h"
 
 int Source::request_span(void) {
 	int idx = -1;

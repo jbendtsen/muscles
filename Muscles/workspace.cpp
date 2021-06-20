@@ -1,4 +1,5 @@
 #include "muscles.h"
+#include "structs.h"
 #include "ui.h"
 #include "dialog/dialog.h"
 

@@ -1,4 +1,192 @@
-#include "muscles.h"
+#include <vector>
+#include <cstring>
+
+#include "containers.h"
+#include "structs.h"
+
+Arena default_arena;
+
+Arena& get_default_arena() {
+	return default_arena;
+}
+
+void clear_word(char* word) {
+	int len = strlen(word);
+	memset(word, 0xff, len);
+}
+
+char *advance_word(char *p) {
+	do {
+		p += strlen(p) + 1;
+	} while (*(u8*)p == 0xff);
+	return p;
+}
+
+Pair_Int next_power_of_2(int num) {
+	int power = 2;
+	int exp = 1;
+	while (power < num) {
+		power *= 2;
+		exp++;
+	}
+
+	return {
+		.first = power,
+		.second = exp
+	};
+}
+
+char *String_Vector::at(int idx) {
+	return idx < 0 || idx >= pool_size ? nullptr : &pool[idx];
+}
+
+void String_Vector::try_expand(int new_size) {
+	if (!new_size)
+		new_size = pool_size * 2;
+	else {
+		if (pool && new_size <= pool_size)
+			return;
+
+		new_size = next_power_of_2(new_size).first;
+	}
+
+	char *new_pool = new char[new_size];
+
+	if (pool) {
+		memcpy(new_pool, pool, pool_size);
+		delete[] pool;
+	}
+
+	pool = new_pool;
+	pool_size = new_size;
+}
+
+int String_Vector::add_string(const char *str) {
+	if (!str)
+		return -1;
+
+	int cur = head;
+	int len = strlen(str);
+	if (len > 0) {
+		head += len + 1;
+		try_expand(head);
+		strcpy(&pool[cur], str);
+	}
+	return cur;
+}
+
+int String_Vector::add_buffer(const char *buf, int size) {
+	if (!buf)
+		return -1;
+
+	int cur = head;
+	if (size > 0) {
+		head += size + 1;
+		try_expand(head);
+		memcpy(&pool[cur], buf, size);
+		pool[cur+size] = 0;
+	}
+	return cur;
+}
+
+char *String_Vector::allocate(int size) {
+	int cur = head;
+	head += size + 1;
+	try_expand(head);
+	return &pool[cur];
+}
+
+void String_Vector::append_extra_zero() {
+	try_expand(++head);
+	pool[head-1] = 0;
+}
+
+void String_Vector::clear() {
+	if (pool) memset(pool, 0, pool_size);
+	head = 0;
+}
+
+void *Arena::allocate(int size, int align) {
+	if (size <= 0)
+		return nullptr;
+
+	if (size > pool_size)
+		return add_big_pool(size);
+
+	if (align > 1)
+		idx += (align - (idx % align)) % align;
+
+	if (idx + size > pool_size || pools.size() == 0)
+		add_pool();
+
+	void *ptr = (void*)&pools.back()[idx];
+	idx += size;
+	return ptr;
+}
+
+char *Arena::alloc_string(char *str) {
+	if (!str)
+		return nullptr;
+
+	int len = strlen(str) + 1;
+	char *p = (char*)allocate(len);
+	if (p) {
+		if (len > 1)
+			strcpy(p, str);
+		else
+			*p = 0;
+	}
+
+	return p;
+}
+
+void *Arena::store_buffer(void *buf, int size, u64 align) {
+	if (align < 1) align = 1;
+
+	void *ptr = nullptr;
+	int max_size = size + sizeof(int) + align - 1;
+
+	if (max_size > pool_size)
+		ptr = add_big_pool(max_size);
+	else {
+		if (idx + max_size > pool_size || pools.size() == 0)
+			add_pool();
+
+		ptr = &pools.back()[idx];
+		idx += max_size;
+	}
+
+	// We add sizeof(int) here so that we have room to store the size of the buffer (just before the actual buffer).
+	// The contents of the buffer are what should be aligned, not necessarily the size word that precedes it.
+	u64 addr = (u64)ptr + sizeof(int);
+	int diff = ((align - (int)(addr % (u64)align)) % align);
+	ptr = (void*)((char*)ptr + diff); // ptr += diff;
+
+	*(int*)ptr = size;
+	memcpy(&((int*)ptr)[1], buf, size); // memcpy(ptr + sizeof(int), buf, size);
+	return ptr;
+}
+
+void Arena::rewind() {
+	if (rewind_pool < 0 || rewind_idx < 0)
+		return;
+
+	int last = pools.size() - 1;
+	if (last < 0)
+		return;
+
+	if (rewind_pool != last) {
+		rewind_pool = last;
+		rewind_idx = 0;
+	}
+
+	int delta = idx - rewind_idx;
+	if (delta <= 0)
+		return;
+
+	idx = rewind_idx;
+	memset(&pools.back()[idx], 0, delta);
+}
 
 #define ROTL32(x, y) ((x) << (y)) | ((x) >> (32 - (y)))
 
@@ -39,88 +227,6 @@ u32 murmur3_32(const char* key, int len, u32 seed) {
 	h *= 0xc2b2ae35;
 	h ^= h >> 16;
 	return h;
-}
-
-int Region_Map::get(u64 key) {
-	int mask = (1 << log2_slots) - 1;
-	u64 *ptr = &key;
-	u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
-	int idx = hash & mask;
-
-	Region *reg = &data[idx];
-	if ((reg->flags & FLAG_OCCUPIED) == 0)
-		return idx;
-		
-	int end = (idx + mask) & mask;
-	while (idx != end && (data[idx].flags & FLAG_OCCUPIED) && data[idx].base != key)
-		idx = (idx + 1) & mask;
-
-	return idx;
-}
-
-void Region_Map::insert(u64 key, Region& reg) {
-	next_level_maybe();
-
-	int n_slots = 1 << log2_slots;
-	int idx = get(key);
-
-	place_at(idx, reg);
-}
-
-void Region_Map::clear(int new_size) {
-	delete[] data;
-	n_entries = 0;
-
-	auto size = next_power_of_2(new_size - 1);
-	data = new Region[size.first]();
-	log2_slots = size.second;
-}
-
-// This function assumes that you've already found an available (non-occupied) slot in the map
-void Region_Map::place_at(int idx, Region& reg) {
-	data[idx] = reg;
-	data[idx].flags |= FLAG_OCCUPIED;
-	n_entries++;
-}
-void Region_Map::place_at(int idx, Region&& reg) {
-	data[idx] = reg;
-	data[idx].flags |= FLAG_OCCUPIED;
-	n_entries++;
-}
-
-void Region_Map::next_level_maybe() {
-	int n_slots = 1 << log2_slots;
-	float load = (float)n_entries / (float)n_slots;
-	if (load >= max_load)
-		next_level();
-}
-
-void Region_Map::next_level() {
-	int old_n_slots = 1 << log2_slots;
-	log2_slots++;
-
-	int new_n_slots = 1 << log2_slots;
-	int new_mask = new_n_slots - 1;
-	Region *new_regions = new Region[new_n_slots]();
-
-	for (int i = 0; i < old_n_slots; i++) {
-		if ((data[i].flags & FLAG_OCCUPIED) == 0)
-			continue;
-
-		u64 *ptr = &data[i].base;
-		u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
-		int idx = hash & new_mask;
-		int end = (idx + new_n_slots - 1) & new_mask;
-
-		while (idx != end && (new_regions[idx].flags & FLAG_OCCUPIED))
-			idx = (idx + 1) & new_mask;
-
-		new_regions[idx] = data[i];
-		//new_regions[idx].flags |= FLAG_OCCUPIED;
-	}
-
-	delete[] data;
-	data = new_regions;
 }
 
 // Returns the corresponding bucket for a key, where the bucket is either empty or occupied (with collision resolution if occupied).

@@ -1,4 +1,7 @@
 #include "muscles.h"
+#include "structs.h"
+#include "format.h"
+
 #include <charconv>
 
 char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field) {

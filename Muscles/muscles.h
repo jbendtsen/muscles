@@ -6,6 +6,8 @@
 #include <set>
 #include <cstring>
 
+#include "containers.h"
+
 #define MIN_CHAR ' '
 #define MAX_CHAR '~'
 #define N_CHARS  (MAX_CHAR - MIN_CHAR + 1)
@@ -17,12 +19,6 @@
 	typedef void* THREAD_RETURN_TYPE;
 	typedef int SOURCE_HANDLE;
 #endif
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
-typedef signed long long s64;
 
 typedef void* Texture;
 typedef void* Surface;
@@ -37,15 +33,9 @@ void ft_quit();
 
 int run();
 
-std::pair<int, int> next_power_of_2(int num);
 int count_hex_digits(u64 num);
 void write_hex(char *out, u64 n, int n_digits);
 void write_dec(char *out, s64 n);
-
-union Value64 {
-	s64 i;
-	double d;
-};
 
 struct Glyph {
 	int atlas_x;
@@ -186,86 +176,7 @@ Texture make_goto_icon(RGBA& color, int length);
 Texture make_glass_icon(RGBA& color, int length);
 Texture make_plus_minus_icon(RGBA& color, int length, bool plus);
 
-void clear_word(char* word);
-char *advance_word(char *p);
-
-struct Arena {
-	std::vector<char*> pools;
-	std::vector<char*> big_pools;
-
-	int pool_size = 1024 * 1024;
-	int idx = 0;
-
-	int rewind_pool = -1;
-	int rewind_idx = -1;
-
-	void set_rewind_point() {
-		rewind_pool = pools.size() - 1;
-		if (rewind_pool < 0) rewind_pool = 0;
-		rewind_idx = idx;
-	}
-
-	void add_pool() {
-		pools.push_back(new char[pool_size]);
-		idx = 0;
-	}
-	void *add_big_pool(int size) {
-		big_pools.push_back(new char[size]);
-		return (void*)big_pools.back();
-	}
-
-	Arena() = default;
-	~Arena() {
-		for (auto& p : pools) {
-			delete[] p;
-			p = nullptr;
-		}
-		for (auto& p : big_pools) {
-			delete[] p;
-			p = nullptr;
-		}
-	}
-
-	void *allocate(int size, int align = 0);
-	char *alloc_string(char *str);
-
-	void *store_buffer(void *buf, int size, u64 align = 4);
-
-	void rewind();
-
-	template<class T>
-	T *allocate_object() {
-		T *t = (T*)allocate(sizeof(T), sizeof(void*));
-		new(t) T();
-		return t;
-	}
-};
-
-Arena& get_default_arena();
-
 void *allocate_ui_element(Arena& arena, int i_type);
-
-struct String_Vector {
-	char *pool = nullptr;
-	int pool_size = 32;
-	int head = 0;
-
-	~String_Vector() {
-		if (pool) delete[] pool;
-	}
-
-	char *at(int idx);
-
-	void try_expand(int new_size = 0);
-
-	int add_string(const char *str);
-	int add_buffer(const char *buf, int size);
-
-	char *allocate(int size);
-	void append_extra_zero();
-
-	void clear();
-};
 
 #define MAX_FNAME 112
 
@@ -523,64 +434,6 @@ struct Input {
 	}
 };
 
-struct Bucket {
-	u32 flags = 0;
-	int name_idx = 0;
-	int parent_name_idx = 0;
-	union {
-		u64 value = 0;
-		void *pointer;
-	};
-};
-
-struct Map {
-	String_Vector default_sv;
-	String_Vector *sv = nullptr;
-
-	Bucket *data = nullptr;
-	int log2_slots = 7;
-	int n_entries = 0;
-	float max_load = 0.75;
-	const u32 seed = 331;
-
-	Map() {
-		data = new Bucket[1 << log2_slots]();
-		sv = &default_sv;
-	}
-	Map(int n_slots) {
-		log2_slots = next_power_of_2(n_slots).second;
-		data = new Bucket[1 << log2_slots]();
-		sv = &default_sv;
-	}
-	~Map() {
-		delete[] data;
-	}
-
-	Bucket& operator[](const char *str) {
-		return data[get(str, 0)];
-	}
-
-	int size() const {
-		return 1 << log2_slots;
-	}
-
-	char *key_from_index(int idx) {
-		return sv->at(data[idx].name_idx);
-	}
-
-	int get(const char *str, int len = 0);
-	Bucket& insert(const char *str, int len = 0);
-	void remove(const char *str, int len = 0);
-
-	void erase_all_of_type(u32 flags);
-	void erase_all_of_exact_type(u32 flags);
-	void erase_all_similar_to(u32 flags);
-
-	void next_level();
-	void next_level_maybe();
-	void release();
-};
-
 #define REG_PM_EXEC   0
 #define REG_PM_WRITE  1
 #define REG_PM_READ   2
@@ -601,46 +454,6 @@ struct Region {
 	u64 size = 0;
 	//u32 offset = 0;
 	u32 flags = 0;
-};
-
-struct Region_Map {
-	Region *data = nullptr;
-	float max_load = 0.75;
-	int log2_slots = 3;
-	int n_entries = 0;
-
-	const u32 seed = 2357;
-
-	Region_Map() {
-		data = new Region[1 << log2_slots]();
-	}
-	Region_Map(int n_slots) {
-		log2_slots = next_power_of_2(n_slots - 1).second;
-		data = new Region[1 << log2_slots]();
-	}
-	~Region_Map() {
-		delete[] data;
-	}
-
-	Region& operator[](u64 key) {
-		return data[get(key)];
-	}
-
-	int get(u64 key);
-	void insert(u64 key, Region& reg);
-	void clear(int new_size);
-
-	void ensure(int min_size) {
-		if ((1 << log2_slots) < min_size)
-			clear(min_size);
-	}
-
-	int size() { return 1 << log2_slots; }
-
-	void place_at(int idx, Region& reg);
-	void place_at(int idx, Region&& reg);
-	void next_level();
-	void next_level_maybe();
 };
 
 enum SourceType {
@@ -669,8 +482,8 @@ struct Source {
 	// list of pages, where each page is 4k of text loaded from /proc/<pid>/maps
 	std::vector<char*> proc_map_pages;
 
-	Region_Map regions_map;
-	Region_Map sections;
+	//Region_Map regions_map;
+	//Region_Map sections;
 
 	std::vector<Region> regions;
 	std::vector<Span> spans;
@@ -719,185 +532,3 @@ void wait_ms(int ms);
 
 bool start_thread(void** thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*));
 
-#define FLAG_POINTER       0x0001
-#define FLAG_BITFIELD      0x0002
-#define FLAG_UNNAMED       0x0004
-#define FLAG_COMPOSITE     0x0008
-#define FLAG_UNION         0x0010
-#define FLAG_SIGNED        0x0020
-#define FLAG_FLOAT         0x0040
-#define FLAG_BIG_ENDIAN    0x0080
-#define FLAG_PRIMITIVE     0x0100
-#define FLAG_ENUM          0x0200
-#define FLAG_ENUM_ELEMENT  0x0400
-#define FLAG_TYPEDEF       0x0800
-#define FLAG_VALUE_INITED  0x1000
-
-#define FIELD_FLAGS        0x1fff
-#define PRIMITIVE_FLAGS    0x00ff
-
-#define FLAG_UNUSABLE      0x4000
-#define FLAG_UNRECOGNISED  0x8000
-
-#define FLAG_AVAILABLE  0x10000
-
-#define FLAG_OCCUPIED  0x80000000
-#define FLAG_NEW       0x40000000
-#define FLAG_EXTERNAL  0x20000000
-
-struct Struct;
-
-struct Field {
-	int field_name_idx;  // These would be strings, except that they point into a String_Vector
-	int type_name_idx;
-	Struct *st;          // The struct/union that the field refers to, if it's a composite field
-	Struct *this_st;     // The struct that the field originally belongs to
-	Struct *paste_st;    // The struct that this field currently lives in
-	char *parent_tag;    // Used for the accumulated name of the struct that owns this field
-	int paste_array_idx; // In case this field is embedded inside an array of structs, this keeps track of the struct index
-	int paste_field;     // Refers to the field where the this field's original struct has been embedded/instantiated/pasted
-	int index;           // The index of this field within its original struct
-	int bit_offset;
-	int bit_size;
-	int default_bit_size;
-	int array_len;
-	int pointer_levels;
-	u32 flags;
-
-	Value64 value;
-
-	void reset() {
-		memset(this, 0, sizeof(Field));
-		field_name_idx = type_name_idx = paste_field = paste_array_idx = index = -1;
-	}
-};
-
-struct Field_Vector {
-	Field *data = nullptr;
-	int pool_size = 8;
-	int n_fields = 0;
-
-	Field_Vector();
-	~Field_Vector();
-
-	void expand();
-
-	Field& back();
-	Field& add(Field& f);
-	Field& add_blank();
-
-	void cancel_latest();
-	void zero_out();
-};
-
-struct Struct {
-	int name_idx;
-	int offset;
-	int total_size;
-	int longest_primitive;
-	u32 flags;
-	Field_Vector fields;
-};
-
-bool is_struct_usable(Struct *s);
-void set_primitives(Map& definitions);
-Value64 evaluate_number(const char *token, bool as_float = false);
-int get_full_field_name(Field& field, String_Vector& name_vector, String_Vector& out_vec);
-
-void tokenize(String_Vector& tokens, const char *text, int sz);
-void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
-void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
-
-#define MAX_SEARCH_RESULTS 10000
-#define MAX_SEARCH_PARAMS 100
-
-#define METHOD_EQUALS 0
-#define METHOD_RANGE  1
-
-struct Search_Parameter {
-	u32 flags;
-	int method;
-	int offset;
-	int size;
-	s64 value1;
-	s64 value2;
-};
-
-struct Search {
-	Search_Parameter single_value = {0};
-	Search_Parameter *params = nullptr;
-	int n_params = 0;
-
-	int byte_align = 0;
-	u64 start_addr = 0;
-	u64 end_addr = 0;
-	Struct *record = nullptr;
-
-	SourceType source_type = SourceNone;
-	int pid = 0;
-	void *identifier = nullptr;
-};
-
-void start_search(Search& s, std::vector<Region> const& regions);
-bool check_search_running();
-bool check_search_finished();
-void get_search_results(std::vector<u64>& results_vec);
-void reset_search();
-void exit_search();
-
-enum StringStyle {
-	StringAuto = 0,
-	StringNone,
-	StringBA,
-	StringAscii
-};
-
-enum BracketsStyle {
-	BracketsAuto = 0,
-	BracketsNone,
-	BracketsSquare,
-	BracketsParen,
-	BracketsCurly
-};
-
-enum PrecisionStyle {
-	PrecisionAuto = -2,
-	PrecisionField
-};
-
-enum FloatStyle {
-	FloatNone = 0,
-	FloatAuto,
-	FloatFixed,
-	FloatScientific
-};
-
-enum SignStyle {
-	SignAuto = 0,
-	SignSigned,
-	SignUnsigned
-};
-
-#define SEPARATOR_LEN 4
-#define PREFIX_LEN    4
-
-struct Value_Format {
-	enum StringStyle string = StringAuto;
-	enum BracketsStyle brackets = BracketsAuto;
-	char separator[4] = {0};
-	char prefix[4] = {0};
-	int base = 10;
-	union {
-		enum PrecisionStyle precision = PrecisionAuto;
-		int digits;
-	};
-	enum FloatStyle floatfmt = FloatNone;
-	bool uppercase = false;
-	enum SignStyle sign = SignAuto;
-	bool big_endian = false;
-};
-
-char *format_field_name(Arena& arena, String_Vector& in_vec, Field& field);
-char *format_type_name(Arena& arena, String_Vector& in_vec, Field& field);
-
-void format_field_value(Field& field, Value_Format& format, Span& span, char*& cell, int cell_len);

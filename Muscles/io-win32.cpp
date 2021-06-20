@@ -5,6 +5,128 @@
 #include <Psapi.h>
 #include <DbgHelp.h>
 
+struct Region_Map {
+	Region *data = nullptr;
+	float max_load = 0.75;
+	int log2_slots = 3;
+	int n_entries = 0;
+
+	const u32 seed = 2357;
+
+	Region_Map() {
+		data = new Region[1 << log2_slots]();
+	}
+	Region_Map(int n_slots) {
+		log2_slots = next_power_of_2(n_slots - 1).second;
+		data = new Region[1 << log2_slots]();
+	}
+	~Region_Map() {
+		delete[] data;
+	}
+
+	Region& operator[](u64 key) {
+		return data[get(key)];
+	}
+
+	int get(u64 key);
+	void insert(u64 key, Region& reg);
+	void clear(int new_size);
+
+	void ensure(int min_size) {
+		if ((1 << log2_slots) < min_size)
+			clear(min_size);
+	}
+
+	int size() { return 1 << log2_slots; }
+
+	void place_at(int idx, Region& reg);
+	void place_at(int idx, Region&& reg);
+	void next_level();
+	void next_level_maybe();
+};
+
+int Region_Map::get(u64 key) {
+	int mask = (1 << log2_slots) - 1;
+	u64 *ptr = &key;
+	u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
+	int idx = hash & mask;
+
+	Region *reg = &data[idx];
+	if ((reg->flags & FLAG_OCCUPIED) == 0)
+		return idx;
+		
+	int end = (idx + mask) & mask;
+	while (idx != end && (data[idx].flags & FLAG_OCCUPIED) && data[idx].base != key)
+		idx = (idx + 1) & mask;
+
+	return idx;
+}
+
+void Region_Map::insert(u64 key, Region& reg) {
+	next_level_maybe();
+
+	int n_slots = 1 << log2_slots;
+	int idx = get(key);
+
+	place_at(idx, reg);
+}
+
+void Region_Map::clear(int new_size) {
+	delete[] data;
+	n_entries = 0;
+
+	auto size = next_power_of_2(new_size - 1);
+	data = new Region[size.first]();
+	log2_slots = size.second;
+}
+
+// This function assumes that you've already found an available (non-occupied) slot in the map
+void Region_Map::place_at(int idx, Region& reg) {
+	data[idx] = reg;
+	data[idx].flags |= FLAG_OCCUPIED;
+	n_entries++;
+}
+void Region_Map::place_at(int idx, Region&& reg) {
+	data[idx] = reg;
+	data[idx].flags |= FLAG_OCCUPIED;
+	n_entries++;
+}
+
+void Region_Map::next_level_maybe() {
+	int n_slots = 1 << log2_slots;
+	float load = (float)n_entries / (float)n_slots;
+	if (load >= max_load)
+		next_level();
+}
+
+void Region_Map::next_level() {
+	int old_n_slots = 1 << log2_slots;
+	log2_slots++;
+
+	int new_n_slots = 1 << log2_slots;
+	int new_mask = new_n_slots - 1;
+	Region *new_regions = new Region[new_n_slots]();
+
+	for (int i = 0; i < old_n_slots; i++) {
+		if ((data[i].flags & FLAG_OCCUPIED) == 0)
+			continue;
+
+		u64 *ptr = &data[i].base;
+		u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
+		int idx = hash & new_mask;
+		int end = (idx + new_n_slots - 1) & new_mask;
+
+		while (idx != end && (new_regions[idx].flags & FLAG_OCCUPIED))
+			idx = (idx + 1) & new_mask;
+
+		new_regions[idx] = data[i];
+		//new_regions[idx].flags |= FLAG_OCCUPIED;
+	}
+
+	delete[] data;
+	data = new_regions;
+}
+
 const char *get_folder_separator() {
 	return "\\";
 }

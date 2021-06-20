@@ -1,4 +1,7 @@
 #include "muscles.h"
+#include "structs.h"
+#include "search.h"
+
 #include <cstdint>
 #include <algorithm>
 

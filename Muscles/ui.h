@@ -769,6 +769,8 @@ struct Box {
 	void update(Workspace& ws, Camera& view, Input& input, Box *hover, bool focussed);
 };
 
+struct Struct;
+
 struct Workspace {
 	Colors colors;
 

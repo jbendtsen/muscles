@@ -1,4 +1,5 @@
 #include "muscles.h"
+#include "structs.h"
 #include "ui.h"
 
 void load_config(Workspace& ws, std::string& path) {

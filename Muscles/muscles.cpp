@@ -1,19 +1,10 @@
 #include "muscles.h"
+#include "structs.h"
+#include "search.h"
 #include "ui.h"
 
 #define FONT_MONO "RobotoMono-Regular.ttf"
 #define FONT_SANS "OpenSans-Regular.ttf"
-
-std::pair<int, int> next_power_of_2(int num) {
-	int power = 2;
-	int exp = 1;
-	while (power < num) {
-		power *= 2;
-		exp++;
-	}
-
-	return std::make_pair(power, exp);
-}
 
 int count_hex_digits(u64 num) {
 	if (num == 0)

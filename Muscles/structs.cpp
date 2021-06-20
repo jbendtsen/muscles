@@ -1,6 +1,63 @@
-#include "muscles.h"
+#include <string>
+#include <vector>
+#include <cstring>
+
+#include "containers.h"
+#include "structs.h"
 
 #define PADDING(offset, align) ((align) - ((offset) % (align))) % (align)
+
+Field_Vector::Field_Vector() {
+	data = new Field[pool_size];
+}
+Field_Vector::~Field_Vector() {
+	delete[] data;
+}
+
+Field& Field_Vector::back() {
+	return data[n_fields-1];
+}
+
+// increase pool size by a power of two each time a pool expansion is necessary
+void Field_Vector::expand() {
+	int old_size = pool_size;
+	pool_size *= 2;
+	Field *next = new Field[pool_size];
+	memcpy(next, data, old_size * sizeof(Field));
+	delete[] data;
+	data = next;
+}
+
+Field& Field_Vector::add(Field& f) {
+	if (n_fields >= pool_size)
+		expand();
+	data[n_fields++] = f;
+	return back();
+}
+
+Field& Field_Vector::add_blank() {
+	if (n_fields >= pool_size)
+		expand();
+
+	Field& f = data[n_fields];
+	f.reset();
+	n_fields++;
+	return f;
+}
+
+void Field_Vector::cancel_latest() {
+	if (n_fields > 0) {
+		data[n_fields-1] = {0};
+		n_fields--;
+	}
+}
+
+void Field_Vector::zero_out() {
+	if (n_fields > 0) {
+		memset(data, 0, pool_size * sizeof(Field));
+		n_fields = 0;
+	}
+}
 
 const int pointer_size = 64; // bits
 
