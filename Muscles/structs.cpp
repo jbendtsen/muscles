@@ -45,7 +45,7 @@ Value64 evaluate_number(const char *token, bool as_float) {
 	if (as_float)
 		value.d = atof(token);
 	else
-		value.i = strtoull(token, nullptr, 0);
+		value.i = strtoll(token, nullptr, 0);
 	return value;
 }
 

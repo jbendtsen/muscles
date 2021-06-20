@@ -421,6 +421,7 @@ bool Search_Menu::prepare_object_params() {
 	if (!n_params)
 		return false;
 
+	search.record = record;
 	search.params = params_pool;
 	search.n_params = n_params;
 
@@ -450,7 +451,10 @@ bool Search_Menu::prepare_value_param() {
 	if ((buck.flags & min_flags) != min_flags)
 		return false;
 
+	search.record = nullptr;
 	search.params = nullptr;
+	search.n_params = 0;
+
 	search.single_value = {
 		.flags = buck.flags & FIELD_FLAGS,
 		.method = method_dd.sel,

@@ -30,14 +30,16 @@ void start_search(Search& s, std::vector<Region> const& regions) {
 	});
 
 	search.params = s.params;
-	if (search.params)
+	if (search.params) {
 		search.n_params = s.n_params;
+		search.record = s.record;
+	}
 	else
 		search.single_value = s.single_value;
 
 	search.byte_align = s.byte_align;
 
-	search.start_addr = s.start_addr & ~PAGE_SIZE;
+	search.start_addr = s.start_addr;
 	search.end_addr = s.end_addr;
 
 	search.source_type = s.source_type;
@@ -87,6 +89,37 @@ void exit_search() {
 	}
 }
 
+struct Scan_Range {
+	u64 start;
+	int first_range;
+	int last_range;
+};
+
+Scan_Range isolate_scan_ranges() {
+	Scan_Range scan = {
+		.start = search.start_addr,
+		.first_range = -1,
+		.last_range = -1
+	};
+
+	for (auto& r : ranges) {
+		scan.first_range++;
+		if (scan.start < r.first + r.second) {
+			if (scan.start < r.first)
+				scan.start = r.first;
+			break;
+		}
+	}
+	for (auto& r : ranges) {
+		if (search.end_addr < r.first)
+			break;
+
+		scan.last_range++;
+	}
+
+	return scan;
+}
+
 template <int method, typename T>
 void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 	int byte_align = search.byte_align;
@@ -96,56 +129,42 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 	char *buf = new char[PAGE_SIZE]();
 
 	if (n_results == 0) {
-		u64 start = search.start_addr;
-		int first_range = -1;
-		for (auto& r : ranges) {
-			first_range++;
-			if (start < r.first + r.second) {
-				if (start < r.first)
-					start = r.first;
-				break;
-			}
-		}
+		auto scan = isolate_scan_ranges();
 
-		u64 end = search.end_addr;
-		int last_range = -1;
-		for (auto& r : ranges) {
-			if (search.end_addr < r.first)
-				break;
-
-			end = r.first + r.second;
-			last_range++;
-		}
-
-		u64 addr = start;
-		for (int i = first_range; i <= last_range; i++) {
+		u64 addr = scan.start;
+		for (int i = scan.first_range; i <= scan.last_range && addr <= search.end_addr; i++) {
 			u64 range_end = ranges[i].first + ranges[i].second;
+			if (search.end_addr < range_end)
+				range_end = search.end_addr;
 
-			for (; addr < range_end; addr += PAGE_SIZE) {
-				int retrieved = read_page(handle, search.source_type, addr, buf);
+			u64 page = addr & ~(PAGE_SIZE - 1);
+			int offset = (int)(addr - page) & ~(sizeof(T) - 1);
+
+			for (; page < range_end; page += PAGE_SIZE) {
+				int retrieved = read_page(handle, search.source_type, page, buf);
 				if (retrieved <= 0)
 					continue;
 
-				for (int j = 0; j <= PAGE_SIZE - sizeof(T); j += byte_align) {
+				for (int j = offset; j <= PAGE_SIZE - sizeof(T); j += byte_align) {
 					T value = *(T*)(&buf[j]);
 					if constexpr (method == METHOD_EQUALS) {
 						if (value == v1) {
-							results[n_results++] = addr + (u64)j;
+							results[n_results++] = page + (u64)j;
 							if (n_results >= MAX_SEARCH_RESULTS)
-								goto done;
+								goto done_single;
 						}
 					}
 					else {
 						if (value >= v1 && value <= v2) {
-							results[n_results++] = addr + (u64)j;
+							results[n_results++] = page + (u64)j;
 							if (n_results >= MAX_SEARCH_RESULTS)
-								goto done;
+								goto done_single;
 						}
 					}
 				}
 			}
 
-			if (i < last_range)
+			if (i < scan.last_range)
 				addr = ranges[i + 1].first;
 		}
 	}
@@ -162,7 +181,7 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 
 		for (int i = 0; i < n_prev_results && n_results < MAX_SEARCH_RESULTS; i++) {
 			u64 addr = prev_results[i];
-			u64 p = addr & ~PAGE_SIZE;
+			u64 p = addr & ~(PAGE_SIZE - 1);
 			int offset = (int)(addr - p);//(int)(addr & (u64)(PAGE_SIZE - 1));
 
 			if (i == 0 || p > page) {
@@ -184,7 +203,7 @@ void single_value_search(SOURCE_HANDLE handle, T v1, T v2) {
 		}
 	}
 
-done:
+done_single:
 	delete[] buf;
 }
 
@@ -251,8 +270,145 @@ void do_single_value_search(SOURCE_HANDLE handle) {
 	}
 }
 
+template<typename T>
+s64 roundtrip_cast(s64 in) {
+	T value = (T)in;
+	return (s64)value;
+}
+
+s64 cast(u32 flags, int size, s64 in) {
+	s64 out = 0;
+
+	if (flags & FLAG_FLOAT)
+		out = in;
+	else if (flags & FLAG_SIGNED) {
+		if (size == 8)
+			out = roundtrip_cast<std::int8_t>(in);
+		else if (size == 16)
+			out = roundtrip_cast<std::int16_t>(in);
+		else if (size == 32)
+			out = roundtrip_cast<std::int32_t>(in);
+		else if (size == 64)
+			out = roundtrip_cast<std::int64_t>(in);
+		else
+			out = in;
+	}
+	else {
+		if (size == 8)
+			out = roundtrip_cast<std::int8_t>(in);
+		else if (size == 16)
+			out = roundtrip_cast<std::int16_t>(in);
+		else if (size == 32)
+			out = roundtrip_cast<std::int32_t>(in);
+		else if (size == 64)
+			out = roundtrip_cast<std::int64_t>(in);
+		else
+			out = in;
+	}
+
+	return out;
+}
+
 void do_object_search(SOURCE_HANDLE handle) {
-	wait_ms(1000);
+	int byte_inc = search.byte_align;
+	if (byte_inc <= 0)
+		byte_inc = search.record->total_size / 8;
+
+	int n_params = search.n_params;
+
+	char *page_attrs_buf = new char[n_params * (2 * sizeof(s64) + sizeof(u64) + sizeof(void*) + sizeof(int))]();
+
+	s64 *values      = reinterpret_cast<s64*>(page_attrs_buf);
+	u64 *page_addrs  = reinterpret_cast<u64*>(page_attrs_buf + n_params * 2 * sizeof(s64));
+	char **page_bufs = reinterpret_cast<char**>(page_attrs_buf + n_params * (2 * sizeof(s64) + sizeof(u64)));
+	int *page_idxs   = reinterpret_cast<int*>(page_attrs_buf + n_params * (2 * sizeof(s64) + sizeof(u64) + sizeof(void*)));
+
+	for (int i = 0; i < n_params; i++) {
+		page_addrs[i] = -1;
+
+		Search_Parameter& p = search.params[i];
+		values[i*2]   = cast(p.flags, p.size, p.value1);
+		values[i*2+1] = cast(p.flags, p.size, p.value2);
+	}
+
+	if (n_results == 0) {
+		auto scan = isolate_scan_ranges();
+
+		u64 head = scan.start;
+		for (int i = scan.first_range; i <= scan.last_range && head <= search.end_addr; i++) {
+			u64 range_end = ranges[i].first + ranges[i].second;
+			if (search.end_addr < range_end)
+				range_end = search.end_addr;
+
+			for (; head < range_end; head += byte_inc) {
+				int matches = 0;
+
+				for (int j = 0; j < n_params; j++) {
+					u64 byte_offset = (u64)(search.params[j].offset / 8);
+					u64 addr = head + byte_offset;
+					u64 page = addr & ~(PAGE_SIZE - 1);
+					int page_offset = (int)(addr - page);
+
+					if (page != page_addrs[j]) {
+						int p = 0;
+						for (; p < n_params; p++) {
+							if (page_addrs[p] == page)
+								break;
+						}
+
+						if (p >= n_params) {
+							if (!page_bufs[j])
+								page_bufs[j] = new char[PAGE_SIZE];
+
+							int retrieved = read_page(handle, search.source_type, page, page_bufs[j]);
+							if (retrieved <= 0)
+								break;
+
+							p = j;
+						}
+
+						page_addrs[j] = page;
+						page_idxs[j] = p;
+					}
+
+					char *buf = page_bufs[page_idxs[j]];
+					int byte_size = search.params[j].size / 8;
+
+					s64 value = 0;
+					for (int k = 0; k < byte_size; k++)
+						value |= (s64)(buf[page_offset + k] & 0xff) << (s64)(8*k);
+
+					value = cast(search.params[j].flags, search.params[j].size, value);
+
+					if (
+						(search.params[j].method == METHOD_EQUALS && value == values[2*j]) || 
+						(search.params[j].method == METHOD_RANGE  && value >= values[2*j] && value <= values[2*j+1])
+					)
+						matches++;
+				}
+
+				if (matches == n_params) {
+					results[n_results++] = head;
+					if (n_results >= MAX_SEARCH_RESULTS)
+						goto done_object;
+				}
+			}
+
+			if (i < scan.last_range)
+				head = ranges[i + 1].first;
+		}
+	}
+	else {
+		wait_ms(1000);
+	}
+
+done_object:
+	for (int i = 0; i < n_params; i++) {
+		if (page_bufs[i])
+			delete[] page_bufs[i];
+	}
+
+	delete[] page_attrs_buf;
 }
 
 // We know the thread has ended if started == true and running == false

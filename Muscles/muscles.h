@@ -43,7 +43,7 @@ void write_hex(char *out, u64 n, int n_digits);
 void write_dec(char *out, s64 n);
 
 union Value64 {
-	u64 i;
+	s64 i;
 	double d;
 };
 
@@ -719,42 +719,6 @@ void wait_ms(int ms);
 
 bool start_thread(void** thread_ptr, void *data, THREAD_RETURN_TYPE (*function)(void*));
 
-#define MAX_SEARCH_RESULTS 10000
-#define MAX_SEARCH_PARAMS 100
-
-#define METHOD_EQUALS 0
-#define METHOD_RANGE  1
-
-struct Search_Parameter {
-	u32 flags;
-	int method;
-	int offset;
-	int size;
-	u64 value1;
-	u64 value2;
-};
-
-struct Search {
-	Search_Parameter single_value = {0};
-	Search_Parameter *params = nullptr;
-	int n_params = 0;
-
-	int byte_align = 0;
-	u64 start_addr = 0;
-	u64 end_addr = 0;
-
-	SourceType source_type = SourceNone;
-	int pid = 0;
-	void *identifier = nullptr;
-};
-
-void start_search(Search& s, std::vector<Region> const& regions);
-bool check_search_running();
-bool check_search_finished();
-void get_search_results(std::vector<u64>& results_vec);
-void reset_search();
-void exit_search();
-
 #define FLAG_POINTER       0x0001
 #define FLAG_BITFIELD      0x0002
 #define FLAG_UNNAMED       0x0004
@@ -843,6 +807,43 @@ int get_full_field_name(Field& field, String_Vector& name_vector, String_Vector&
 void tokenize(String_Vector& tokens, const char *text, int sz);
 void parse_typedefs_and_enums(Map& definitions, String_Vector& tokens);
 void parse_c_struct(std::vector<Struct*>& structs, char **tokens, String_Vector& name_vector, Map& definitions, Struct *st = nullptr);
+
+#define MAX_SEARCH_RESULTS 10000
+#define MAX_SEARCH_PARAMS 100
+
+#define METHOD_EQUALS 0
+#define METHOD_RANGE  1
+
+struct Search_Parameter {
+	u32 flags;
+	int method;
+	int offset;
+	int size;
+	s64 value1;
+	s64 value2;
+};
+
+struct Search {
+	Search_Parameter single_value = {0};
+	Search_Parameter *params = nullptr;
+	int n_params = 0;
+
+	int byte_align = 0;
+	u64 start_addr = 0;
+	u64 end_addr = 0;
+	Struct *record = nullptr;
+
+	SourceType source_type = SourceNone;
+	int pid = 0;
+	void *identifier = nullptr;
+};
+
+void start_search(Search& s, std::vector<Region> const& regions);
+bool check_search_running();
+bool check_search_finished();
+void get_search_results(std::vector<u64>& results_vec);
+void reset_search();
+void exit_search();
 
 enum StringStyle {
 	StringAuto = 0,
