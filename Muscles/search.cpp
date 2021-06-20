@@ -279,8 +279,9 @@ s64 roundtrip_cast(s64 in) {
 s64 cast(u32 flags, int size, s64 in) {
 	s64 out = 0;
 
-	if (flags & FLAG_FLOAT)
+	if (flags & FLAG_FLOAT) {
 		out = in;
+	}
 	else if (flags & FLAG_SIGNED) {
 		if (size == 8)
 			out = roundtrip_cast<std::int8_t>(in);
@@ -295,13 +296,13 @@ s64 cast(u32 flags, int size, s64 in) {
 	}
 	else {
 		if (size == 8)
-			out = roundtrip_cast<std::int8_t>(in);
+			out = roundtrip_cast<std::uint8_t>(in);
 		else if (size == 16)
-			out = roundtrip_cast<std::int16_t>(in);
+			out = roundtrip_cast<std::uint16_t>(in);
 		else if (size == 32)
-			out = roundtrip_cast<std::int32_t>(in);
+			out = roundtrip_cast<std::uint32_t>(in);
 		else if (size == 64)
-			out = roundtrip_cast<std::int64_t>(in);
+			out = roundtrip_cast<std::uint64_t>(in);
 		else
 			out = in;
 	}
@@ -309,6 +310,7 @@ s64 cast(u32 flags, int size, s64 in) {
 	return out;
 }
 
+// TODO: Support both endians, bitfields, arrays (including string literals)
 void do_object_search(SOURCE_HANDLE handle) {
 	int byte_inc = search.byte_align;
 	if (byte_inc <= 0)
@@ -316,12 +318,16 @@ void do_object_search(SOURCE_HANDLE handle) {
 
 	int n_params = search.n_params;
 
-	char *page_attrs_buf = new char[n_params * (2 * sizeof(s64) + sizeof(u64) + sizeof(void*) + sizeof(int))]();
+	char *page_attrs_buf = new char[n_params * (2 * sizeof(s64) + sizeof(u64) + sizeof(int))]();
 
 	s64 *values      = reinterpret_cast<s64*>(page_attrs_buf);
 	u64 *page_addrs  = reinterpret_cast<u64*>(page_attrs_buf + n_params * 2 * sizeof(s64));
-	char **page_bufs = reinterpret_cast<char**>(page_attrs_buf + n_params * (2 * sizeof(s64) + sizeof(u64)));
-	int *page_idxs   = reinterpret_cast<int*>(page_attrs_buf + n_params * (2 * sizeof(s64) + sizeof(u64) + sizeof(void*)));
+	int *page_idxs   = reinterpret_cast<int*>(page_attrs_buf + n_params * (2 * sizeof(s64) + sizeof(u64)));
+
+	char *page_mem = new char[(n_params + 1) * PAGE_SIZE];
+
+	// totally unnecessary but totally swag
+	char *pages = reinterpret_cast<char*>((reinterpret_cast<u64>(page_mem) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1));
 
 	for (int i = 0; i < n_params; i++) {
 		page_addrs[i] = -1;
@@ -330,6 +336,53 @@ void do_object_search(SOURCE_HANDLE handle) {
 		values[i*2]   = cast(p.flags, p.size, p.value1);
 		values[i*2+1] = cast(p.flags, p.size, p.value2);
 	}
+
+	auto search_all_parameters = [&](u64 head_address) {
+		int matches = 0;
+
+		for (int j = 0; j < n_params; j++) {
+			u64 byte_offset = (u64)(search.params[j].offset / 8);
+			u64 addr = head_address + byte_offset;
+			u64 page = addr & ~(PAGE_SIZE - 1);
+			int page_offset = (int)(addr - page);
+
+			if (page != page_addrs[j]) {
+				int p = 0;
+				for (; p < n_params; p++) {
+					if (page_addrs[p] == page)
+						break;
+				}
+
+				if (p >= n_params) {
+					int retrieved = read_page(handle, search.source_type, page, &pages[j * PAGE_SIZE]);
+					if (retrieved <= 0)
+						return -1;
+
+					p = j;
+				}
+
+				page_addrs[j] = page;
+				page_idxs[j] = p;
+			}
+
+			char *buf = &pages[page_idxs[j] * PAGE_SIZE];
+			int byte_size = search.params[j].size / 8;
+
+			s64 value = 0;
+			for (int k = 0; k < byte_size; k++)
+				value |= (s64)(buf[page_offset + k] & 0xff) << (s64)(8*k);
+
+			value = cast(search.params[j].flags, search.params[j].size, value);
+
+			if (
+				(search.params[j].method == METHOD_EQUALS && value == values[2*j]) || 
+				(search.params[j].method == METHOD_RANGE  && value >= values[2*j] && value <= values[2*j+1])
+			)
+				matches++;
+		}
+
+		return matches;
+	};
 
 	if (n_results == 0) {
 		auto scan = isolate_scan_ranges();
@@ -341,51 +394,7 @@ void do_object_search(SOURCE_HANDLE handle) {
 				range_end = search.end_addr;
 
 			for (; head < range_end; head += byte_inc) {
-				int matches = 0;
-
-				for (int j = 0; j < n_params; j++) {
-					u64 byte_offset = (u64)(search.params[j].offset / 8);
-					u64 addr = head + byte_offset;
-					u64 page = addr & ~(PAGE_SIZE - 1);
-					int page_offset = (int)(addr - page);
-
-					if (page != page_addrs[j]) {
-						int p = 0;
-						for (; p < n_params; p++) {
-							if (page_addrs[p] == page)
-								break;
-						}
-
-						if (p >= n_params) {
-							if (!page_bufs[j])
-								page_bufs[j] = new char[PAGE_SIZE];
-
-							int retrieved = read_page(handle, search.source_type, page, page_bufs[j]);
-							if (retrieved <= 0)
-								break;
-
-							p = j;
-						}
-
-						page_addrs[j] = page;
-						page_idxs[j] = p;
-					}
-
-					char *buf = page_bufs[page_idxs[j]];
-					int byte_size = search.params[j].size / 8;
-
-					s64 value = 0;
-					for (int k = 0; k < byte_size; k++)
-						value |= (s64)(buf[page_offset + k] & 0xff) << (s64)(8*k);
-
-					value = cast(search.params[j].flags, search.params[j].size, value);
-
-					if (
-						(search.params[j].method == METHOD_EQUALS && value == values[2*j]) || 
-						(search.params[j].method == METHOD_RANGE  && value >= values[2*j] && value <= values[2*j+1])
-					)
-						matches++;
-				}
+				int matches = search_all_parameters(head);
 
 				if (matches == n_params) {
 					results[n_results++] = head;
@@ -399,16 +408,28 @@ void do_object_search(SOURCE_HANDLE handle) {
 		}
 	}
 	else {
-		wait_ms(1000);
+		n_prev_results = n_results;
+		if (!prev_results)
+			prev_results = new u64[MAX_SEARCH_RESULTS];
+
+		memcpy(prev_results, results, n_prev_results * sizeof(u64));
+		n_results = 0;
+
+		for (int i = 0; i < n_prev_results; i++) {
+			u64 head = prev_results[i];
+			int matches = search_all_parameters(head);
+
+			if (matches == n_params) {
+				results[n_results++] = head;
+				if (n_results >= MAX_SEARCH_RESULTS)
+					goto done_object;
+			}
+		}
 	}
 
 done_object:
-	for (int i = 0; i < n_params; i++) {
-		if (page_bufs[i])
-			delete[] page_bufs[i];
-	}
-
 	delete[] page_attrs_buf;
+	delete[] page_mem;
 }
 
 // We know the thread has ended if started == true and running == false
