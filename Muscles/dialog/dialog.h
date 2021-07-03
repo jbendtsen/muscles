@@ -1,8 +1,8 @@
 #pragma once
 
-#include "structs.h"
-#include "format.h"
-#include "search.h"
+#include "../structs.h"
+#include "../format.h"
+#include "../search.h"
 
 struct Search_Menu;
 

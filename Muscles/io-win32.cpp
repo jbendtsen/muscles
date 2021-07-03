@@ -1,131 +1,11 @@
 #include "muscles.h"
+#include "structs.h"
+
 #include <algorithm>
 
 #include <windows.h>
 #include <Psapi.h>
 #include <DbgHelp.h>
-
-struct Region_Map {
-	Region *data = nullptr;
-	float max_load = 0.75;
-	int log2_slots = 3;
-	int n_entries = 0;
-
-	const u32 seed = 2357;
-
-	Region_Map() {
-		data = new Region[1 << log2_slots]();
-	}
-	Region_Map(int n_slots) {
-		log2_slots = next_power_of_2(n_slots - 1).second;
-		data = new Region[1 << log2_slots]();
-	}
-	~Region_Map() {
-		delete[] data;
-	}
-
-	Region& operator[](u64 key) {
-		return data[get(key)];
-	}
-
-	int get(u64 key);
-	void insert(u64 key, Region& reg);
-	void clear(int new_size);
-
-	void ensure(int min_size) {
-		if ((1 << log2_slots) < min_size)
-			clear(min_size);
-	}
-
-	int size() { return 1 << log2_slots; }
-
-	void place_at(int idx, Region& reg);
-	void place_at(int idx, Region&& reg);
-	void next_level();
-	void next_level_maybe();
-};
-
-int Region_Map::get(u64 key) {
-	int mask = (1 << log2_slots) - 1;
-	u64 *ptr = &key;
-	u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
-	int idx = hash & mask;
-
-	Region *reg = &data[idx];
-	if ((reg->flags & FLAG_OCCUPIED) == 0)
-		return idx;
-		
-	int end = (idx + mask) & mask;
-	while (idx != end && (data[idx].flags & FLAG_OCCUPIED) && data[idx].base != key)
-		idx = (idx + 1) & mask;
-
-	return idx;
-}
-
-void Region_Map::insert(u64 key, Region& reg) {
-	next_level_maybe();
-
-	int n_slots = 1 << log2_slots;
-	int idx = get(key);
-
-	place_at(idx, reg);
-}
-
-void Region_Map::clear(int new_size) {
-	delete[] data;
-	n_entries = 0;
-
-	auto size = next_power_of_2(new_size - 1);
-	data = new Region[size.first]();
-	log2_slots = size.second;
-}
-
-// This function assumes that you've already found an available (non-occupied) slot in the map
-void Region_Map::place_at(int idx, Region& reg) {
-	data[idx] = reg;
-	data[idx].flags |= FLAG_OCCUPIED;
-	n_entries++;
-}
-void Region_Map::place_at(int idx, Region&& reg) {
-	data[idx] = reg;
-	data[idx].flags |= FLAG_OCCUPIED;
-	n_entries++;
-}
-
-void Region_Map::next_level_maybe() {
-	int n_slots = 1 << log2_slots;
-	float load = (float)n_entries / (float)n_slots;
-	if (load >= max_load)
-		next_level();
-}
-
-void Region_Map::next_level() {
-	int old_n_slots = 1 << log2_slots;
-	log2_slots++;
-
-	int new_n_slots = 1 << log2_slots;
-	int new_mask = new_n_slots - 1;
-	Region *new_regions = new Region[new_n_slots]();
-
-	for (int i = 0; i < old_n_slots; i++) {
-		if ((data[i].flags & FLAG_OCCUPIED) == 0)
-			continue;
-
-		u64 *ptr = &data[i].base;
-		u32 hash = murmur3_32((const char*)ptr, sizeof(u64), seed);
-		int idx = hash & new_mask;
-		int end = (idx + new_n_slots - 1) & new_mask;
-
-		while (idx != end && (new_regions[idx].flags & FLAG_OCCUPIED))
-			idx = (idx + 1) & new_mask;
-
-		new_regions[idx] = data[i];
-		//new_regions[idx].flags |= FLAG_OCCUPIED;
-	}
-
-	delete[] data;
-	data = new_regions;
-}
 
 const char *get_folder_separator() {
 	return "\\";
@@ -402,7 +282,7 @@ u8 *header = nullptr;
 #define PROCESS_BASE_NAME_SIZE 1000
 #define PROCESS_NAME_LEN 100
 
-bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map, Arena& arena) {
+bool find_section_names(HANDLE proc, int idx, u64 base, u8 *buf, Source& source) {
 	SIZE_T len = 0;
 	ReadProcessMemory(proc, (LPCVOID)base, (LPVOID)buf, IMAGE_HEADER_PAGE_SIZE, &len);
 	if (len != IMAGE_HEADER_PAGE_SIZE)
@@ -416,18 +296,10 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map,
 	IMAGE_SECTION_HEADER *section = IMAGE_FIRST_SECTION(headers);
 
 	for (int i = 0; i < n_sections; i++) {
-		u64 key = base + section->VirtualAddress;
-		int idx = section_map.get(key);
-		Region& r = section_map.data[idx];
-
-		if ((r.flags & FLAG_OCCUPIED) == 0) {
-			section_map.place_at(idx, {
-				.name = arena.alloc_string((char*)section->Name),
-				.base = key,
-				//.offset = section->VirtualAddress
-			});
-			section_map.next_level_maybe();
-		}
+		u64 addr = base + section->VirtualAddress;
+		Region& r = source.regions[idx + i + 1];
+		if (r.base == addr)
+			r.name = source.arena.alloc_string((char*)section->Name);
 
 		section++;
 	}
@@ -436,9 +308,6 @@ bool find_section_names(HANDLE proc, u64 base, u8 *buf, Region_Map& section_map,
 }
 
 void refresh_process_regions(Source& source) {
-	source.regions_map.ensure(1024);
-	source.sections.ensure(256);
-
 	auto& proc = (HANDLE&)source.handle;
 	if (!proc)
 		proc = OpenProcess(PROCESS_ALL_ACCESS, false, source.pid);
@@ -446,6 +315,8 @@ void refresh_process_regions(Source& source) {
 	MEMORY_BASIC_INFORMATION info = {0};
 	VirtualQueryEx(proc, (LPCVOID)0, &info, sizeof(MEMORY_BASIC_INFORMATION));
 	u64 base = info.RegionSize;
+
+	source.regions.resize(0);
 
 	while (1) {
 		if (!VirtualQueryEx(proc, (LPCVOID)base, &info, sizeof(MEMORY_BASIC_INFORMATION)))
@@ -475,46 +346,34 @@ void refresh_process_regions(Source& source) {
 
 		u32 flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
 
-		bool exists = false;
-		int idx = source.regions_map.get(base);
-		Region& reg = source.regions_map.data[idx];
-
-		if (reg.flags & FLAG_OCCUPIED) {
-			int mask = (1 << REG_PM_READ) | (1 << REG_PM_WRITE) | (1 << REG_PM_EXEC);
-			if (reg.base == base && reg.size == size && (reg.flags & mask) == (flags & mask))
-				exists = true;
-		}
-
-		if (!exists) {
-			source.regions_map.place_at(idx, {
-				.base = base,
-				.size = size,
-				.flags = flags | FLAG_NEW
-			});
-			source.regions_map.next_level_maybe();
-		}
+		source.regions.push_back({
+			.name = nullptr,
+			.base = base,
+			.size = size,
+			.flags = flags
+		});
 
 		base += info.RegionSize;
 	}
+
+	source.arena.rewind();
+	source.arena.set_rewind_point();
 
 	char name[PROCESS_BASE_NAME_SIZE];
 	if (!header)
 		header = new u8[IMAGE_HEADER_PAGE_SIZE];
 
-	source.regions.reserve(source.regions_map.size());
-	bool first_run = source.regions.size() == 0;
-
 	int idx = 0;
 	u32 mask = FLAG_OCCUPIED | FLAG_NEW;
-	for (int i = 0; i < source.regions_map.size(); i++) {
-		u32 new_flags = source.regions_map.data[i].flags & mask;
+	for (int i = 0; i < source.regions.size(); i++) {
+		u32 new_flags = source.regions[i].flags & mask;
 		if (new_flags != mask)
 			continue;
 
-		auto& reg = source.regions_map.data[i];
+		auto& reg = source.regions[i];
 		reg.flags &= ~FLAG_NEW;
 		if (reg.size == IMAGE_HEADER_PAGE_SIZE)
-			find_section_names(proc, reg.base, header, source.sections, source.arena);
+			find_section_names(proc, i, reg.base, header, source);
 
 		char *exe = nullptr;
 		int len = GetMappedFileNameA(proc, (LPVOID)reg.base, name, PROCESS_BASE_NAME_SIZE);
@@ -523,47 +382,18 @@ void refresh_process_regions(Source& source) {
 			exe = str ? str+1 : name;
 		}
 
-		Region& s = source.sections[reg.base];
-		char *s_name = (s.flags & FLAG_OCCUPIED) ? s.name : nullptr;
+		if (exe || reg.name) {
+			char *full_name = (char*)source.arena.allocate(PROCESS_NAME_LEN);
 
-		if (exe || s_name) {
-			if (!reg.name)
-				reg.name = (char*)source.arena.allocate(PROCESS_NAME_LEN);
-
-			snprintf(reg.name, PROCESS_NAME_LEN-1, "%s%s%s",
+			snprintf(full_name, PROCESS_NAME_LEN-1, "%s%s%s",
 				exe ? exe : "",
-				s_name ? " " : "",
-				s_name ? s_name : ""
+				reg.name ? " " : "",
+				reg.name ? reg.name : ""
 			);
+
+			reg.name = full_name;
 		}
-		else
-			reg.name = nullptr;
-
-		bool modified = false;
-		if (!first_run) {
-			for (int j = idx; j < source.regions.size(); j++) {
-				auto& r = source.regions[j];
-				if (r.base >= reg.base) {
-					if (r.base == reg.base)
-						r = reg;
-					else
-						source.regions.insert(source.regions.begin()+j, reg);
-
-					idx = j;
-					modified = true;
-					break;
-				}
-			}
-		}
-
-		if (!modified)
-			source.regions.push_back(reg);
 	}
-
-	if (first_run)
-		std::sort(source.regions.begin(), source.regions.end(), [](Region& a, Region& b) {
-			return a.base < b.base;
-		});
 }
 
 void refresh_process_spans(Source& source, std::vector<Span>& input) {

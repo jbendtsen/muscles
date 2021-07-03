@@ -1,5 +1,5 @@
-#include "muscles.h"
-#include "ui.h"
+#include "../muscles.h"
+#include "../ui.h"
 #include "dialog.h"
 
 void View_Object::update_ui(Camera& camera) {

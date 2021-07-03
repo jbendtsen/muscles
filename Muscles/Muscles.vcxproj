@@ -151,7 +151,7 @@
   <ItemGroup>
     <ClCompile Include="box.cpp" />
 	<ClCompile Include="config.cpp" />
-    <ClCompile Include="data.cpp" />
+    <ClCompile Include="containers.cpp" />
     <ClCompile Include="dialog\edit-structs.cpp" />
     <ClCompile Include="dialog\search-menu.cpp" />
     <ClCompile Include="dialog\main-menu.cpp" />
@@ -162,7 +162,6 @@
     <ClCompile Include="editor.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="format.cpp" />
-    <ClCompile Include="hashmap.cpp" />
     <ClCompile Include="icons.cpp" />
     <ClCompile Include="io-win32.cpp" />
     <ClCompile Include="io.cpp" />
@@ -170,12 +169,17 @@
     <ClCompile Include="muscles.cpp" />
 	<ClCompile Include="search.cpp" />
     <ClCompile Include="structs.cpp" />
+	<ClCompile Include="table.cpp" />
     <ClCompile Include="ui.cpp" />
     <ClCompile Include="workspace.cpp" />
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="containers.h" />
     <ClInclude Include="dialog\dialog.h" />
+	<ClInclude Include="format.h" />
     <ClInclude Include="muscles.h" />
+	<ClInclude Include="search.h" />
+	<ClInclude Include="structs.h" />
     <ClInclude Include="ui.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
