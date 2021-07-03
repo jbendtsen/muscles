@@ -144,6 +144,7 @@ struct Map {
 	Bucket& insert(const char *str, int len = 0);
 	void remove(const char *str, int len = 0);
 
+	void erase_all();
 	void erase_all_of_type(u32 flags);
 	void erase_all_of_exact_type(u32 flags);
 	void erase_all_similar_to(u32 flags);

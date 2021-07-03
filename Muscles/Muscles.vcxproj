@@ -121,14 +121,14 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Jack\source\SDL2-2.0.12\include;C:\Users\Jack\source\SDL2_ttf-2.0.15\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Lib\SDL2-2.0.12\include;..\Lib\freetype-2.10.2\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>-ffast-math</AdditionalOptions>
+      <AdditionalOptions>/fp:fast</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Jack\source\SDL2-2.0.12\lib\x64;C:\Users\Jack\source\freetype-2.10.2\win64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Lib\SDL2-2.0.12\lib\x64;..\Lib\freetype-2.10.2\win64</AdditionalLibraryDirectories>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;dbghelp.lib;SDL2main.lib;SDL2.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

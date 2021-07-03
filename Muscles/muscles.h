@@ -482,8 +482,7 @@ struct Source {
 	// list of pages, where each page is 4k of text loaded from /proc/<pid>/maps
 	std::vector<char*> proc_map_pages;
 
-	//Region_Map regions_map;
-	//Region_Map sections;
+	Map address_to_region;
 
 	std::vector<Region> regions;
 	std::vector<Span> spans;

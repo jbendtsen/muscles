@@ -283,6 +283,14 @@ void Map::remove(const char *str, int len) {
 	buck = {0};
 }
 
+void Map::erase_all() {
+	int size = 1 << log2_slots;
+	for (int i = 0; i < size; i++)
+		data[i].flags = 0;
+
+	n_entries = 0;
+}
+
 void Map::erase_all_of_type(u32 flags) {
 	int size = 1 << log2_slots;
 	for (int i = 0; i < size; i++) {

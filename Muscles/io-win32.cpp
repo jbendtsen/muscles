@@ -14,7 +14,7 @@ const char *get_root_folder() {
 	return "C:\\";
 }
 const char *get_project_path() {
-	return "C:/Users/Jack/source/repos/Muscles";
+	return ".";
 }
 
 bool is_folder(const char *name) {
@@ -282,7 +282,7 @@ u8 *header = nullptr;
 #define PROCESS_BASE_NAME_SIZE 1000
 #define PROCESS_NAME_LEN 100
 
-bool find_section_names(HANDLE proc, int idx, u64 base, u8 *buf, Source& source) {
+bool find_section_names(HANDLE proc, u64 base, u8 *buf, Source& source) {
 	SIZE_T len = 0;
 	ReadProcessMemory(proc, (LPCVOID)base, (LPVOID)buf, IMAGE_HEADER_PAGE_SIZE, &len);
 	if (len != IMAGE_HEADER_PAGE_SIZE)
@@ -296,12 +296,14 @@ bool find_section_names(HANDLE proc, int idx, u64 base, u8 *buf, Source& source)
 	IMAGE_SECTION_HEADER *section = IMAGE_FIRST_SECTION(headers);
 
 	for (int i = 0; i < n_sections; i++) {
-		u64 addr = base + section->VirtualAddress;
-		Region& r = source.regions[idx + i + 1];
-		if (r.base == addr)
-			r.name = source.arena.alloc_string((char*)section->Name);
+		u64 addr = base + section[i].VirtualAddress;
+		int map_idx = source.address_to_region.get(reinterpret_cast<const char*>(addr), sizeof(u64));
+		if ((source.address_to_region.data[map_idx].flags & FLAG_OCCUPIED) == 0)
+			continue;
 
-		section++;
+		Region& r = source.regions[source.address_to_region.data[map_idx].value];
+		if (r.base == addr)
+			r.name = source.arena.alloc_string((char*)section[i].Name);
 	}
 
 	return n_sections > 0;
@@ -316,6 +318,7 @@ void refresh_process_regions(Source& source) {
 	VirtualQueryEx(proc, (LPCVOID)0, &info, sizeof(MEMORY_BASIC_INFORMATION));
 	u64 base = info.RegionSize;
 
+	source.address_to_region.erase_all();
 	source.regions.resize(0);
 
 	while (1) {
@@ -346,6 +349,9 @@ void refresh_process_regions(Source& source) {
 
 		u32 flags = (pm_read << REG_PM_READ) | (pm_write << REG_PM_WRITE) | (pm_exec << REG_PM_EXEC);
 
+		Bucket& b = source.address_to_region.insert(reinterpret_cast<const char*>(base), sizeof(u64));
+		b.value = source.regions.size();
+
 		source.regions.push_back({
 			.name = nullptr,
 			.base = base,
@@ -364,16 +370,10 @@ void refresh_process_regions(Source& source) {
 		header = new u8[IMAGE_HEADER_PAGE_SIZE];
 
 	int idx = 0;
-	u32 mask = FLAG_OCCUPIED | FLAG_NEW;
 	for (int i = 0; i < source.regions.size(); i++) {
-		u32 new_flags = source.regions[i].flags & mask;
-		if (new_flags != mask)
-			continue;
-
 		auto& reg = source.regions[i];
-		reg.flags &= ~FLAG_NEW;
 		if (reg.size == IMAGE_HEADER_PAGE_SIZE)
-			find_section_names(proc, i, reg.base, header, source);
+			find_section_names(proc, reg.base, header, source);
 
 		char *exe = nullptr;
 		int len = GetMappedFileNameA(proc, (LPVOID)reg.base, name, PROCESS_BASE_NAME_SIZE);
